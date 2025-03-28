@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -13,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { useProjects, ProjectCategory, PaymentModel, Project } from "@/context/ProjectContext";
+import { useProjects, ProjectCategory, PaymentModel } from "@/context/ProjectContext";
 
 const createProjectSchema = z.object({
   title: z.string().min(3, { message: "Title must be at least 3 characters." }),
@@ -81,8 +80,8 @@ const CreateProject = () => {
         description: values.description,
         category: values.category as ProjectCategory,
         deliverables: values.deliverables.split('\n').filter(Boolean),
-        start_date: values.startDate,
-        end_date: values.endDate,
+        startDate: values.startDate,
+        endDate: values.endDate,
         paymentModel: values.paymentModel as PaymentModel,
         stipendAmount: values.paymentModel === "Stipend" ? Number(values.stipendAmount) : undefined,
         requiredSkills: values.requiredSkills.split(',').map(s => s.trim()).filter(Boolean),
@@ -90,7 +89,7 @@ const CreateProject = () => {
         createdBy: {
           id: profile.id,
           name: profile.name,
-          companyName: profile.company_name
+          companyName: profile.companyName
         }
       };
       

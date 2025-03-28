@@ -112,7 +112,7 @@ interface ProjectContextType {
   teams: Team[];
   messages: Record<string, Message[]>; // projectId -> messages
   userApplications: ProjectApplication[];
-  createProject: (project: Omit<Project, "id" | "createdAt" | "applications" | "status" | "milestones" | "timeline">) => Promise<void>;
+  createProject: (project: Omit<Project, "id" | "createdAt" | "applications" | "status" | "milestones" | "timeline"> & { startDate: Date, endDate: Date }) => Promise<void>;
   applyToProject: (
     projectId: string, 
     application: Omit<ProjectApplication, "id" | "projectId" | "createdAt" | "status">
@@ -171,7 +171,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [messages]);
 
   const createProject = async (
-    project: Omit<Project, "id" | "createdAt" | "applications" | "status" | "milestones" | "timeline">
+    project: Omit<Project, "id" | "createdAt" | "applications" | "status" | "milestones" | "timeline"> & { startDate: Date, endDate: Date }
   ) => {
     if (!user || !profile) throw new Error("You must be logged in to create a project");
     if (profile.role !== "startup") throw new Error("Only startups can create projects");
@@ -184,8 +184,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       applications: [],
       milestones: [],
       timeline: {
-        startDate: project.start_date as Date,
-        endDate: project.end_date as Date
+        startDate: project.startDate,
+        endDate: project.endDate
       }
     };
 
