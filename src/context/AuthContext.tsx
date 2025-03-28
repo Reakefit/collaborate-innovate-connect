@@ -1,8 +1,7 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 export type UserRole = "student" | "startup";
 

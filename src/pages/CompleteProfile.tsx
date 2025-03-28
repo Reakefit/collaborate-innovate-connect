@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAuth, UserProfile } from "@/context/AuthContext";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import Header from "@/components/Header";
 
 const CompleteProfile = () => {

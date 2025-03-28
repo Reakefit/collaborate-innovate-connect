@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { useAuth, UserProfile } from "./AuthContext";
 
 export type ProjectCategory = 
@@ -129,7 +129,7 @@ interface ProjectContextType {
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
@@ -171,10 +171,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [messages]);
 
   const createProject = async (
-    project: Omit<Project, "id" | "createdAt" | "applications" | "status" | "milestones">
+    project: Omit<Project, "id" | "createdAt" | "applications" | "status" | "milestones" | "createdBy">
   ) => {
-    if (!user) throw new Error("You must be logged in to create a project");
-    if (user.role !== "startup") throw new Error("Only startups can create projects");
+    if (!user || !profile) throw new Error("You must be logged in to create a project");
+    if (profile.role !== "startup") throw new Error("Only startups can create projects");
 
     const newProject: Project = {
       ...project,
@@ -184,9 +184,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       applications: [],
       milestones: [],
       createdBy: {
-        id: user.id,
-        name: user.name,
-        companyName: user.companyName
+        id: profile.id,
+        name: profile.name,
+        companyName: profile.companyName
       }
     };
 
@@ -309,13 +309,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         // Update application statuses
         const updatedApplications = p.applications.map(app => ({
           ...app,
-          status: app.teamId === teamId ? "accepted" : "rejected"
+          status: app.teamId === teamId ? "accepted" as const : "rejected" as const
         }));
 
         return { 
           ...p, 
           selectedTeam: teamId,
-          status: "in-progress",
+          status: "in-progress" as const,
           applications: updatedApplications
         };
       }
@@ -390,7 +390,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const sendMessage = async (projectId: string, content: string) => {
-    if (!user) throw new Error("You must be logged in to send a message");
+    if (!user || !profile) throw new Error("You must be logged in to send a message");
     
     const project = projects.find(p => p.id === projectId);
     if (!project) throw new Error("Project not found");
@@ -411,7 +411,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: `message_${Date.now()}`,
       projectId,
       senderId: user.id,
-      senderName: user.name,
+      senderName: profile.name,
       content,
       createdAt: new Date()
     };

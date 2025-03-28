@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { useProjects, Message, Project } from "@/context/ProjectContext";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { Search, Send, MessageSquare } from "lucide-react";
 
 const Messages = () => {

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -12,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth, UserRole } from "@/context/AuthContext";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 const signUpSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),

@@ -1,239 +1,206 @@
-
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/sonner";
-import { useAuth, UserProfile } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 const Profile = () => {
-  const { user, updateProfile } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
+  const { user, profile, updateProfile } = useAuth();
+  
+  // Early return if no user or profile
+  if (!user || !profile) {
+    return <DashboardLayout activeTab="profile">
+      <div>Loading profile...</div>
+    </DashboardLayout>;
+  }
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Form state
-  const [formData, setFormData] = useState<Partial<UserProfile>>({
-    name: user?.name || "",
-    email: user?.email || "",
-    ...(user?.role === "startup" ? {
-      companyName: user?.companyName || "",
-      companyDescription: user?.companyDescription || "",
-    } : {
-      education: user?.education || "",
-      portfolio: user?.portfolio || "",
-      skills: user?.skills || [],
-    }),
+  const profileSchema = z.object({
+    name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+    companyName: z.string().optional(),
+    companyDescription: z.string().optional(),
+    education: z.string().optional(),
+    portfolio: z.string().optional(),
+    skills: z.string().optional(),
   });
   
-  const [skillsInput, setSkillsInput] = useState(
-    user?.skills ? user.skills.join(", ") : ""
-  );
+  const form = useForm({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      name: profile.name,
+      companyName: profile.companyName || "",
+      companyDescription: profile.companyDescription || "",
+      education: profile.education || "",
+      portfolio: profile.portfolio || "",
+      skills: profile.skills ? profile.skills.join(", ") : "",
+    },
+  });
   
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: z.infer<typeof profileSchema>) => {
     setIsSubmitting(true);
     
     try {
-      // Parse skills from comma-separated string
-      const updatedData = { ...formData };
-      if (user?.role === "student") {
-        updatedData.skills = skillsInput.split(",").map(skill => skill.trim()).filter(Boolean);
-      }
+      const profileData = {
+        name: values.name,
+        companyName: values.companyName,
+        companyDescription: values.companyDescription,
+        education: values.education,
+        portfolio: values.portfolio,
+        skills: values.skills ? values.skills.split(",").map((skill) => skill.trim()) : [],
+      };
       
-      await updateProfile(updatedData);
-      setIsEditing(false);
-      toast.success("Profile updated successfully");
-    } catch (error) {
-      toast.error("Failed to update profile");
+      await updateProfile(profileData);
+      toast.success("Profile updated successfully!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update profile");
     } finally {
       setIsSubmitting(false);
     }
   };
   
-  if (!user) {
-    return (
-      <DashboardLayout activeTab="settings">
-        <div className="text-center">Loading profile...</div>
-      </DashboardLayout>
-    );
-  }
-  
   return (
-    <DashboardLayout activeTab="settings">
-      <div className="space-y-6 max-w-4xl mx-auto">
+    <DashboardLayout activeTab="profile">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Profile Settings</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Your Profile</h1>
           <p className="text-muted-foreground">
-            Manage your personal information and account settings
+            Manage your personal information and preferences
           </p>
         </div>
         
         <Card>
           <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
+            <CardTitle>Profile Information</CardTitle>
             <CardDescription>
-              Update your profile information
+              Update your profile details
             </CardDescription>
           </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    disabled
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Cannot be changed
-                  </p>
-                </div>
-              </div>
-              
-              {user.role === "startup" ? (
-                // Startup-specific fields
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName">Company Name</Label>
-                    <Input
-                      id="companyName"
-                      name="companyName"
-                      value={formData.companyName || ""}
-                      onChange={handleChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="companyDescription">Company Description</Label>
-                    <Textarea
-                      id="companyDescription"
-                      name="companyDescription"
-                      value={formData.companyDescription || ""}
-                      onChange={handleChange}
-                      disabled={!isEditing}
-                      className="min-h-[120px]"
-                    />
-                  </div>
-                </div>
-              ) : (
-                // Student-specific fields
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="education">Education</Label>
-                    <Input
-                      id="education"
-                      name="education"
-                      placeholder="e.g., BTech at IIT Delhi"
-                      value={formData.education || ""}
-                      onChange={handleChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="skills">Skills (comma separated)</Label>
-                    <Input
-                      id="skills"
-                      name="skills"
-                      placeholder="e.g., React, UI Design, Data Analysis"
-                      value={skillsInput}
-                      onChange={(e) => setSkillsInput(e.target.value)}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="portfolio">Portfolio URL</Label>
-                    <Input
-                      id="portfolio"
-                      name="portfolio"
-                      placeholder="e.g., https://myportfolio.com"
-                      value={formData.portfolio || ""}
-                      onChange={handleChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              {isEditing ? (
-                <>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsEditing(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Saving..." : "Save Changes"}
-                  </Button>
-                </>
-              ) : (
-                <Button 
-                  type="button" 
-                  onClick={() => setIsEditing(true)}
-                >
-                  Edit Profile
-                </Button>
-              )}
-            </CardFooter>
-          </form>
-        </Card>
-        
-        {/* Account Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Settings</CardTitle>
-            <CardDescription>
-              Manage your account preferences and security
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">Change Password</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="New password"
-                  disabled
+          
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John Doe" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <Button disabled>Update</Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Password change feature will be available soon
-              </p>
-            </div>
+                
+                {profile.role === "startup" ? (
+                  // Startup-specific form
+                  <div>
+                    <FormField
+                      control={form.control}
+                      name="companyName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Your Company Name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="companyDescription"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Description</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Tell us about your company..." className="min-h-[100px]" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                ) : (
+                  // Student-specific form
+                  <div>
+                    <FormField
+                      control={form.control}
+                      name="education"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Education</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., BTech at IIT Delhi" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="portfolio"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Portfolio URL</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., https://myportfolio.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="skills"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Skills (comma separated)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., React, UI Design, Data Analysis" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {profile.skills && profile.skills.length > 0 && (
+                      <div className="mt-6">
+                        <h3 className="text-sm font-medium mb-2">Skills</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.skills.map((skill, index) => (
+                            <div key={index} className="px-2 py-1 rounded-full bg-secondary text-secondary-foreground text-xs">
+                              {skill}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Updating..." : "Update Profile"}
+                </Button>
+              </form>
+            </Form>
           </CardContent>
         </Card>
+        
+        {/* Add more sections here as needed, e.g., account settings, preferences, etc. */}
       </div>
     </DashboardLayout>
   );

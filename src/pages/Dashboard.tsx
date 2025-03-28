@@ -9,7 +9,7 @@ import { useProjects, Project, ProjectApplication } from "@/context/ProjectConte
 import { Briefcase, Clock, CheckCircle, Users, ArrowRight, AlertCircle } from "lucide-react";
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { projects, userApplications, getUserProjects } = useProjects();
   const navigate = useNavigate();
   
@@ -60,7 +60,7 @@ const Dashboard = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {user?.name}! Here's what's happening with your projects.
+            Welcome back, {profile?.name}! Here's what's happening with your projects.
           </p>
         </div>
 

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -9,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from "@/context/AuthContext";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 const signInSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
