@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,250 +10,198 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
-import { Menu, X, User, Home, Briefcase, MessageSquare, Search } from "lucide-react";
+import { Menu, User } from "lucide-react";
 
 const Header = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
+  const { user, profile, signOut } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-
-  const handleSignOut = () => {
-    signOut();
-    navigate("/");
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   const getInitials = (name: string) => {
     return name
       .split(" ")
-      .map((n) => n[0])
+      .map((part) => part[0])
       .join("")
       .toUpperCase();
   };
 
+  const navItems = [
+    { label: "How It Works", href: "/how-it-works" },
+    { label: "Projects", href: "/projects" },
+    { label: "For Students", href: "/#students" },
+    { label: "For Startups", href: "/#startups" },
+  ];
+
+  const authenticatedNavItems = [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Projects", href: "/projects" },
+    { label: "Messages", href: "/messages" },
+    { label: "Teams", href: "/teams" },
+  ];
+
   return (
-    <header className="bg-background border-b sticky top-0 z-30">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
-          {/* Logo and Brand */}
-          <div className="flex items-center">
-            <Link to="/" className="text-2xl font-bold text-primary">
-              S-S Connect
-            </Link>
-          </div>
+    <header className="sticky top-0 z-40 border-b bg-background">
+      <div className="container flex h-16 items-center justify-between">
+        <div className="flex items-center gap-6">
+          <Link to="/" className="flex items-center space-x-2">
+            <span className="text-xl font-bold">S-S Connect</span>
+          </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="text-foreground hover:text-primary transition-colors">
-              Home
-            </Link>
-            {user ? (
-              <>
-                <Link to="/dashboard" className="text-foreground hover:text-primary transition-colors">
-                  Dashboard
-                </Link>
-                <Link to="/projects" className="text-foreground hover:text-primary transition-colors">
-                  Find Projects
-                </Link>
-                <Link to="/messages" className="text-foreground hover:text-primary transition-colors">
-                  Messages
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link to="/about" className="text-foreground hover:text-primary transition-colors">
-                  About
-                </Link>
-                <Link to="/how-it-works" className="text-foreground hover:text-primary transition-colors">
-                  How It Works
-                </Link>
-              </>
-            )}
+          {/* Desktop navigation */}
+          <nav className="hidden md:flex items-center gap-6">
+            {user
+              ? authenticatedNavItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {item.label}
+                  </Link>
+                ))
+              : navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
           </nav>
+        </div>
 
-          {/* Right Side - Auth Buttons or User Menu */}
-          <div className="hidden md:flex items-center">
-            {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        {getInitials(user.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => navigate("/profile")}
-                    className="cursor-pointer"
-                  >
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => navigate("/dashboard")}
-                    className="cursor-pointer"
-                  >
-                    Dashboard
-                  </DropdownMenuItem>
-                  {user.role === "startup" && (
-                    <DropdownMenuItem
-                      onClick={() => navigate("/create-project")}
-                      className="cursor-pointer"
-                    >
-                      Create Project
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleSignOut}
-                    className="cursor-pointer text-destructive"
-                  >
-                    Log out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <div className="flex items-center space-x-4">
-                <Button variant="ghost" onClick={() => navigate("/signin")}>
-                  Sign In
+        <div className="flex items-center gap-4">
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {profile ? getInitials(profile.name) : <User className="h-4 w-4" />}
+                    </AvatarFallback>
+                  </Avatar>
                 </Button>
-                <Button onClick={() => navigate("/signup")}>Sign Up</Button>
-              </div>
-            )}
-          </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{profile?.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard">Dashboard</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/profile">My Profile</Link>
+                </DropdownMenuItem>
+                {profile?.role === "startup" && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/create-project">Create Project</Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="hidden md:flex items-center gap-4">
+              <Button variant="ghost" asChild>
+                <Link to="/signin">Sign In</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/signup">Sign Up</Link>
+              </Button>
+            </div>
+          )}
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleMenu}
-              aria-label="Toggle Menu"
-            >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </Button>
-          </div>
+          {/* Mobile menu button */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Toggle menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right">
+              <div className="grid gap-6 py-6">
+                <Link
+                  to="/"
+                  className="text-xl font-bold"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  S-S Connect
+                </Link>
+                <nav className="grid gap-3">
+                  {user
+                    ? authenticatedNavItems.map((item) => (
+                        <Link
+                          key={item.href}
+                          to={item.href}
+                          className="text-sm font-medium hover:text-primary"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          {item.label}
+                        </Link>
+                      ))
+                    : navItems.map((item) => (
+                        <Link
+                          key={item.href}
+                          to={item.href}
+                          className="text-sm font-medium hover:text-primary"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          {item.label}
+                        </Link>
+                      ))}
+                </nav>
+                {!user && (
+                  <div className="flex flex-col gap-3">
+                    <Button variant="outline" asChild>
+                      <Link to="/signin" onClick={() => setMobileMenuOpen(false)}>
+                        Sign In
+                      </Link>
+                    </Button>
+                    <Button asChild>
+                      <Link to="/signup" onClick={() => setMobileMenuOpen(false)}>
+                        Sign Up
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+                {user && (
+                  <div className="flex flex-col gap-3">
+                    <Button variant="outline" asChild>
+                      <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>
+                        My Profile
+                      </Link>
+                    </Button>
+                    <Button variant="destructive" onClick={handleSignOut}>
+                      Sign Out
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
-
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden">
-          <div className="px-4 py-2 space-y-3 bg-background border-t">
-            <Link
-              to="/"
-              className="flex items-center py-2 text-base font-medium text-foreground hover:text-primary"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <Home className="mr-2 h-5 w-5" />
-              Home
-            </Link>
-            
-            {user ? (
-              <>
-                <Link
-                  to="/dashboard"
-                  className="flex items-center py-2 text-base font-medium text-foreground hover:text-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Briefcase className="mr-2 h-5 w-5" />
-                  Dashboard
-                </Link>
-                <Link
-                  to="/projects"
-                  className="flex items-center py-2 text-base font-medium text-foreground hover:text-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Search className="mr-2 h-5 w-5" />
-                  Find Projects
-                </Link>
-                <Link
-                  to="/messages"
-                  className="flex items-center py-2 text-base font-medium text-foreground hover:text-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <MessageSquare className="mr-2 h-5 w-5" />
-                  Messages
-                </Link>
-                <Link
-                  to="/profile"
-                  className="flex items-center py-2 text-base font-medium text-foreground hover:text-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <User className="mr-2 h-5 w-5" />
-                  Profile
-                </Link>
-                {user.role === "startup" && (
-                  <Link
-                    to="/create-project"
-                    className="flex items-center py-2 text-base font-medium text-foreground hover:text-primary"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Create Project
-                  </Link>
-                )}
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => {
-                    handleSignOut();
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  Log out
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/about"
-                  className="flex items-center py-2 text-base font-medium text-foreground hover:text-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  About
-                </Link>
-                <Link
-                  to="/how-it-works"
-                  className="flex items-center py-2 text-base font-medium text-foreground hover:text-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  How It Works
-                </Link>
-                <div className="pt-2">
-                  <Button
-                    variant="outline"
-                    className="w-full mb-2"
-                    onClick={() => {
-                      navigate("/signin");
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    Sign In
-                  </Button>
-                  <Button
-                    className="w-full"
-                    onClick={() => {
-                      navigate("/signup");
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    Sign Up
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </header>
   );
 };
