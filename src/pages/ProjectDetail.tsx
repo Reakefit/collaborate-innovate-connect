@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -15,6 +16,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { useProjects, Project, ProjectApplication, ProjectMilestone } from "@/context/ProjectContext";
 import { MessageSquare, User, Calendar, DollarSign, Users, CheckCircle, Clock, AlertCircle, Send } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 const applicationSchema = z.object({
   coverLetter: z.string().min(100, { message: "Cover letter must be at least 100 characters" }),
@@ -50,6 +52,8 @@ const ProjectDetail = () => {
   const [newMessage, setNewMessage] = useState("");
   const [isApplying, setIsApplying] = useState(false);
   const [isCreatingMilestone, setIsCreatingMilestone] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false);
   
   const applicationForm = useForm<ApplicationValues>({
     resolver: zodResolver(applicationSchema),
@@ -106,6 +110,7 @@ const ProjectDetail = () => {
       
       await applyToProject(project.id, applicationData);
       toast.success("Application submitted successfully!");
+      setShowApplyModal(false);
       navigate("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Failed to submit application");
@@ -143,6 +148,7 @@ const ProjectDetail = () => {
       };
       
       await createMilestone(project.id, milestoneData);
+      setShowMilestoneModal(false);
       toast.success("Milestone created successfully!");
     } catch (error: any) {
       toast.error(error.message || "Failed to create milestone");
@@ -276,7 +282,7 @@ const ProjectDetail = () => {
               )}
               
               {project.status === "open" && !isCreator && !userApplication && (
-                <Button onClick={() => document.getElementById('apply-modal')?.showModal()} disabled={isApplying}>
+                <Button onClick={() => setShowApplyModal(true)} disabled={isApplying}>
                   {isApplying ? "Applying..." : "Apply Now"}
                 </Button>
               )}
@@ -430,7 +436,7 @@ const ProjectDetail = () => {
             </Card>
             
             {isCreator && (
-              <Button onClick={() => document.getElementById('milestone-modal')?.showModal()}>
+              <Button onClick={() => setShowMilestoneModal(true)}>
                 Add Milestone
               </Button>
             )}
@@ -483,9 +489,14 @@ const ProjectDetail = () => {
       </div>
       
       {/* Apply Modal */}
-      <dialog id="apply-modal" className="modal">
-        <div className="modal-box">
-          <h3 className="font-bold text-lg">Apply to {project.title}</h3>
+      <Dialog open={showApplyModal} onOpenChange={setShowApplyModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Apply to {project.title}</DialogTitle>
+            <DialogDescription>
+              Submit your application to join this project
+            </DialogDescription>
+          </DialogHeader>
           <Form {...applicationForm}>
             <form onSubmit={applicationForm.handleSubmit(handleApply)} className="space-y-4">
               <FormField
@@ -502,24 +513,25 @@ const ProjectDetail = () => {
                   </FormItem>
                 )}
               />
-              <div className="modal-action">
+              <DialogFooter>
                 <Button type="submit" disabled={isApplying}>
                   {isApplying ? "Applying..." : "Submit Application"}
                 </Button>
-                <Button type="button" className="btn-ghost" onClick={() => document.getElementById('apply-modal')?.close()}>Cancel</Button>
-              </div>
+              </DialogFooter>
             </form>
           </Form>
-        </div>
-        <form method="dialog" className="modal-backdrop">
-          <button>close</button>
-        </form>
-      </dialog>
+        </DialogContent>
+      </Dialog>
       
       {/* Milestone Modal */}
-      <dialog id="milestone-modal" className="modal">
-        <div className="modal-box">
-          <h3 className="font-bold text-lg">Add New Milestone</h3>
+      <Dialog open={showMilestoneModal} onOpenChange={setShowMilestoneModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Milestone</DialogTitle>
+            <DialogDescription>
+              Create a new milestone for this project
+            </DialogDescription>
+          </DialogHeader>
           <Form {...milestoneForm}>
             <form onSubmit={milestoneForm.handleSubmit(handleCreateMilestone)} className="space-y-4">
               <FormField
@@ -555,25 +567,25 @@ const ProjectDetail = () => {
                   <FormItem>
                     <FormLabel>Due Date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} value={field.value ? new Date(field.value).toISOString().split('T')[0] : ""} />
+                      <Input 
+                        type="date" 
+                        value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ""}
+                        onChange={(e) => field.onChange(new Date(e.target.value))} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <div className="modal-action">
+              <DialogFooter>
                 <Button type="submit" disabled={isCreatingMilestone}>
                   {isCreatingMilestone ? "Creating..." : "Create Milestone"}
                 </Button>
-                <Button type="button" className="btn-ghost" onClick={() => document.getElementById('milestone-modal')?.close()}>Cancel</Button>
-              </div>
+              </DialogFooter>
             </form>
           </Form>
-        </div>
-        <form method="dialog" className="modal-backdrop">
-          <button>close</button>
-        </form>
-      </dialog>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

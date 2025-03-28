@@ -112,14 +112,14 @@ interface ProjectContextType {
   teams: Team[];
   messages: Record<string, Message[]>; // projectId -> messages
   userApplications: ProjectApplication[];
-  createProject: (project: Omit<Project, "id" | "createdAt" | "applications" | "status" | "milestones">) => Promise<void>;
+  createProject: (project: Omit<Project, "id" | "createdAt" | "applications" | "status" | "milestones" | "timeline">) => Promise<void>;
   applyToProject: (
     projectId: string, 
     application: Omit<ProjectApplication, "id" | "projectId" | "createdAt" | "status">
   ) => Promise<void>;
   updateProjectStatus: (projectId: string, status: Project["status"]) => Promise<void>;
   selectTeam: (projectId: string, teamId: string) => Promise<void>;
-  createMilestone: (projectId: string, milestone: Omit<ProjectMilestone, "id">) => Promise<void>;
+  createMilestone: (projectId: string, milestone: Omit<ProjectMilestone, "id" | "status" | "tasks">) => Promise<void>;
   updateMilestone: (projectId: string, milestoneId: string, update: Partial<ProjectMilestone>) => Promise<void>;
   sendMessage: (projectId: string, content: string) => Promise<void>;
   rateProject: (projectId: string, rating: number, comment: string) => Promise<void>;
@@ -171,7 +171,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [messages]);
 
   const createProject = async (
-    project: Omit<Project, "id" | "createdAt" | "applications" | "status" | "milestones" | "createdBy">
+    project: Omit<Project, "id" | "createdAt" | "applications" | "status" | "milestones" | "timeline">
   ) => {
     if (!user || !profile) throw new Error("You must be logged in to create a project");
     if (profile.role !== "startup") throw new Error("Only startups can create projects");
@@ -183,10 +183,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       status: "open",
       applications: [],
       milestones: [],
-      createdBy: {
-        id: profile.id,
-        name: profile.name,
-        companyName: profile.companyName
+      timeline: {
+        startDate: project.start_date as Date,
+        endDate: project.end_date as Date
       }
     };
 
@@ -325,7 +324,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     toast.success("Team selected successfully");
   };
 
-  const createMilestone = async (projectId: string, milestone: Omit<ProjectMilestone, "id">) => {
+  const createMilestone = async (projectId: string, milestone: Omit<ProjectMilestone, "id" | "status" | "tasks">) => {
     if (!user) throw new Error("You must be logged in to create a milestone");
     
     const project = projects.find(p => p.id === projectId);
@@ -337,7 +336,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const newMilestone: ProjectMilestone = {
       ...milestone,
-      id: `milestone_${Date.now()}`
+      id: `milestone_${Date.now()}`,
+      status: "pending",
+      tasks: []
     };
 
     setProjects(prev => prev.map(p => {

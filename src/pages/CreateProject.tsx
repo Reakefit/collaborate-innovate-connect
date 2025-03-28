@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -45,7 +46,7 @@ type CreateProjectValues = z.infer<typeof createProjectSchema>;
 
 const CreateProject = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { createProject } = useProjects();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -69,20 +70,28 @@ const CreateProject = () => {
     try {
       setIsSubmitting(true);
       
+      if (!profile) {
+        toast.error("User profile not found");
+        return;
+      }
+      
       // Convert form data to project format
-      const projectData: Omit<Project, "id" | "createdAt" | "applications" | "status" | "milestones" | "createdBy"> = {
+      const projectData = {
         title: values.title,
         description: values.description,
         category: values.category as ProjectCategory,
         deliverables: values.deliverables.split('\n').filter(Boolean),
-        timeline: {
-          startDate: values.startDate,
-          endDate: values.endDate
-        },
+        start_date: values.startDate,
+        end_date: values.endDate,
         paymentModel: values.paymentModel as PaymentModel,
         stipendAmount: values.paymentModel === "Stipend" ? Number(values.stipendAmount) : undefined,
         requiredSkills: values.requiredSkills.split(',').map(s => s.trim()).filter(Boolean),
         teamSize: Number(values.teamSize),
+        createdBy: {
+          id: profile.id,
+          name: profile.name,
+          companyName: profile.company_name
+        }
       };
       
       await createProject(projectData);
@@ -200,7 +209,7 @@ const CreateProject = () => {
                         <FormControl>
                           <Input
                             type="date"
-                            {...field}
+                            value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
                             onChange={(e) => field.onChange(new Date(e.target.value))}
                           />
                         </FormControl>
@@ -218,7 +227,7 @@ const CreateProject = () => {
                         <FormControl>
                           <Input
                             type="date"
-                            {...field}
+                            value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
                             onChange={(e) => field.onChange(new Date(e.target.value))}
                           />
                         </FormControl>
