@@ -1,9 +1,21 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Session, User } from "@supabase/supabase-js";
+import { Session, User, Provider } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export type UserRole = "student" | "startup";
+
+export type EducationLevel = "high_school" | "bachelors" | "masters" | "phd" | "other";
+
+export interface Education {
+  institution: string;
+  degree: string;
+  field: string;
+  startYear: number;
+  endYear: number | null;
+  current: boolean;
+}
 
 export interface UserProfile {
   id: string;
@@ -11,13 +23,26 @@ export interface UserProfile {
   name: string;
   role: UserRole;
   createdAt: Date;
+  avatarUrl?: string;
   // Startup-specific fields
   companyName?: string;
   companyDescription?: string;
+  industry?: string;
+  companySize?: string;
+  founded?: number;
+  website?: string;
   // Student-specific fields
   skills?: string[];
-  education?: string;
+  education?: Education[];
   portfolio?: string;
+  resume?: string;
+  github?: string;
+  linkedin?: string;
+  bio?: string;
+  availability?: "full_time" | "part_time" | "internship" | "contract";
+  interests?: string[];
+  experienceLevel?: "beginner" | "intermediate" | "advanced" | "expert";
+  preferredCategories?: string[];
 }
 
 interface AuthContextType {
@@ -26,9 +51,11 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithProvider: (provider: Provider) => Promise<void>;
   signUp: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
+  isProfileComplete: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -95,11 +122,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: data.name,
           role: data.role as UserRole,
           createdAt: new Date(data.created_at),
+          avatarUrl: data.avatar_url,
           companyName: data.company_name || undefined,
           companyDescription: data.company_description || undefined,
+          industry: data.industry || undefined,
+          companySize: data.company_size || undefined,
+          founded: data.founded || undefined,
+          website: data.website || undefined,
           skills: data.skills || undefined,
           education: data.education || undefined,
           portfolio: data.portfolio_url || undefined,
+          resume: data.resume_url || undefined,
+          github: data.github_url || undefined,
+          linkedin: data.linkedin_url || undefined,
+          bio: data.bio || undefined,
+          availability: data.availability || undefined,
+          interests: data.interests || undefined,
+          experienceLevel: data.experience_level || undefined,
+          preferredCategories: data.preferred_categories || undefined,
         });
       }
     } catch (error) {
@@ -119,6 +159,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.success("Signed in successfully");
     } catch (error: any) {
       toast.error(error.message || "Failed to sign in");
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithProvider = async (provider: Provider) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({ 
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/complete-profile`
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // OAuth redirects, so no success message is needed here
+    } catch (error: any) {
+      toast.error(error.message || `Failed to sign in with ${provider}`);
       throw error;
     } finally {
       setLoading(false);
@@ -170,16 +233,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (!user) throw new Error("No user logged in");
       
+      // Convert from camelCase to snake_case for Supabase
+      const snakeCaseData = {
+        name: profileData.name,
+        avatar_url: profileData.avatarUrl,
+        company_name: profileData.companyName,
+        company_description: profileData.companyDescription,
+        industry: profileData.industry,
+        company_size: profileData.companySize,
+        founded: profileData.founded,
+        website: profileData.website,
+        skills: profileData.skills,
+        education: profileData.education,
+        portfolio_url: profileData.portfolio,
+        resume_url: profileData.resume,
+        github_url: profileData.github,
+        linkedin_url: profileData.linkedin,
+        bio: profileData.bio,
+        availability: profileData.availability,
+        interests: profileData.interests,
+        experience_level: profileData.experienceLevel,
+        preferred_categories: profileData.preferredCategories
+      };
+      
       const { error } = await supabase
         .from('profiles')
-        .update({
-          name: profileData.name,
-          company_name: profileData.companyName,
-          company_description: profileData.companyDescription,
-          skills: profileData.skills,
-          education: profileData.education,
-          portfolio_url: profileData.portfolio
-        })
+        .update(snakeCaseData)
         .eq('id', user.id);
       
       if (error) throw error;
@@ -194,6 +273,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const isProfileComplete = () => {
+    if (!profile) return false;
+    
+    if (profile.role === 'student') {
+      return !!(
+        profile.name && 
+        profile.education && 
+        profile.education.length > 0 && 
+        profile.skills && 
+        profile.skills.length > 0
+      );
+    } else if (profile.role === 'startup') {
+      return !!(
+        profile.name && 
+        profile.companyName && 
+        profile.companyDescription
+      );
+    }
+    
+    return false;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -202,9 +303,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         loading,
         signIn,
+        signInWithProvider,
         signUp,
         signOut,
-        updateProfile
+        updateProfile,
+        isProfileComplete
       }}
     >
       {children}
