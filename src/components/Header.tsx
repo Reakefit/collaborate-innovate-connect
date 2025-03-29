@@ -1,6 +1,5 @@
-
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,14 +16,23 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
-import { Menu, User } from "lucide-react";
+import { Menu, User, Briefcase, GraduationCap, LogOut, LucideIcon } from "lucide-react";
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon?: LucideIcon;
+}
 
 const Header = () => {
   const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
+    navigate("/");
   };
 
   const getInitials = (name: string) => {
@@ -35,49 +43,64 @@ const Header = () => {
       .toUpperCase();
   };
 
-  const navItems = [
+  // Public navigation items
+  const publicNavItems: NavItem[] = [
     { label: "How It Works", href: "/how-it-works" },
     { label: "Projects", href: "/projects" },
     { label: "For Students", href: "/#students" },
     { label: "For Startups", href: "/#startups" },
   ];
 
-  const authenticatedNavItems = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Projects", href: "/projects" },
-    { label: "Messages", href: "/messages" },
-    { label: "Teams", href: "/teams" },
+  // Student navigation items
+  const studentNavItems: NavItem[] = [
+    { label: "Dashboard", href: "/dashboard", icon: GraduationCap },
+    { label: "Projects", href: "/projects", icon: Briefcase },
+    { label: "Teams", href: "/teams", icon: User },
+    { label: "Messages", href: "/messages", icon: Menu },
   ];
 
+  // Startup navigation items
+  const startupNavItems: NavItem[] = [
+    { label: "Dashboard", href: "/dashboard", icon: Briefcase },
+    { label: "My Projects", href: "/projects", icon: Briefcase },
+    { label: "Create Project", href: "/create-project", icon: Briefcase },
+    { label: "Messages", href: "/messages", icon: Menu },
+  ];
+
+  const getNavItems = (): NavItem[] => {
+    if (!user) return publicNavItems;
+    return profile?.role === "startup" ? startupNavItems : studentNavItems;
+  };
+
   return (
-    <header className="sticky top-0 z-40 border-b bg-background">
+    <header className="sticky top-0 z-40 border-b bg-gradient-to-r from-background to-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center space-x-2">
-            <span className="text-xl font-bold">S-S Connect</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+              S-S Connect
+            </span>
           </Link>
 
           {/* Desktop navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            {user
-              ? authenticatedNavItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {item.label}
-                  </Link>
-                ))
-              : navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+            {getNavItems().map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                    location.pathname === item.href
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {Icon && <Icon className="h-4 w-4" />}
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
 
@@ -104,9 +127,6 @@ const Header = () => {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/dashboard">Dashboard</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
                   <Link to="/profile">My Profile</Link>
                 </DropdownMenuItem>
                 {profile?.role === "startup" && (
@@ -115,7 +135,8 @@ const Header = () => {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
                   Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -143,33 +164,30 @@ const Header = () => {
               <div className="grid gap-6 py-6">
                 <Link
                   to="/"
-                  className="text-xl font-bold"
+                  className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   S-S Connect
                 </Link>
                 <nav className="grid gap-3">
-                  {user
-                    ? authenticatedNavItems.map((item) => (
-                        <Link
-                          key={item.href}
-                          to={item.href}
-                          className="text-sm font-medium hover:text-primary"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          {item.label}
-                        </Link>
-                      ))
-                    : navItems.map((item) => (
-                        <Link
-                          key={item.href}
-                          to={item.href}
-                          className="text-sm font-medium hover:text-primary"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          {item.label}
-                        </Link>
-                      ))}
+                  {getNavItems().map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        to={item.href}
+                        className={`flex items-center gap-2 text-sm font-medium ${
+                          location.pathname === item.href
+                            ? "text-primary"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        {Icon && <Icon className="h-4 w-4" />}
+                        {item.label}
+                      </Link>
+                    );
+                  })}
                 </nav>
                 {!user && (
                   <div className="flex flex-col gap-3">
@@ -193,6 +211,7 @@ const Header = () => {
                       </Link>
                     </Button>
                     <Button variant="destructive" onClick={handleSignOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
                       Sign Out
                     </Button>
                   </div>

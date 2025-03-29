@@ -1,78 +1,119 @@
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { GraduationCap, Building2, ArrowRight } from "lucide-react";
 
-import React from "react";
-import Header from "@/components/Header";
-import SignUpForm from "@/components/SignUpForm";
-import { GraduationCap, Briefcase, CheckCircle2 } from "lucide-react";
+const SignUp = () => {
+  const navigate = useNavigate();
 
-const SignUp: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-muted/30 to-muted/10">
-        <div className="grid md:grid-cols-2 w-full max-w-5xl gap-8 items-center">
-          <div className="space-y-6 hidden md:block">
-            <div className="space-y-2 text-center md:text-left">
-              <h1 className="text-3xl font-bold tracking-tight">Join our community</h1>
-              <p className="text-muted-foreground">
-                Connect with students and startups for meaningful collaborations
-              </p>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="rounded-lg border p-5 bg-white/50 backdrop-blur-sm">
-                <h3 className="font-medium flex items-center mb-2">
-                  <GraduationCap className="mr-2 h-5 w-5 text-primary" />
-                  For Students
-                </h3>
-                <ul className="space-y-2">
-                  <li className="flex text-sm">
-                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Work on real-world projects</span>
-                  </li>
-                  <li className="flex text-sm">
-                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Build an impressive portfolio</span>
-                  </li>
-                  <li className="flex text-sm">
-                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Gain valuable industry experience</span>
-                  </li>
-                  <li className="flex text-sm">
-                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Network with startups and other students</span>
-                  </li>
-                </ul>
-              </div>
-              
-              <div className="rounded-lg border p-5 bg-white/50 backdrop-blur-sm">
-                <h3 className="font-medium flex items-center mb-2">
-                  <Briefcase className="mr-2 h-5 w-5 text-primary" />
-                  For Startups
-                </h3>
-                <ul className="space-y-2">
-                  <li className="flex text-sm">
-                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Access a pool of talented students</span>
-                  </li>
-                  <li className="flex text-sm">
-                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Get fresh perspectives on your projects</span>
-                  </li>
-                  <li className="flex text-sm">
-                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Connect with the next generation of talent</span>
-                  </li>
-                  <li className="flex text-sm">
-                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Cost-effective project completion</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-muted/30 to-muted/10">
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              Join Our Community
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Choose how you'd like to get started
+            </p>
           </div>
-          
-          <div>
-            <SignUpForm />
+
+          <div className="grid md:grid-cols-2 gap-8">
+            <Card className="border-none shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <div className="flex items-center gap-4">
+                  <div className="bg-primary/10 p-3 rounded-lg">
+                    <GraduationCap className="h-8 w-8 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>Student Sign Up</CardTitle>
+                    <CardDescription>
+                      Join as a student to work on real-world projects
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <span className="text-muted-foreground">Work on real-world projects</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <span className="text-muted-foreground">Build your portfolio</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <span className="text-muted-foreground">Connect with startups</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <span className="text-muted-foreground">Gain valuable experience</span>
+                  </li>
+                </ul>
+                <Button 
+                  className="w-full bg-primary hover:bg-primary/90"
+                  onClick={() => navigate("/signup/student")}
+                >
+                  Sign Up as Student
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <div className="flex items-center gap-4">
+                  <div className="bg-primary/10 p-3 rounded-lg">
+                    <Building2 className="h-8 w-8 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>Startup Sign Up</CardTitle>
+                    <CardDescription>
+                      Join as a startup to find talented students
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <span className="text-muted-foreground">Post your projects</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <span className="text-muted-foreground">Find talented students</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <span className="text-muted-foreground">Manage your team</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <span className="text-muted-foreground">Scale your business</span>
+                  </li>
+                </ul>
+                <Button 
+                  className="w-full bg-primary hover:bg-primary/90"
+                  onClick={() => navigate("/signup/startup")}
+                >
+                  Sign Up as Startup
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-8 text-center">
+            <p className="text-muted-foreground">
+              Already have an account?{" "}
+              <Button variant="link" onClick={() => navigate("/signin")} className="p-0">
+                Sign in
+              </Button>
+            </p>
           </div>
         </div>
       </div>

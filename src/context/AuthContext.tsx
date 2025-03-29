@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Session, User, Provider } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +30,8 @@ export interface UserProfile {
   companySize?: string;
   founded?: number;
   website?: string;
+  stage?: string;
+  projectNeeds?: string;
   // Student-specific fields
   skills?: string[];
   education?: Education[];
@@ -43,6 +44,9 @@ export interface UserProfile {
   interests?: string[];
   experienceLevel?: "beginner" | "intermediate" | "advanced" | "expert";
   preferredCategories?: string[];
+  college?: string;
+  graduationYear?: string;
+  major?: string;
 }
 
 interface AuthContextType {
@@ -108,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching user profile:', error);
@@ -129,6 +133,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           companySize: data.company_size || undefined,
           founded: data.founded || undefined,
           website: data.website || undefined,
+          stage: data.stage || undefined,
+          projectNeeds: data.project_needs || undefined,
           skills: data.skills || undefined,
           education: data.education || undefined,
           portfolio: data.portfolio_url || undefined,
@@ -140,9 +146,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           interests: data.interests || undefined,
           experienceLevel: data.experience_level || undefined,
           preferredCategories: data.preferred_categories || undefined,
+          college: data.college || undefined,
+          graduationYear: data.graduation_year || undefined,
+          major: data.major || undefined
         });
+      } else {
+        // Create a new profile if it doesn't exist
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            name: user?.email?.split('@')[0] || 'User',
+            role: 'student' // Default role
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Error creating user profile:', createError);
+          return;
+        }
+
+        if (newProfile) {
+          setProfile({
+            id: newProfile.id,
+            email: user?.email || '',
+            name: newProfile.name,
+            role: newProfile.role as UserRole,
+            createdAt: new Date(newProfile.created_at)
+          });
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in fetchUserProfile:', error);
     }
   };
@@ -243,6 +278,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         company_size: profileData.companySize,
         founded: profileData.founded,
         website: profileData.website,
+        stage: profileData.stage,
+        project_needs: profileData.projectNeeds,
         skills: profileData.skills,
         education: profileData.education,
         portfolio_url: profileData.portfolio,
@@ -253,7 +290,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         availability: profileData.availability,
         interests: profileData.interests,
         experience_level: profileData.experienceLevel,
-        preferred_categories: profileData.preferredCategories
+        preferred_categories: profileData.preferredCategories,
+        college: profileData.college,
+        graduation_year: profileData.graduationYear,
+        major: profileData.major,
       };
       
       const { error } = await supabase

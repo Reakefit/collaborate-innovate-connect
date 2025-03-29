@@ -1,206 +1,226 @@
-
 import { useEffect, useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useProjects, Project, ProjectApplication } from "@/context/ProjectContext";
-import { Briefcase, Clock, CheckCircle, Users, ArrowRight, AlertCircle } from "lucide-react";
+import { useProjects } from "@/context/ProjectContext";
+import { Briefcase, Clock, CheckCircle, Users, ArrowRight, AlertCircle, Plus, Search, FileText, MessageSquare, Calendar } from "lucide-react";
+import { Project, Application, Team } from "@/context/ProjectContext";
 
 const Dashboard = () => {
   const { user, profile } = useAuth();
-  const { projects, userApplications, getUserProjects } = useProjects();
+  const { projects, teams, applications, loading } = useProjects();
   const navigate = useNavigate();
   
-  const [stats, setStats] = useState({
-    activeProjects: 0,
-    pendingApplications: 0,
-    completedProjects: 0,
-    teamInvitations: 0,
-  });
+  const [userProjects, setUserProjects] = useState<Project[]>([]);
+  const [userApplications, setUserApplications] = useState<Application[]>([]);
+  const [userTeams, setUserTeams] = useState<Team[]>([]);
 
-  const userProjects = getUserProjects();
-  
   useEffect(() => {
-    if (user) {
-      // Calculate stats based on user role
-      if (user.role === "startup") {
-        const startupProjects = projects.filter(p => p.createdBy.id === user.id);
-        
-        setStats({
-          activeProjects: startupProjects.filter(p => p.status === "in-progress").length,
-          pendingApplications: startupProjects.reduce(
-            (acc, project) => acc + project.applications.filter(a => a.status === "pending").length, 
-            0
-          ),
-          completedProjects: startupProjects.filter(p => p.status === "completed").length,
-          teamInvitations: 0, // Not applicable for startups
-        });
-      } else {
-        // For students
-        setStats({
-          activeProjects: userProjects.filter(p => p.status === "in-progress").length,
-          pendingApplications: userApplications.filter(a => a.status === "pending").length,
-          completedProjects: userProjects.filter(p => p.status === "completed").length,
-          teamInvitations: 0, // Would be implemented in a real app
-        });
-      }
+    if (!user) {
+      navigate("/login");
+      return;
     }
-  }, [user, projects, userApplications, userProjects]);
 
-  // Get recent projects
-  const recentProjects = userProjects.sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  ).slice(0, 3);
+    if (profile?.role === "startup") {
+      setUserProjects(projects.filter(p => p.created_by === user.id));
+    } else {
+      setUserProjects(projects.filter(p => 
+        applications.some(a => a.team?.members?.some(m => m.user_id === user.id) && a.status === 'accepted')
+      ));
+    }
+
+    setUserApplications(applications.filter(a => 
+      a.team?.members?.some(m => m.user_id === user.id)
+    ));
+
+    setUserTeams(teams.filter(team => 
+      team.members?.some(member => member.user_id === user.id)
+    ));
+  }, [user, profile, projects, applications, teams, navigate]);
+
+  if (loading) {
+    return (
+      <div className="py-8">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <DashboardLayout activeTab="dashboard">
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Welcome back, {profile?.name}! Here's what's happening with your projects.
-          </p>
-        </div>
+    <div className="py-8">
+      <div className="container mx-auto px-4">
+        <div className="space-y-8">
+          <div>
+            <h1 className="text-4xl font-bold mb-4">Dashboard</h1>
+            <p className="text-lg text-muted-foreground">
+              Welcome back, {profile?.name}! Here's what's happening with your projects.
+            </p>
+          </div>
 
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
-              <Briefcase className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.activeProjects}</div>
-              <p className="text-xs text-muted-foreground">
-                Projects currently in progress
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Applications</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.pendingApplications}</div>
-              <p className="text-xs text-muted-foreground">
-                {user?.role === "startup" ? "Applications to review" : "Waiting for response"}
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed Projects</CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.completedProjects}</div>
-              <p className="text-xs text-muted-foreground">
-                Successfully finished projects
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {user?.role === "startup" ? "Available Students" : "Team Invitations"}
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {user?.role === "startup" ? "500+" : stats.teamInvitations}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {user?.role === "startup" ? "Students on platform" : "Pending team invites"}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+          {/* Stats Cards */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-none shadow-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{userProjects.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Projects currently in progress
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-none shadow-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">My Teams</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{userTeams.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Teams you're part of
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-none shadow-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Applications</CardTitle>
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{userApplications.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Applications you've submitted
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-none shadow-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Upcoming Deadlines</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {userProjects.filter(p => new Date(p.end_date) > new Date()).length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Projects with upcoming deadlines
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-4">
-          {user?.role === "startup" ? (
-            <Button onClick={() => navigate("/create-project")}>
-              Create New Project
-            </Button>
-          ) : (
-            <Button onClick={() => navigate("/projects")}>
-              Find Projects
-            </Button>
-          )}
-          <Button variant="outline" onClick={() => navigate(user?.role === "startup" ? "/projects" : "/teams")}>
-            {user?.role === "startup" ? "View My Projects" : "Manage Teams"}
-          </Button>
-        </div>
-
-        {/* Recent Projects Section */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Recent Projects</h2>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>
-              View all
-              <ArrowRight className="ml-2 h-4 w-4" />
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-4">
+            {profile?.role === "startup" ? (
+              <Button onClick={() => navigate("/projects/new")}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Project
+              </Button>
+            ) : (
+              <Button onClick={() => navigate("/projects")}>
+                <Search className="mr-2 h-4 w-4" />
+                Find Projects
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => navigate(profile?.role === "startup" ? "/projects" : "/teams")}>
+              {profile?.role === "startup" ? "View My Projects" : "Manage Teams"}
             </Button>
           </div>
 
-          {recentProjects.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {recentProjects.map((project) => (
-                <Card key={project.id} className="overflow-hidden">
-                  <CardHeader className="p-4">
-                    <CardTitle className="line-clamp-1">{project.title}</CardTitle>
-                    <CardDescription className="line-clamp-1">
-                      {project.category} • {project.status}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <p className="line-clamp-2 text-sm text-muted-foreground mb-4">
-                      {project.description}
-                    </p>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center">
-                        <span className="text-xs text-muted-foreground">
-                          Due: {new Date(project.timeline.endDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => navigate(`/project/${project.id}`)}
-                      >
-                        Details
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+          {/* Recent Projects Section */}
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Recent Projects</h2>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>
+                View all
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
             </div>
-          ) : (
-            <Card className="border-dashed bg-muted/50">
-              <CardContent className="flex flex-col items-center justify-center py-10">
-                <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No Projects Yet</h3>
-                <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-                  {user?.role === "startup" ? 
-                    "You haven't created any projects yet. Create your first project to get started!" :
-                    "You haven't applied to any projects yet. Browse available projects to get started!"
-                  }
-                </p>
-                <Button onClick={() => navigate(user?.role === "startup" ? "/create-project" : "/projects")}>
-                  {user?.role === "startup" ? "Create Project" : "Find Projects"}
-                </Button>
+
+            {userProjects.length > 0 ? (
+              <div className="space-y-4">
+                {userProjects.slice(0, 5).map((project) => (
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                    onClick={() => navigate(`/project/${project.id}`)}
+                  >
+                    <div>
+                      <h3 className="font-medium">{project.title}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(project.end_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Card className="border-none shadow-lg bg-muted/50">
+                <CardContent className="flex flex-col items-center justify-center py-10">
+                  <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No Projects Yet</h3>
+                  <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+                    {profile?.role === "startup" ? 
+                      "You haven't created any projects yet. Create your first project to get started!" :
+                      "You haven't applied to any projects yet. Browse available projects to get started!"
+                    }
+                  </p>
+                  <Button onClick={() => navigate(profile?.role === "startup" ? "/projects/new" : "/projects")}>
+                    {profile?.role === "startup" ? "Create Project" : "Find Projects"}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Applications</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {userApplications.length > 0 ? (
+                  <div className="space-y-4">
+                    {userApplications.slice(0, 5).map((application) => (
+                      <div
+                        key={application.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div>
+                          <h3 className="font-medium">{application.project?.title}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {application.team?.name}
+                          </p>
+                        </div>
+                        <div className={`px-2 py-1 rounded-full text-xs ${
+                          application.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                          application.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {application.status}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No applications yet</p>
+                )}
               </CardContent>
             </Card>
-          )}
+          </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 };
 
