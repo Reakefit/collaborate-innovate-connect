@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,6 +24,7 @@ import Teams from "./pages/Teams";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 import TeamPage from '@/pages/TeamPage';
+import HowItWorks from './pages/HowItWorks';
 
 const queryClient = new QueryClient();
 
@@ -52,6 +54,7 @@ const App = () => (
                 <Route path="/teams" element={<Teams />} />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/teams/:teamId" element={<TeamPage />} />
+                <Route path="/how-it-works" element={<HowItWorks />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Layout>

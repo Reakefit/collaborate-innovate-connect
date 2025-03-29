@@ -1,7 +1,8 @@
+
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Building2, ArrowRight, CheckCircle2 } from "lucide-react";
+import { GraduationCap, Building2, ArrowRight, CheckCircle2, Users, Target, MessageSquare } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -9,7 +10,7 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-muted/30 to-muted/10">
       {/* Hero Section */}
-      <section className="py-16 md:py-24">
+      <section className="py-20 md:py-28">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-12">
             <div className="md:w-1/2 text-center md:text-left">
@@ -25,7 +26,7 @@ const Index = () => {
                 project-based collaborations that benefit everyone.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-                <Button size="lg" onClick={() => navigate("/signup")}>
+                <Button size="lg" onClick={() => navigate("/signup")} className="bg-primary hover:bg-primary/90">
                   Get Started
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
@@ -59,13 +60,69 @@ const Index = () => {
         </div>
       </section>
       
-      {/* How It Works Section */}
-      <section className="py-16 bg-background/50">
+      {/* Features Section */}
+      <section className="py-16 bg-background/50" id="features">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold mb-4">Why Choose S-S Connect?</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Our platform offers unique benefits for both students and startups looking to collaborate.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Card className="border-none shadow-lg bg-white hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-2">
+                <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                  <Target className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Structured Projects</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Well-defined projects with clear objectives, deliverables, and timelines to ensure everyone is aligned.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-none shadow-lg bg-white hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-2">
+                <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Team Formation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Flexible team creation tools that let students collaborate effectively based on complementary skills.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-none shadow-lg bg-white hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-2">
+                <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                  <MessageSquare className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Seamless Communication</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Built-in communication tools that keep conversations organized and project-focused.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+      
+      {/* How It Works Section */}
+      <section className="py-16" id="how-it-works">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">How It Works</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Our platform makes it easy for startups and students to connect and collaborate on meaningful projects.
+              Our platform makes it easy for startups and students to connect and collaborate.
             </p>
           </div>
           
@@ -109,21 +166,15 @@ const Index = () => {
               </CardContent>
             </Card>
           </div>
-          
-          <div className="mt-12 text-center">
-            <Button onClick={() => navigate("/how-it-works")}>
-              Learn More About the Process
-            </Button>
-          </div>
         </div>
       </section>
       
       {/* For Students & Startups Sections */}
-      <section className="py-16">
+      <section className="py-16 bg-background/50">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* For Students */}
-            <Card className="border-none shadow-lg">
+            <Card className="border-none shadow-lg" id="students">
               <CardHeader>
                 <div className="flex items-center gap-4">
                   <div className="bg-primary/10 p-3 rounded-lg">
@@ -174,7 +225,7 @@ const Index = () => {
             </Card>
             
             {/* For Startups */}
-            <Card className="border-none shadow-lg">
+            <Card className="border-none shadow-lg" id="startups">
               <CardHeader>
                 <div className="flex items-center gap-4">
                   <div className="bg-primary/10 p-3 rounded-lg">
@@ -223,6 +274,25 @@ const Index = () => {
                 </Button>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+      
+      {/* CTA Section */}
+      <section className="py-20 bg-primary/5">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold mb-6">Ready to Get Started?</h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+            Join our community of innovative startups and talented students today and start collaborating on meaningful projects.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button size="lg" onClick={() => navigate("/signup")} className="bg-primary hover:bg-primary/90">
+              Sign Up Now
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+            <Button size="lg" variant="outline" onClick={() => navigate("/projects")}>
+              Browse Projects
+            </Button>
           </div>
         </div>
       </section>

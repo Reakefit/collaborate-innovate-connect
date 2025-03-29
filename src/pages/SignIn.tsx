@@ -1,82 +1,88 @@
+
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Building2 } from "lucide-react";
+import { GraduationCap, Building2, ArrowRight } from "lucide-react";
 
 const SignIn = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-muted/30 to-muted/10">
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              Welcome Back
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              Choose how you'd like to sign in to your account
-            </p>
-          </div>
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <div className="w-full max-w-4xl">
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-bold mb-4">Welcome Back</h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Sign in to your S-S Connect account
+          </p>
+        </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <Card className="border-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer" onClick={() => navigate("/signin/student")}>
-              <CardHeader>
-                <div className="flex items-center gap-4">
-                  <div className="bg-primary/10 p-3 rounded-lg">
-                    <GraduationCap className="h-8 w-8 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle>Student Sign In</CardTitle>
-                    <CardDescription>
-                      Sign in as a student to work on projects and build your portfolio
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  Access your project applications, track your progress, and collaborate with startups
-                </p>
-                <Button className="w-full bg-primary hover:bg-primary/90">
-                  Continue as Student
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer" onClick={() => navigate("/signin/startup")}>
-              <CardHeader>
-                <div className="flex items-center gap-4">
-                  <div className="bg-primary/10 p-3 rounded-lg">
-                    <Building2 className="h-8 w-8 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle>Startup Sign In</CardTitle>
-                    <CardDescription>
-                      Sign in as a startup to manage projects and find talented students
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  Manage your projects, review applications, and collaborate with student teams
-                </p>
-                <Button className="w-full bg-primary hover:bg-primary/90">
-                  Continue as Startup
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="mt-8 text-center">
-            <p className="text-muted-foreground">
-              Don't have an account?{" "}
-              <Button variant="link" onClick={() => navigate("/signup")} className="p-0">
-                Sign up
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Student SignIn */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="text-center">
+              <div className="mx-auto bg-primary/10 p-4 rounded-full mb-4">
+                <GraduationCap className="h-12 w-12 text-primary" />
+              </div>
+              <CardTitle>Student Sign In</CardTitle>
+              <CardDescription>
+                Access your student account
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button 
+                className="w-full" 
+                onClick={() => navigate("/signin/student")}
+                size="lg"
+              >
+                Sign In as Student
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-            </p>
-          </div>
+              <div className="text-sm text-center text-muted-foreground pt-2">
+                <span>Don't have an account? </span>
+                <Button 
+                  variant="link" 
+                  className="p-0 h-auto" 
+                  onClick={() => navigate("/signup/student")}
+                >
+                  Sign Up
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Startup SignIn */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="text-center">
+              <div className="mx-auto bg-primary/10 p-4 rounded-full mb-4">
+                <Building2 className="h-12 w-12 text-primary" />
+              </div>
+              <CardTitle>Startup Sign In</CardTitle>
+              <CardDescription>
+                Access your startup account
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button 
+                className="w-full" 
+                onClick={() => navigate("/signin/startup")}
+                size="lg"
+              >
+                Sign In as Startup
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <div className="text-sm text-center text-muted-foreground pt-2">
+                <span>Don't have an account? </span>
+                <Button 
+                  variant="link" 
+                  className="p-0 h-auto" 
+                  onClick={() => navigate("/signup/startup")}
+                >
+                  Sign Up
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

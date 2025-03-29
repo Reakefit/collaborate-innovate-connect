@@ -6,420 +6,972 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string
-          email: string
-          name: string
-          role: 'student' | 'startup'
-          avatar_url: string | null
-          created_at: string
-          updated_at: string
-          company_name: string | null
-          company_description: string | null
-          industry: string | null
-          company_size: string | null
-          founded: number | null
-          website: string | null
-          skills: string[] | null
-          education: Json | null
-          portfolio_url: string | null
-          resume_url: string | null
-          github_url: string | null
-          linkedin_url: string | null
-          bio: string | null
-          availability: string | null
-          interests: string[] | null
-          experience_level: string | null
-          preferred_categories: string[] | null
-          reputation_score: number
-          total_projects: number
-          completed_projects: number
-        }
-        Insert: {
-          id: string
-          email: string
-          name: string
-          role: 'student' | 'startup'
-          avatar_url?: string | null
-          created_at?: string
-          updated_at?: string
-          company_name?: string | null
-          company_description?: string | null
-          industry?: string | null
-          company_size?: string | null
-          founded?: number | null
-          website?: string | null
-          skills?: string[] | null
-          education?: Json | null
-          portfolio_url?: string | null
-          resume_url?: string | null
-          github_url?: string | null
-          linkedin_url?: string | null
-          bio?: string | null
-          availability?: string | null
-          interests?: string[] | null
-          experience_level?: string | null
-          preferred_categories?: string[] | null
-          reputation_score?: number
-          total_projects?: number
-          completed_projects?: number
-        }
-        Update: {
-          id?: string
-          email?: string
-          name?: string
-          role?: 'student' | 'startup'
-          avatar_url?: string | null
-          created_at?: string
-          updated_at?: string
-          company_name?: string | null
-          company_description?: string | null
-          industry?: string | null
-          company_size?: string | null
-          founded?: number | null
-          website?: string | null
-          skills?: string[] | null
-          education?: Json | null
-          portfolio_url?: string | null
-          resume_url?: string | null
-          github_url?: string | null
-          linkedin_url?: string | null
-          bio?: string | null
-          availability?: string | null
-          interests?: string[] | null
-          experience_level?: string | null
-          preferred_categories?: string[] | null
-          reputation_score?: number
-          total_projects?: number
-          completed_projects?: number
-        }
-      }
-      projects: {
-        Row: {
-          id: string
-          title: string
-          description: string
-          category: string
-          deliverables: string[]
-          start_date: string
-          end_date: string
-          payment_model: string
-          stipend_amount: number | null
-          required_skills: string[]
-          team_size: number
-          status: 'open' | 'in_progress' | 'completed' | 'cancelled'
-          created_by: string
-          created_at: string
-          updated_at: string
-          selected_team_id: string | null
-          progress: number
-        }
-        Insert: {
-          id?: string
-          title: string
-          description: string
-          category: string
-          deliverables: string[]
-          start_date: string
-          end_date: string
-          payment_model: string
-          stipend_amount?: number | null
-          required_skills: string[]
-          team_size: number
-          status?: 'open' | 'in_progress' | 'completed' | 'cancelled'
-          created_by: string
-          created_at?: string
-          updated_at?: string
-          selected_team_id?: string | null
-          progress?: number
-        }
-        Update: {
-          id?: string
-          title?: string
-          description?: string
-          category?: string
-          deliverables?: string[]
-          start_date?: string
-          end_date?: string
-          payment_model?: string
-          stipend_amount?: number | null
-          required_skills?: string[]
-          team_size?: number
-          status?: 'open' | 'in_progress' | 'completed' | 'cancelled'
-          created_by?: string
-          created_at?: string
-          updated_at?: string
-          selected_team_id?: string | null
-          progress?: number
-        }
-      }
-      teams: {
-        Row: {
-          id: string
-          name: string
-          description: string
-          lead_id: string
-          skills: string[]
-          portfolio_url: string | null
-          achievements: Json | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          description: string
-          lead_id: string
-          skills?: string[]
-          portfolio_url?: string | null
-          achievements?: Json | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string
-          lead_id?: string
-          skills?: string[]
-          portfolio_url?: string | null
-          achievements?: Json | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      team_members: {
-        Row: {
-          team_id: string
-          user_id: string
-          role: 'lead' | 'member'
-          status: 'pending' | 'active' | 'rejected'
-          joined_at: string
-        }
-        Insert: {
-          team_id: string
-          user_id: string
-          role: 'lead' | 'member'
-          status?: 'pending' | 'active' | 'rejected'
-          joined_at?: string
-        }
-        Update: {
-          team_id?: string
-          user_id?: string
-          role?: 'lead' | 'member'
-          status?: 'pending' | 'active' | 'rejected'
-          joined_at?: string
-        }
-      }
-      applications: {
-        Row: {
-          id: string
-          project_id: string
-          team_id: string | null
-          user_id: string | null
-          cover_letter: string
-          status: 'pending' | 'accepted' | 'rejected'
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          project_id: string
-          team_id?: string | null
-          user_id?: string | null
-          cover_letter: string
-          status?: 'pending' | 'accepted' | 'rejected'
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          project_id?: string
-          team_id?: string | null
-          user_id?: string | null
-          cover_letter?: string
-          status?: 'pending' | 'accepted' | 'rejected'
-          created_at?: string
-          updated_at?: string
-        }
-      }
       application_members: {
         Row: {
           application_id: string
-          user_id: string
-          role: string
           created_at: string
+          email: string
+          id: string
+          name: string
+          role: string | null
+          user_id: string
         }
         Insert: {
           application_id: string
-          user_id: string
-          role: string
           created_at?: string
+          email: string
+          id?: string
+          name: string
+          role?: string | null
+          user_id: string
         }
         Update: {
           application_id?: string
-          user_id?: string
-          role?: string
           created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          role?: string | null
+          user_id?: string
         }
+        Relationships: []
       }
-      milestones: {
+      applications: {
         Row: {
+          cover_letter: string
+          created_at: string
           id: string
           project_id: string
-          title: string
-          description: string | null
-          due_date: string
-          status: 'pending' | 'in_progress' | 'completed' | 'blocked'
-          created_at: string
+          status: string
+          team_id: string
           updated_at: string
+          user_id: string
         }
         Insert: {
+          cover_letter: string
+          created_at?: string
           id?: string
           project_id: string
-          title: string
-          description?: string | null
-          due_date: string
-          status?: 'pending' | 'in_progress' | 'completed' | 'blocked'
-          created_at?: string
+          status: string
+          team_id: string
           updated_at?: string
+          user_id: string
         }
         Update: {
+          cover_letter?: string
+          created_at?: string
           id?: string
           project_id?: string
-          title?: string
-          description?: string | null
-          due_date?: string
-          status?: 'pending' | 'in_progress' | 'completed' | 'blocked'
-          created_at?: string
+          status?: string
+          team_id?: string
           updated_at?: string
+          user_id?: string
         }
-      }
-      tasks: {
-        Row: {
-          id: string
-          milestone_id: string
-          title: string
-          description: string | null
-          assigned_to: string | null
-          status: 'todo' | 'in_progress' | 'review' | 'done'
-          due_date: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          milestone_id: string
-          title: string
-          description?: string | null
-          assigned_to?: string | null
-          status?: 'todo' | 'in_progress' | 'review' | 'done'
-          due_date?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          milestone_id?: string
-          title?: string
-          description?: string | null
-          assigned_to?: string | null
-          status?: 'todo' | 'in_progress' | 'review' | 'done'
-          due_date?: string | null
-          created_at?: string
-          updated_at?: string
-        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
-          id: string
-          project_id: string
-          sender_id: string
           content: string
           created_at: string
+          id: string
+          project_id: string | null
+          sender_id: string | null
           updated_at: string
         }
         Insert: {
-          id?: string
-          project_id: string
-          sender_id: string
           content: string
           created_at?: string
+          id?: string
+          project_id?: string | null
+          sender_id?: string | null
           updated_at?: string
         }
         Update: {
-          id?: string
-          project_id?: string
-          sender_id?: string
           content?: string
           created_at?: string
+          id?: string
+          project_id?: string | null
+          sender_id?: string | null
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      reviews: {
+      milestones: {
         Row: {
+          created_at: string
+          description: string | null
+          due_date: string
           id: string
           project_id: string
-          reviewer_id: string
-          reviewee_id: string
-          rating: number
-          comment: string | null
-          created_at: string
-          updated_at: string
+          status: string
+          title: string
         }
         Insert: {
+          created_at?: string
+          description?: string | null
+          due_date: string
           id?: string
           project_id: string
-          reviewer_id: string
-          reviewee_id: string
-          rating: number
-          comment?: string | null
-          created_at?: string
-          updated_at?: string
+          status?: string
+          title: string
         }
         Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string
           id?: string
           project_id?: string
-          reviewer_id?: string
-          reviewee_id?: string
-          rating?: number
-          comment?: string | null
-          created_at?: string
-          updated_at?: string
+          status?: string
+          title?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
-          id: string
-          user_id: string
-          title: string
-          message: string
-          type: string
-          read: boolean
           created_at: string
+          id: string
+          message: string
+          project_id: string | null
+          read: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          project_id?: string | null
+          read?: boolean
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          project_id?: string | null
+          read?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          name: string | null
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id: string
+          name?: string | null
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_discussions: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          project_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_discussions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_discussions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_url: string
+          id: string
+          project_id: string
+          title: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_url: string
+          id?: string
+          project_id: string
+          title: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_url?: string
+          id?: string
+          project_id?: string
+          title?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_feedback: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          milestone_id: string | null
+          project_id: string
+          rating: number | null
+          reviewee_id: string
+          reviewer_id: string
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          milestone_id?: string | null
+          project_id: string
+          rating?: number | null
+          reviewee_id: string
+          reviewer_id: string
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          milestone_id?: string | null
+          project_id?: string
+          rating?: number | null
+          reviewee_id?: string
+          reviewer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_feedback_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "project_milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_feedback_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_feedback_reviewee_id_fkey"
+            columns: ["reviewee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_feedback_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          project_id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          project_id: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_milestones: {
+        Row: {
+          assigned_team_id: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          project_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_team_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          project_id: string
+          status: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_team_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          project_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_milestones_assigned_team_id_fkey"
+            columns: ["assigned_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_notifications: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          project_id: string
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          project_id: string
+          read?: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_tasks: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          milestone_id: string | null
+          project_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          milestone_id?: string | null
+          project_id: string
+          status: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          milestone_id?: string | null
+          project_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "project_milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string
+          deliverables: string[] | null
+          description: string
+          end_date: string
+          id: string
+          payment_model: string
+          required_skills: string[] | null
+          selected_team: string | null
+          start_date: string
+          status: string
+          stipend_amount: number | null
+          team_size: number
+          title: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by: string
+          deliverables?: string[] | null
+          description: string
+          end_date: string
+          id?: string
+          payment_model: string
+          required_skills?: string[] | null
+          selected_team?: string | null
+          start_date: string
+          status?: string
+          stipend_amount?: number | null
+          team_size: number
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          deliverables?: string[] | null
+          description?: string
+          end_date?: string
+          id?: string
+          payment_model?: string
+          required_skills?: string[] | null
+          selected_team?: string | null
+          start_date?: string
+          status?: string
+          stipend_amount?: number | null
+          team_size?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          project_id: string
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          project_id: string
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          rating?: number
+          reviewee_id?: string
+          reviewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          completed: boolean
+          created_at: string
+          id: string
+          milestone_id: string
+          project_id: string | null
+          title: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed?: boolean
+          created_at?: string
+          id?: string
+          milestone_id: string
+          project_id?: string | null
+          title: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed?: boolean
+          created_at?: string
+          id?: string
+          milestone_id?: string
+          project_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_announcements: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          team_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by: string
+          id?: string
+          team_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          team_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      team_documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_url: string
+          id: string
+          team_id: string
+          title: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_url: string
+          id?: string
+          team_id: string
+          title: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_url?: string
+          id?: string
+          team_id?: string
+          title?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
+      team_feedback: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          reviewee_id?: string
+          reviewer_id?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          id: string
+          joined_at: string
+          role: string
+          status: string
+          team_id: string
+          user_id: string
         }
         Insert: {
           id?: string
+          joined_at?: string
+          role: string
+          status: string
+          team_id: string
           user_id: string
-          title: string
-          message: string
-          type: string
-          read?: boolean
-          created_at?: string
         }
         Update: {
           id?: string
+          joined_at?: string
+          role?: string
+          status?: string
+          team_id?: string
           user_id?: string
-          title?: string
-          message?: string
-          type?: string
-          read?: boolean
-          created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          sender_id: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          sender_id: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      team_tasks: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string | null
+          id: string
+          status: string
+          team_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          status: string
+          team_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          status?: string
+          team_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      teams: {
+        Row: {
+          achievements: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          lead_id: string
+          name: string
+          portfolio_url: string | null
+          skills: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          achievements?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_id: string
+          name: string
+          portfolio_url?: string | null
+          skills?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          achievements?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_id?: string
+          name?: string
+          portfolio_url?: string | null
+          skills?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -429,6 +981,9 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
       [_ in never]: never
     }
   }
@@ -516,53 +1071,17 @@ export type Enums<
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
 
-export type Profile = {
-  id: string;
-  name: string;
-};
-
-export type TeamMember = {
-  id: string;
-  team_id: string;
-  user_id: string;
-  role: 'lead' | 'member';
-  status: 'pending' | 'active' | 'rejected';
-  joined_at: string;
-  user?: Profile;
-};
-
-export type Team = {
-  id: string;
-  name: string;
-  description: string;
-  lead_id: string;
-  skills: string[];
-  portfolio_url?: string;
-  achievements?: Record<string, any>;
-  created_at: string;
-  updated_at: string;
-  members?: TeamMember[];
-};
-
-export type Project = {
-  id: string;
-  title: string;
-  description: string;
-  status: 'draft' | 'published' | 'completed' | 'cancelled';
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  progress?: number;
-};
-
-export type Application = {
-  id: string;
-  project_id: string;
-  team_id: string;
-  cover_letter: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  created_at: string;
-  updated_at: string;
-  team?: Team & { members: TeamMember[] };
-  project?: Project;
-};
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof PublicSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
+    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
