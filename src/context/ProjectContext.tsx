@@ -1,5 +1,4 @@
 
-// Import only the necessary part to fix the import issue with 'default' binding
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -186,7 +185,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       if (data) {
-        // Ensure that project conforms to the Project type
+        // Create a properly typed Project object
         const newProject: Project = {
           ...data,
           required_skills: data.required_skills || [],
@@ -314,6 +313,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // Handle circular reference issue by creating a simplified Project type for tasks
+  interface SimpleProject {
+    id: string;
+    title: string;
+  }
+
+  // Handle circular reference issue by creating a simplified TaskUpdate function
   const updateTaskStatus = async (taskId: string, status: TaskStatus) => {
     try {
       const { error } = await supabase
@@ -323,18 +329,29 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         
       if (error) throw error;
       
-      // Optimistically update the task status in the local state
-      setProjects(prevProjects =>
-        prevProjects.map(project => ({
-          ...project,
-          milestones: project.milestones?.map(milestone => ({
-            ...milestone,
-            tasks: milestone.tasks?.map(task =>
+      // Update the projects state to reflect the task status change
+      setProjects(prevProjects => {
+        // Create a deep copy to avoid mutation
+        return prevProjects.map(project => {
+          // Check if this project contains the task
+          const updatedMilestones = project.milestones?.map(milestone => {
+            // Check if this milestone contains the task
+            const updatedTasks = milestone.tasks?.map(task => 
               task.id === taskId ? { ...task, status } : task
-            ) || []
-          })) || []
-        }))
-      );
+            ) || [];
+            
+            return {
+              ...milestone,
+              tasks: updatedTasks
+            };
+          }) || [];
+          
+          return {
+            ...project,
+            milestones: updatedMilestones
+          };
+        });
+      });
     } catch (error: any) {
       console.error("Error updating task status:", error.message);
       toast.error(error.message || "Error updating task status");
@@ -367,25 +384,27 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         };
         
         // Optimistically update the tasks in the local state
-        setProjects(prevProjects =>
-          prevProjects.map(project => {
+        setProjects(prevProjects => {
+          return prevProjects.map(project => {
             if (project.id === projectId) {
+              const updatedMilestones = project.milestones?.map(milestone => {
+                if (milestone.id === milestoneId) {
+                  return {
+                    ...milestone,
+                    tasks: [...(milestone.tasks || []), newTask]
+                  };
+                }
+                return milestone;
+              }) || [];
+              
               return {
                 ...project,
-                milestones: project.milestones?.map(milestone => {
-                  if (milestone.id === milestoneId) {
-                    return {
-                      ...milestone,
-                      tasks: [...(milestone.tasks || []), newTask]
-                    };
-                  }
-                  return milestone;
-                }) || []
+                milestones: updatedMilestones
               };
             }
             return project;
-          })
-        );
+          });
+        });
       }
     } catch (error: any) {
       console.error("Error adding task:", error.message);
@@ -411,8 +430,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         };
         
         // Optimistically update the milestones in the local state
-        setProjects(prevProjects =>
-          prevProjects.map(project => {
+        setProjects(prevProjects => {
+          return prevProjects.map(project => {
             if (project.id === projectId) {
               return {
                 ...project,
@@ -420,8 +439,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
               };
             }
             return project;
-          })
-        );
+          });
+        });
       }
     } catch (error: any) {
       console.error("Error adding milestone:", error.message);

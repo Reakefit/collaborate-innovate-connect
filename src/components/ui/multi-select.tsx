@@ -2,130 +2,121 @@
 import * as React from "react";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Command as CommandPrimitive } from "cmdk";
 
 export type Option = {
   value: string;
   label: string;
-  disabled?: boolean;
 };
 
-interface MultiSelectProps {
+export interface MultiSelectProps {
   options: Option[];
-  selected: string[];
-  onChange: (selected: string[]) => void;
+  value: string[];
+  onChange: (value: string[]) => void;
   placeholder?: string;
   className?: string;
+  maxSelected?: number;
 }
 
 export function MultiSelect({
   options,
-  selected,
+  value,
   onChange,
-  placeholder = "Select options",
+  placeholder = "Select options...",
   className,
+  maxSelected,
 }: MultiSelectProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [open, setOpen] = React.useState(false);
+  const [selected, setSelected] = React.useState<Option[]>(() => {
+    return options.filter((option) => value.includes(option.value));
+  });
   const [inputValue, setInputValue] = React.useState("");
 
-  const handleUnselect = (item: string) => {
-    onChange(selected.filter((i) => i !== item));
-  };
+  React.useEffect(() => {
+    setSelected(options.filter((option) => value.includes(option.value)));
+  }, [value, options]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const input = inputRef.current;
-    if (input) {
-      if (e.key === "Delete" || e.key === "Backspace") {
-        if (input.value === "") {
-          const newSelected = [...selected];
-          newSelected.pop();
-          onChange(newSelected);
-        }
-      }
-      // This is not a default behavior of the <input /> field
-      if (e.key === "Escape") {
-        input.blur();
-      }
+  const handleSelect = (option: Option) => {
+    if (maxSelected && selected.length >= maxSelected) {
+      return;
     }
+    
+    const isSelected = selected.find((item) => item.value === option.value);
+    const newSelected = isSelected
+      ? selected.filter((item) => item.value !== option.value)
+      : [...selected, option];
+    
+    setSelected(newSelected);
+    onChange(newSelected.map((item) => item.value));
+    setInputValue("");
   };
 
-  const selectables = options.filter((option) => !selected.includes(option.value));
+  const handleRemove = (option: Option) => {
+    setSelected(selected.filter((item) => item.value !== option.value));
+    onChange(selected.filter((item) => item.value !== option.value).map((item) => item.value));
+  };
 
   return (
-    <Command
-      onKeyDown={handleKeyDown}
-      className={`overflow-visible bg-transparent ${className}`}
-    >
-      <div className="group border border-input px-3 py-2 text-sm rounded-md focus-within:ring-1 focus-within:ring-ring">
-        <div className="flex gap-1 flex-wrap">
-          {selected.map((item) => {
-            const option = options.find((o) => o.value === item);
-            return (
-              <Badge
-                key={item}
-                variant="secondary"
-                className="rounded-sm px-1 font-normal"
-              >
-                {option?.label || item}
-                <button
-                  className="ml-1 rounded-full outline-none focus:ring-2 focus:ring-ring"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleUnselect(item);
-                    }
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onClick={() => handleUnselect(item)}
-                >
-                  <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                </button>
-              </Badge>
-            );
-          })}
-          {/* Avoid having the "Search" Icon */}
-          <CommandPrimitive.Input
+    <div className={`relative ${className}`}>
+      <div
+        className="border border-input px-3 py-2 rounded-md flex flex-wrap gap-1 min-h-10 cursor-text"
+        onClick={() => {
+          inputRef.current?.focus();
+          setOpen(true);
+        }}
+      >
+        {selected.map((option) => (
+          <Badge key={option.value} variant="secondary" className="mr-1 mb-1">
+            {option.label}
+            <button
+              type="button"
+              className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              onClick={() => handleRemove(option)}
+            >
+              <X className="h-3 w-3" />
+              <span className="sr-only">Remove {option.label}</span>
+            </button>
+          </Badge>
+        ))}
+
+        <CommandPrimitive onKeyDown={(e) => {
+          if (e.key === "Backspace" && !inputValue && selected.length > 0) {
+            e.preventDefault();
+            handleRemove(selected[selected.length - 1]);
+          }
+        }}>
+          <CommandInput
             ref={inputRef}
             value={inputValue}
             onValueChange={setInputValue}
             onBlur={() => setOpen(false)}
             onFocus={() => setOpen(true)}
-            placeholder={placeholder}
-            className="ml-2 bg-transparent outline-none placeholder:text-muted-foreground flex-1"
+            placeholder={selected.length === 0 ? placeholder : ""}
+            className="border-0 p-0 flex-1 min-w-[80px] outline-none bg-transparent"
           />
-        </div>
+        </CommandPrimitive>
       </div>
+
       <div className="relative">
-        {open && selectables.length > 0 ? (
-          <div className="absolute w-full z-10 top-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in">
-            <CommandGroup className="h-full overflow-auto max-h-60">
-              {selectables.map((option) => {
-                return (
-                  <CommandItem
-                    key={option.value}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onSelect={() => {
-                      setInputValue("");
-                      onChange([...selected, option.value]);
-                    }}
-                    className={"cursor-pointer"}
-                    disabled={option.disabled}
-                  >
-                    {option.label}
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </div>
-        ) : null}
+        <Command className={`absolute z-50 top-1 w-full rounded-md border border-input bg-popover shadow-md ${open ? "" : "hidden"}`}>
+          <CommandEmpty>No option found.</CommandEmpty>
+          <CommandGroup className="max-h-60 overflow-auto">
+            {options.map((option) => (
+              <CommandItem
+                key={option.value}
+                value={option.value}
+                onSelect={() => handleSelect(option)}
+              >
+                <div className="flex items-center">
+                  <span>{option.label}</span>
+                </div>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </Command>
       </div>
-    </Command>
+    </div>
   );
 }

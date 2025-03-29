@@ -120,11 +120,10 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
 
   return (data || []).map(task => {
     // Handle potential error cases in the join
-    let assignedToProfile = { name: 'Unassigned' };
-    
-    if (task.assigned_to_profile && typeof task.assigned_to_profile === 'object') {
-      assignedToProfile = { name: task.assigned_to_profile.name || 'Unassigned' };
-    }
+    const assignedToName = task.assigned_to_profile && 
+                          typeof task.assigned_to_profile === 'object' ? 
+                          task.assigned_to_profile.name || 'Unassigned' : 
+                          'Unassigned';
 
     return {
       id: task.id,
@@ -137,7 +136,7 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
       created_by: task.created_by,
       created_at: task.created_at,
       updated_at: task.updated_at,
-      assigned_to_profile: assignedToProfile
+      assigned_to_profile: { name: assignedToName }
     };
   });
 };
