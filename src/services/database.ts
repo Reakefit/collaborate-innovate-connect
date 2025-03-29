@@ -43,16 +43,22 @@ export const fetchTeamMessages = async (teamId: string): Promise<TeamMessage[]> 
     return [];
   }
 
-  return (data || []).map(msg => ({
-    ...msg,
-    sender: msg.sender ? { 
-      name: msg.sender.name || 'Unknown User', 
-      avatar_url: msg.sender.avatar_url || '' 
-    } : { 
-      name: 'Unknown User', 
-      avatar_url: '' 
-    }
-  }));
+  return (data || []).map(msg => {
+    // Handle potential error cases in the join
+    const senderName = typeof msg.sender === 'object' && msg.sender !== null ? 
+      (msg.sender.name || 'Unknown User') : 'Unknown User';
+    
+    const senderAvatar = typeof msg.sender === 'object' && msg.sender !== null ? 
+      (msg.sender.avatar_url || '') : '';
+    
+    return {
+      ...msg,
+      sender: {
+        name: senderName,
+        avatar_url: senderAvatar
+      }
+    };
+  });
 };
 
 // Function to fetch team by ID
@@ -112,20 +118,28 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
     return [];
   }
 
-  return (data || []).map(task => ({
-    id: task.id,
-    team_id: task.team_id,
-    title: task.title,
-    description: task.description || '',
-    status: (task.status === 'done' ? 'completed' : task.status) as TeamTaskStatus,
-    due_date: task.due_date,
-    assigned_to: task.assigned_to,
-    created_by: task.created_by,
-    created_at: task.created_at,
-    updated_at: task.updated_at,
-    assigned_to_profile: task.assigned_to_profile || { name: 'Unassigned' }
-  }));
+  return (data || []).map(task => {
+    // Handle potential error cases in the join
+    let assignedToProfile = { name: 'Unassigned' };
+    
+    if (task.assigned_to_profile && typeof task.assigned_to_profile === 'object') {
+      assignedToProfile = { name: task.assigned_to_profile.name || 'Unassigned' };
+    }
+
+    return {
+      id: task.id,
+      team_id: task.team_id,
+      title: task.title,
+      description: task.description || '',
+      status: (task.status === 'done' ? 'completed' : task.status) as TeamTaskStatus,
+      due_date: task.due_date,
+      assigned_to: task.assigned_to,
+      created_by: task.created_by,
+      created_at: task.created_at,
+      updated_at: task.updated_at,
+      assigned_to_profile: assignedToProfile
+    };
+  });
 };
 
 // Add more database service functions as needed
-

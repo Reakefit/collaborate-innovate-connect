@@ -1,170 +1,264 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useProject } from "@/context/ProjectContext";
-import { useAuth } from "@/context/AuthContext";
-import { Project, ProjectStatus } from "@/types/database";
+import { useProject } from '@/context/ProjectContext';
+import { useAuth } from '@/context/AuthContext';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Project, ProjectStatus } from '@/types/database';
+import { Calendar, Clock, DollarSign, Filter, Search, Users } from 'lucide-react';
 
-type ProjectCategory = 
-  | "web_development" 
-  | "mobile_development" 
-  | "data_science" 
-  | "machine_learning" 
-  | "ui_ux_design"
-  | "devops"
-  | "cybersecurity"
-  | "blockchain"
-  | "other";
+const statusColors = {
+  draft: 'bg-muted text-muted-foreground',
+  open: 'bg-green-100 text-green-800',
+  in_progress: 'bg-blue-100 text-blue-800',
+  completed: 'bg-gray-100 text-gray-800',
+  cancelled: 'bg-red-100 text-red-800'
+};
 
-type PaymentModel = 
-  | "hourly" 
-  | "fixed" 
-  | "equity" 
-  | "unpaid" 
-  | "stipend";
-
-const categoryOptions: { value: ProjectCategory; label: string }[] = [
-  { value: "web_development", label: "Web Development" },
-  { value: "mobile_development", label: "Mobile Development" },
-  { value: "data_science", label: "Data Science" },
-  { value: "machine_learning", label: "Machine Learning" },
-  { value: "ui_ux_design", label: "UI/UX Design" },
-  { value: "devops", label: "DevOps" },
-  { value: "cybersecurity", label: "Cybersecurity" },
-  { value: "blockchain", label: "Blockchain" },
-  { value: "other", label: "Other" }
-];
-
-const paymentOptions: { value: PaymentModel; label: string }[] = [
-  { value: "hourly", label: "Hourly" },
-  { value: "fixed", label: "Fixed" },
-  { value: "equity", label: "Equity" },
-  { value: "unpaid", label: "Unpaid" },
-  { value: "stipend", label: "Stipend" }
-];
-
-const ProjectsPage = () => {
+const Projects = () => {
   const navigate = useNavigate();
-  const { projects, loading, fetchProjects } = useProject();
-  const { user, profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<"all" | "mine">("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [selectedPayment, setSelectedPayment] = useState<string>("");
+  const { profile } = useAuth();
+  const { projects, loading } = useProject();
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [projectType, setProjectType] = useState('all');
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    filterProjects();
+  }, [projects, searchQuery, categoryFilter, statusFilter, projectType]);
 
-  // Filter projects based on search query, category, and payment model
-  const filteredProjects = projects.filter(project => {
-    // Search filter
-    const matchesSearch = searchQuery === "" || 
-      project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Category filter
-    const matchesCategory = selectedCategory === "" || project.category === selectedCategory;
-    
-    // Payment filter
-    const matchesPayment = selectedPayment === "" || project.payment_model === selectedPayment;
-    
-    // Tab filter
-    const matchesTab = activeTab === "all" || (activeTab === "mine" && project.created_by === user?.id);
-    
-    return matchesSearch && matchesCategory && matchesPayment && matchesTab;
-  });
+  const filterProjects = () => {
+    let filtered = [...projects];
+
+    // Filter by search query
+    if (searchQuery) {
+      filtered = filtered.filter(project => 
+        project.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        project.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Filter by category
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(project => project.category === categoryFilter);
+    }
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(project => project.status === statusFilter);
+    }
+
+    // Filter by project type (owned or all)
+    if (profile && projectType === 'owned') {
+      filtered = filtered.filter(project => project.created_by === profile.id);
+    }
+
+    setFilteredProjects(filtered);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  const handleCreateProject = () => {
+    navigate('/projects/new');
+  };
+
+  const handleViewProject = (projectId: string) => {
+    navigate(`/project/${projectId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  const categories = [
+    { value: 'all', label: 'All Categories' },
+    { value: 'web_development', label: 'Web Development' },
+    { value: 'mobile_development', label: 'Mobile Development' },
+    { value: 'data_science', label: 'Data Science' },
+    { value: 'machine_learning', label: 'Machine Learning' },
+    { value: 'ui_ux_design', label: 'UI/UX Design' },
+    { value: 'devops', label: 'DevOps' },
+    { value: 'cybersecurity', label: 'Cybersecurity' },
+    { value: 'blockchain', label: 'Blockchain' },
+    { value: 'other', label: 'Other' }
+  ];
+
+  const statuses = [
+    { value: 'all', label: 'All Statuses' },
+    { value: 'draft', label: 'Draft' },
+    { value: 'open', label: 'Open' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' }
+  ];
+
+  const projectTypes = [
+    { value: 'all', label: 'All Projects' },
+    { value: 'owned', label: 'My Projects' }
+  ];
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <div className="container mx-auto py-8 px-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Projects</h1>
-          <p className="text-gray-500">Find projects to work on or post your own</p>
+          <h1 className="text-3xl font-bold mb-2">Projects</h1>
+          <p className="text-muted-foreground">
+            Browse all available projects or create your own.
+          </p>
         </div>
         
-        {profile?.role === "startup" && (
-          <Button onClick={() => navigate('/create-project')}>
+        {profile?.role === 'startup' && (
+          <Button onClick={handleCreateProject} className="mt-4 md:mt-0">
             Create Project
           </Button>
         )}
       </div>
       
-      <div className="grid grid-cols-1 gap-6">
-        {/* Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <Input
-                  placeholder="Search projects..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              
-              <div>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
-                    {categoryOptions.map((category) => (
-                      <SelectItem key={category.value} value={category.value}>
-                        {category.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Select value={selectedPayment} onValueChange={setSelectedPayment}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Payment Model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All Payment Models</SelectItem>
-                    {paymentOptions.map((payment) => (
-                      <SelectItem key={payment.value} value={payment.value}>
-                        {payment.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "mine")}>
-                  <TabsList className="grid grid-cols-2">
-                    <TabsTrigger value="all">All Projects</TabsTrigger>
-                    <TabsTrigger value="mine" disabled={!user}>My Projects</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
+      <Card className="mb-8">
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search projects..."
+                className="pl-9"
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
             </div>
-          </CardContent>
-        </Card>
-        
-        {/* Projects List */}
-        {loading ? (
-          <div className="text-center py-8">Loading projects...</div>
-        ) : filteredProjects.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No projects found matching your filters.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Select value={categoryFilter} onValueChange={(value) => setCategoryFilter(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map(category => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ProjectStatus)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuses.map(status => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={projectType} onValueChange={setProjectType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Project type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projectTypes.map(type => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+        </CardContent>
+      </Card>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredProjects.length > 0 ? (
+          filteredProjects.map(project => (
+            <Card key={project.id} className="overflow-hidden h-full flex flex-col">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <CardTitle className="text-xl line-clamp-2">{project.title}</CardTitle>
+                  <Badge className={statusColors[project.status as keyof typeof statusColors]}>
+                    {project.status.replace('_', ' ')}
+                  </Badge>
+                </div>
+                <CardDescription className="line-clamp-2">{project.description}</CardDescription>
+              </CardHeader>
+              <CardContent className="py-2 flex-grow">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center text-sm">
+                      <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <span>Start: {formatDate(project.start_date)}</span>
+                    </div>
+                    <div className="flex items-center text-sm">
+                      <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <span>End: {formatDate(project.end_date)}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center text-sm">
+                    <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span className="capitalize">{project.payment_model} Payment</span>
+                  </div>
+                  
+                  <div className="flex items-center text-sm">
+                    <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span>{project.team_size} Team Member{project.team_size > 1 ? 's' : ''}</span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-1 pt-2">
+                    {project.required_skills.slice(0, 3).map((skill, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {skill}
+                      </Badge>
+                    ))}
+                    {project.required_skills.length > 3 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{project.required_skills.length - 3} more
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="pt-2">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => handleViewProject(project.id)}
+                >
+                  View Details
+                </Button>
+              </CardFooter>
+            </Card>
+          ))
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
+          <div className="col-span-1 md:col-span-2 lg:col-span-3 py-12 flex flex-col items-center justify-center text-center">
+            <Filter className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-medium mb-2">No projects found</h3>
+            <p className="text-muted-foreground max-w-md">
+              We couldn't find any projects matching your search criteria. Try adjusting your filters or search query.
+            </p>
           </div>
         )}
       </div>
@@ -172,81 +266,4 @@ const ProjectsPage = () => {
   );
 };
 
-const ProjectCard = ({ project }: { project: Project }) => {
-  const navigate = useNavigate();
-  
-  const getCategoryLabel = (category: string) => {
-    const found = categoryOptions.find(c => c.value === category);
-    return found ? found.label : category;
-  };
-  
-  const getPaymentLabel = (payment: string) => {
-    const found = paymentOptions.find(p => p.value === payment);
-    return found ? found.label : payment;
-  };
-  
-  const getStatusVariant = (status: ProjectStatus) => {
-    switch (status) {
-      case 'open': return 'default';
-      case 'in_progress': return 'secondary';
-      case 'completed': return 'outline';
-      case 'cancelled': return 'destructive';
-      default: return 'default';
-    }
-  };
-
-  return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="line-clamp-2">{project.title}</CardTitle>
-            <CardDescription className="text-sm mt-1">
-              Posted on {new Date(project.created_at).toLocaleDateString()}
-            </CardDescription>
-          </div>
-          <Badge variant={getStatusVariant(project.status)}>
-            {project.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-grow">
-        <p className="text-sm line-clamp-3 mb-4">{project.description}</p>
-        
-        <div className="space-y-3">
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Category:</span>
-            <span>{getCategoryLabel(project.category)}</span>
-          </div>
-          
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Payment:</span>
-            <span>{getPaymentLabel(project.payment_model)}</span>
-          </div>
-          
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Team Size:</span>
-            <span>{project.team_size} members</span>
-          </div>
-          
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Duration:</span>
-            <span>
-              {new Date(project.start_date).toLocaleDateString()} - {new Date(project.end_date).toLocaleDateString()}
-            </span>
-          </div>
-        </div>
-      </CardContent>
-      <CardFooter className="border-t pt-4">
-        <Button 
-          className="w-full" 
-          onClick={() => navigate(`/projects/${project.id}`)}
-        >
-          View Details
-        </Button>
-      </CardFooter>
-    </Card>
-  );
-};
-
-export default ProjectsPage;
+export default Projects;

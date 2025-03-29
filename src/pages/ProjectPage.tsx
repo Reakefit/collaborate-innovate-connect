@@ -2,8 +2,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -32,20 +30,14 @@ const CreateTaskForm = ({ milestoneId, projectId, onSuccess }: {
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [assignedTo, setAssignedTo] = useState("");
   
-  const taskSchema = z.object({
-    title: z.string().min(3, "Title must be at least 3 characters"),
-    description: z.string().optional(),
-  });
-  
-  const form = useForm<z.infer<typeof taskSchema>>({
-    resolver: zodResolver(taskSchema),
+  const form = useForm({
     defaultValues: {
       title: "",
       description: "",
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof taskSchema>) => {
+  const onSubmit = async (values: any) => {
     try {
       if (!user) return;
       

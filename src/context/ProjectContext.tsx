@@ -72,7 +72,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       if (projectsData) {
-        // Ensure each project has the required properties
+        // Ensure each project has the required properties and correct types
         const typedProjects: Project[] = projectsData.map(project => ({
           ...project,
           required_skills: project.required_skills || [],
@@ -80,9 +80,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           milestones: [],
           resources: [],
           applications: [],
+          stipend_amount: project.stipend_amount ? String(project.stipend_amount) : undefined,
+          hourly_rate: project.hourly_rate ? String(project.hourly_rate) : undefined,
+          fixed_amount: project.fixed_amount ? String(project.fixed_amount) : undefined,
+          equity_percentage: project.equity_percentage ? String(project.equity_percentage) : undefined,
           updated_at: project.updated_at || project.created_at,
           status: project.status as ProjectStatus,
-          payment_model: project.payment_model as any, // Cast to appropriate type
+          payment_model: project.payment_model as any,
         }));
         
         setProjects(typedProjects);
@@ -162,9 +166,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const createProject = async (projectData: any): Promise<Project> => {
     try {
+      // Make sure numerical fields are stored as strings in the type
+      const dataToInsert = {
+        ...projectData,
+        stipend_amount: projectData.stipend_amount ? String(projectData.stipend_amount) : undefined,
+        hourly_rate: projectData.hourly_rate ? String(projectData.hourly_rate) : undefined,
+        fixed_amount: projectData.fixed_amount ? String(projectData.fixed_amount) : undefined,
+        equity_percentage: projectData.equity_percentage ? String(projectData.equity_percentage) : undefined,
+      };
+
       const { data, error } = await supabase
         .from('projects')
-        .insert([projectData])
+        .insert([dataToInsert])
         .select()
         .single();
 
@@ -181,6 +194,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           milestones: [],
           resources: [],
           applications: [],
+          stipend_amount: data.stipend_amount ? String(data.stipend_amount) : undefined,
+          hourly_rate: data.hourly_rate ? String(data.hourly_rate) : undefined,
+          fixed_amount: data.fixed_amount ? String(data.fixed_amount) : undefined,
+          equity_percentage: data.equity_percentage ? String(data.equity_percentage) : undefined,
           updated_at: data.updated_at || data.created_at,
           status: data.status as ProjectStatus,
           payment_model: data.payment_model as any,
@@ -225,7 +242,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             tasks: milestone.tasks?.map((task: any) => ({
               ...task,
               status: task.status as TaskStatus,
-              completed: Boolean(task.completed),
+              completed: task.completed !== undefined ? Boolean(task.completed) : false,
             })) || [],
           };
         }) || [];
@@ -238,6 +255,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           applications: [],
           required_skills: data.required_skills || [],
           deliverables: data.deliverables || [],
+          stipend_amount: data.stipend_amount ? String(data.stipend_amount) : undefined,
+          hourly_rate: data.hourly_rate ? String(data.hourly_rate) : undefined,
+          fixed_amount: data.fixed_amount ? String(data.fixed_amount) : undefined,
+          equity_percentage: data.equity_percentage ? String(data.equity_percentage) : undefined,
           updated_at: data.updated_at || data.created_at,
           status: data.status as ProjectStatus,
           payment_model: data.payment_model as any,
@@ -281,6 +302,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           ...data,
           status: data.status as any,
           team: teams.find(t => t.id === teamId),
+          project: projects.find(p => p.id === projectId),
         };
         
         setApplications(prevApplications => [...prevApplications, newApplication]);
@@ -321,9 +343,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addTask = async (projectId: string, milestoneId: string, taskData: any) => {
     try {
+      // Ensure completed property exists
+      const dataToInsert = {
+        ...taskData,
+        project_id: projectId,
+        milestone_id: milestoneId,
+        completed: taskData.completed !== undefined ? taskData.completed : false,
+      };
+
       const { data, error } = await supabase
         .from('project_tasks')
-        .insert([{ ...taskData, project_id: projectId, milestone_id: milestoneId }])
+        .insert([dataToInsert])
         .select()
         .single();
         

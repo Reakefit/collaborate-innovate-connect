@@ -91,7 +91,7 @@ export interface ProjectMilestone {
   tasks?: ProjectTask[];
 }
 
-export type TaskStatus = "todo" | "in_progress" | "review" | "completed";
+export type TaskStatus = "todo" | "in_progress" | "review" | "completed" | "blocked";
 
 export interface ProjectTask {
   id: string;
@@ -161,6 +161,7 @@ export interface Application {
   updated_at: string;
   team?: Team;
   team_lead?: TeamMember;
+  project?: Project;
 }
 
 // Add missing types needed for the Messages page
@@ -189,7 +190,7 @@ export interface TeamMessage {
   };
 }
 
-export type TeamTaskStatus = "todo" | "in_progress" | "review" | "done" | "completed";
+export type TeamTaskStatus = "todo" | "in_progress" | "review" | "done" | "completed" | "blocked";
 
 export interface TeamTask {
   id: string;
