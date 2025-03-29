@@ -1,7 +1,8 @@
+
 import { supabase } from '@/lib/supabase';
 import { 
   Project, Application, ProjectMilestone, ProjectTask, 
-  ProjectMessage, ProjectReview, TeamTask, TeamMessage 
+  ProjectMessage, ProjectReview, TeamTask, TeamMessage, Team, TeamMember
 } from '@/types/database';
 
 // Function to fetch project messages
@@ -36,6 +37,47 @@ export const fetchTeamMessages = async (teamId: string): Promise<TeamMessage[]> 
 
   if (error) {
     console.error('Error fetching team messages:', error);
+    return [];
+  }
+
+  return data || [];
+};
+
+// Function to fetch team by ID
+export const fetchTeamById = async (teamId: string): Promise<Team | null> => {
+  const { data: team, error } = await supabase
+    .from('teams')
+    .select(`
+      *,
+      members:team_members(
+        *,
+        user:profiles(name)
+      )
+    `)
+    .eq('id', teamId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching team:', error);
+    return null;
+  }
+
+  return team;
+};
+
+// Function to fetch team tasks
+export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
+  const { data, error } = await supabase
+    .from('team_tasks')
+    .select(`
+      *,
+      assigned_to:profiles(name)
+    `)
+    .eq('team_id', teamId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching team tasks:', error);
     return [];
   }
 

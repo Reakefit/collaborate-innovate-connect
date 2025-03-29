@@ -185,10 +185,11 @@ export interface TeamMessage {
   updated_at: string;
   sender?: {
     name: string;
+    avatar_url?: string;
   };
 }
 
-export type TeamTaskStatus = "todo" | "in_progress" | "review" | "completed";
+export type TeamTaskStatus = "todo" | "in_progress" | "review" | "done" | "completed";
 
 export interface TeamTask {
   id: string;
@@ -201,6 +202,9 @@ export interface TeamTask {
   created_by: string;
   created_at: string;
   updated_at: string;
+  assigned_to_profile?: {
+    name: string;
+  };
 }
 
 export interface ProjectReview {

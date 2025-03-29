@@ -469,12 +469,12 @@ const TeamPage = () => {
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    onClick={() => updateTaskStatus(task.id, 'done')}
+                                    onClick={() => updateTaskStatus(task.id, 'completed')}
                                   >
                                     Complete
                                   </Button>
                                 )}
-                                {task.status === 'done' && (
+                                {(task.status === 'completed' || task.status === 'done') && (
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
