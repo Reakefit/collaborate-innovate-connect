@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
-import { Menu, User, Briefcase, GraduationCap, LogOut, LucideIcon, Plus, FileText } from "lucide-react";
+import { Menu, User, Briefcase, GraduationCap, LogOut, LucideIcon, Plus, FileText, MessageSquare } from "lucide-react";
 
 interface NavItem {
   label: string;

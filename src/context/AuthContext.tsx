@@ -1,322 +1,240 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { Session, User, Provider } from '@supabase/supabase-js';
-import { Profile, Education } from '@/types/database';
 import { toast } from 'sonner';
+import { Profile, Education } from '@/types/database';
 
-// Define context shape
 interface AuthContextType {
-  session: Session | null;
-  user: User | null;
+  user: any;
   profile: Profile | null;
   loading: boolean;
-  error: string | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string, role: 'student' | 'startup') => Promise<void>;
+  signUp: (data: any) => Promise<void>;
+  signIn: (data: any) => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfile: (data: Partial<Profile>) => Promise<void>;
-  signInWithProvider: (provider: Provider) => Promise<void>;
+  updateProfile: (profileData: Partial<Profile>) => Promise<void>;
+  getUserProfile: (userId: string) => Promise<Profile | null>;
 }
 
-export type UserRole = 'student' | 'startup';
-export { type Profile, type Education };
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  profile: null,
+  loading: false,
+  signUp: async () => {},
+  signIn: async () => {},
+  signOut: async () => {},
+  updateProfile: async () => {},
+  getUserProfile: async () => null,
+});
 
-// Create context
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const useAuth = () => useContext(AuthContext);
 
-// Provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        }
-      } catch (error: any) {
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const session = supabase.auth.getSession();
 
-    getInitialSession();
-
-    // Subscribe to session changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
+    supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
-
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
-      }
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    (async () => {
+      const { data: { user } } = await session;
+
+      setUser(user ?? null);
+      setLoading(false);
+    })();
   }, []);
 
-  // Fetch user profile
-  const fetchProfile = async (userId: string) => {
+  // Get user profile after login
+  useEffect(() => {
+    const getProfile = async () => {
+      if (user) {
+        const userProfile = await getUserProfile(user.id);
+        setProfile(userProfile);
+      }
+    };
+    getProfile();
+  }, [user]);
+
+  const signUp = async (data: any) => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-
-      // Map database fields to our Profile type
-      const mappedProfile: Profile = {
-        id: data.id,
+      const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
-        name: data.name,
-        role: data.role as 'student' | 'startup',
-        createdAt: data.created_at ? new Date(data.created_at) : undefined,
-        avatarUrl: data.avatar_url,
-        companyName: data.company_name,
-        companyDescription: data.company_description,
-        industry: data.industry,
-        companySize: data.company_size,
-        founded: data.founded,
-        website: data.website,
-        stage: data.stage,
-        projectNeeds: data.project_needs,
-        skills: data.skills as string[] | undefined,
-        education: data.education as Education[] | undefined,
-        portfolio: data.portfolio_url,
-        resume: data.resume_url,
-        github: data.github_url,
-        linkedin: data.linkedin_url,
-        bio: data.bio,
-        availability: data.availability as "full_time" | "part_time" | "internship" | "contract" | undefined,
-        interests: data.interests as string[] | undefined,
-        experienceLevel: data.experience_level as "beginner" | "intermediate" | "advanced" | "expert" | undefined,
-        preferredCategories: data.preferred_categories as string[] | undefined,
-        college: data.college,
-        graduationYear: data.graduation_year,
-        major: data.major
-      };
+        password: data.password,
+        options: {
+          data: {
+            name: data.name,
+            role: data.role,
+            avatar_url: data.avatar_url,
+          },
+        },
+      });
 
-      setProfile(mappedProfile);
+      if (error) {
+        throw error;
+      }
+      if (authData.user) {
+        // User created successfully
+        toast.success('Account created successfully! Please check your email to verify your account.');
+        navigate('/signin');
+      }
     } catch (error: any) {
-      console.error('Error fetching profile:', error);
-      setError(error.message);
+      toast.error(error.message || 'Error creating account');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Sign in
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (data: any) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
       });
-
-      if (error) throw error;
-
-      setSession(data.session);
-      setUser(data.user);
-
-      if (data.user) {
-        await fetchProfile(data.user.id);
+      if (error) {
+        throw error;
       }
-
-      toast.success('Signed in successfully');
+      toast.success('Signed in successfully!');
+      navigate('/dashboard');
     } catch (error: any) {
-      setError(error.message);
       toast.error(error.message || 'Error signing in');
     } finally {
       setLoading(false);
     }
   };
 
-  // Sign in with provider
-  const signInWithProvider = async (provider: Provider) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: window.location.origin + '/dashboard'
-        }
-      });
-
-      if (error) throw error;
-
-      // No need to set session or user here as the auth state change listener
-      // will handle that after the OAuth redirect
-      
-    } catch (error: any) {
-      setError(error.message);
-      toast.error(error.message || `Error signing in with ${provider}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Sign up
-  const signUp = async (email: string, password: string, name: string, role: 'student' | 'startup') => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Create user with email and password
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name,
-            role
-          }
-        }
-      });
-
-      if (error) throw error;
-
-      toast.success('Sign up successful! Please verify your email.');
-    } catch (error: any) {
-      setError(error.message);
-      toast.error(error.message || 'Error signing up');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Sign out
   const signOut = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
-
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
-      setSession(null);
-      setUser(null);
-      setProfile(null);
-
-      toast.success('Signed out successfully');
+      if (error) {
+        throw error;
+      }
+      toast.success('Signed out successfully!');
+      navigate('/signin');
     } catch (error: any) {
-      setError(error.message);
       toast.error(error.message || 'Error signing out');
     } finally {
       setLoading(false);
     }
   };
 
-  // Update profile
-  const updateProfile = async (data: Partial<Profile>) => {
-    if (!user) {
-      setError('User not authenticated');
-      toast.error('User not authenticated');
-      return;
-    }
-
+  const updateProfile = async (profileData: Partial<Profile>) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
 
-      // Map our Profile fields to database column names
-      const mappedData: any = {
-        name: data.name,
-        avatar_url: data.avatarUrl,
-        company_name: data.companyName,
-        company_description: data.companyDescription,
-        industry: data.industry,
-        company_size: data.companySize,
-        founded: data.founded,
-        website: data.website,
-        stage: data.stage,
-        project_needs: data.projectNeeds,
-        skills: data.skills,
-        education: data.education,
-        portfolio_url: data.portfolio,
-        resume_url: data.resume,
-        github_url: data.github,
-        linkedin_url: data.linkedin,
-        bio: data.bio,
-        availability: data.availability,
-        interests: data.interests,
-        experience_level: data.experienceLevel,
-        preferred_categories: data.preferredCategories,
-        college: data.college,
-        graduation_year: data.graduationYear,
-        major: data.major
-      };
-
-      // Remove undefined fields
-      Object.keys(mappedData).forEach(key => {
-        if (mappedData[key] === undefined) {
-          delete mappedData[key];
-        }
-      });
+      // Convert education array if it exists and is not already in the right format
+      if (profileData.education && !Array.isArray(profileData.education)) {
+        profileData.education = profileData.education as unknown as Education[];
+      }
 
       const { error } = await supabase
-        .from('profiles')
-        .update(mappedData)
-        .eq('id', user.id);
+        .from("profiles")
+        .update(profileData)
+        .eq("id", user.id);
 
       if (error) throw error;
 
-      // Refetch profile to ensure we have latest data
-      await fetchProfile(user.id);
+      // Update local state
+      if (profile) {
+        setProfile({
+          ...profile,
+          ...profileData,
+        });
+      }
 
-      toast.success('Profile updated successfully');
+      toast.success("Profile updated successfully!");
     } catch (error: any) {
-      setError(error.message);
-      toast.error(error.message || 'Error updating profile');
-    } finally {
-      setLoading(false);
+      console.error("Error updating profile:", error.message);
+      toast.error(error.message || "Error updating profile");
+      throw error;
     }
   };
 
+  const getUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        // Convert education field if it's stored as JSON
+        if (data.education && typeof data.education !== 'undefined') {
+          try {
+            if (typeof data.education === 'string') {
+              data.education = JSON.parse(data.education);
+            }
+          } catch (e) {
+            console.error("Error parsing education data:", e);
+            data.education = [];
+          }
+        }
+
+        return {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          avatar_url: data.avatar_url,
+          bio: data.bio,
+          company_name: data.company_name,
+          company_description: data.company_description,
+          industry: data.industry,
+          company_size: data.company_size,
+          founded: data.founded,
+          website: data.website,
+          stage: data.stage,
+          project_needs: data.project_needs,
+          skills: data.skills,
+          education: data.education as Education[],
+          portfolio_url: data.portfolio_url,
+          resume_url: data.resume_url,
+          github_url: data.github_url,
+          linkedin_url: data.linkedin_url,
+          availability: data.availability,
+          interests: data.interests,
+          experience_level: data.experience_level,
+          preferred_categories: data.preferred_categories,
+          college: data.college,
+          graduation_year: data.graduation_year,
+          major: data.major,
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+        };
+      }
+      return null;
+    } catch (error: any) {
+      console.error("Error fetching user profile:", error.message);
+      return null;
+    }
+  };
+
+  const value = {
+    user,
+    profile,
+    loading,
+    signUp,
+    signIn,
+    signOut,
+    updateProfile,
+    getUserProfile
+  };
+
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        user,
-        profile,
-        loading,
-        error,
-        signIn,
-        signUp,
-        signOut,
-        updateProfile,
-        signInWithProvider
-      }}
-    >
-      {children}
+    <AuthContext.Provider value={value}>
+      {!loading && children}
     </AuthContext.Provider>
   );
-};
-
-// Hook for using the auth context
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };
