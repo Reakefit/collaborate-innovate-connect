@@ -95,7 +95,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (user) {
         const { data: applicationsData, error: applicationsError } = await supabase
           .from('applications')
-          .select('*');
+          .select('*, team:teams(*, members:team_members(*, user:profiles(name)))');
 
         if (applicationsError) {
           throw applicationsError;
@@ -313,12 +313,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Handle circular reference issue by creating a simplified Project type for tasks
-  interface SimpleProject {
-    id: string;
-    title: string;
-  }
-
   // Handle circular reference issue by creating a simplified TaskUpdate function
   const updateTaskStatus = async (taskId: string, status: TaskStatus) => {
     try {
@@ -482,6 +476,16 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const deleteTeam = async (teamId: string) => {
     try {
+      // Check if user is the team lead
+      const team = teams.find(t => t.id === teamId);
+      if (!team) {
+        throw new Error("Team not found");
+      }
+      
+      if (team.lead_id !== user?.id) {
+        throw new Error("Only the team lead can delete a team");
+      }
+      
       const { error } = await supabase
         .from('teams')
         .delete()
@@ -500,7 +504,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addTeamMember = async (teamId: string, email: string) => {
     try {
-      // First get the user id from the email
+      // Verify current user is team lead
+      const team = teams.find(t => t.id === teamId);
+      if (!team) {
+        throw new Error("Team not found");
+      }
+      
+      if (team.lead_id !== user?.id) {
+        throw new Error("Only the team lead can add members");
+      }
+      
+      // Get the user id from the email
       const { data: userData, error: userError } = await supabase
         .from('profiles')
         .select('id')
@@ -553,6 +567,16 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const removeTeamMember = async (teamId: string, memberId: string) => {
     try {
+      // Verify current user is team lead
+      const team = teams.find(t => t.id === teamId);
+      if (!team) {
+        throw new Error("Team not found");
+      }
+      
+      if (team.lead_id !== user?.id) {
+        throw new Error("Only the team lead can remove members");
+      }
+      
       const { error } = await supabase
         .from('team_members')
         .delete()

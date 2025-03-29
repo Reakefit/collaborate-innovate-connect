@@ -44,11 +44,11 @@ export const fetchTeamMessages = async (teamId: string): Promise<TeamMessage[]> 
   }
 
   return (data || []).map(msg => {
-    // Handle potential error cases in the join
-    const senderName = typeof msg.sender === 'object' && msg.sender !== null ? 
+    // Handle potential error cases in the join with null checks
+    const senderName = msg.sender && typeof msg.sender === 'object' ? 
       (msg.sender.name || 'Unknown User') : 'Unknown User';
     
-    const senderAvatar = typeof msg.sender === 'object' && msg.sender !== null ? 
+    const senderAvatar = msg.sender && typeof msg.sender === 'object' ? 
       (msg.sender.avatar_url || '') : '';
     
     return {
@@ -119,7 +119,7 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
   }
 
   return (data || []).map(task => {
-    // Handle potential error cases in the join
+    // Handle potential null in assigned_to_profile with proper null checks
     const assignedToName = task.assigned_to_profile && 
                           typeof task.assigned_to_profile === 'object' ? 
                           task.assigned_to_profile.name || 'Unassigned' : 
@@ -140,5 +140,3 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
     };
   });
 };
-
-// Add more database service functions as needed

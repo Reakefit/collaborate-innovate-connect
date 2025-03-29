@@ -108,6 +108,11 @@ const Teams = () => {
     }
   };
 
+  // Check if user is a team lead
+  const isTeamLead = (team: Team) => {
+    return team.lead_id === user?.id;
+  };
+
   if (loading) {
     return <div className="text-center py-4">Loading teams...</div>;
   }
@@ -136,7 +141,7 @@ const Teams = () => {
                   {team.members.map((member) => (
                     <li key={member.id} className="flex items-center justify-between py-2 border-b">
                       <span>{member.user?.name || member.name} ({member.role})</span>
-                      {member.user_id !== user?.id && (
+                      {(isTeamLead(team) && member.user_id !== user?.id) && (
                         <Button variant="outline" size="sm" onClick={() => handleRemoveMember(team.id, member.id)}>
                           Remove
                         </Button>
@@ -149,13 +154,23 @@ const Teams = () => {
               )}
             </CardContent>
             <CardFooter className="p-4 flex justify-between">
-              <Button onClick={() => {
-                setSelectedTeam(team);
-                setShowInviteModal(true);
-              }}>
-                Invite Member
-              </Button>
-              <Button variant="destructive" onClick={() => handleDeleteTeam(team.id)}>Delete Team</Button>
+              {isTeamLead(team) ? (
+                <>
+                  <Button onClick={() => {
+                    setSelectedTeam(team);
+                    setShowInviteModal(true);
+                  }}>
+                    Invite Member
+                  </Button>
+                  <Button variant="destructive" onClick={() => handleDeleteTeam(team.id)}>Delete Team</Button>
+                </>
+              ) : (
+                <Button variant="secondary" onClick={() => 
+                  toast.info("You can't perform actions on teams you don't lead.")
+                }>
+                  View Team
+                </Button>
+              )}
             </CardFooter>
           </Card>
         ))}

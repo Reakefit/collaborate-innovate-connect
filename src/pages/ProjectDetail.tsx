@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -38,10 +39,17 @@ const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const { projects, teams, applications, applyToProject, updateApplicationStatus } = useProject();
+  const { projects, teams, applications, applyToProject, updateApplicationStatus, fetchProjects } = useProject();
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    // Fetch projects if not loaded yet
+    if (projects.length === 0) {
+      fetchProjects();
+    }
+  }, [fetchProjects, projects.length]);
   
   const project = projects.find(p => p.id === id);
   const userTeams = teams.filter(team => 
@@ -58,10 +66,10 @@ const ProjectDetail = () => {
   });
 
   useEffect(() => {
-    if (project) {
+    if (projects.length > 0) {
       setIsLoading(false);
     }
-  }, [project]);
+  }, [projects]);
 
   if (isLoading) {
     return (
@@ -82,7 +90,7 @@ const ProjectDetail = () => {
           <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
             <AlertCircle className="h-12 w-12 text-muted-foreground" />
             <h2 className="text-xl font-semibold">Project Not Found</h2>
-            <p className="text-muted-foreground">The project you're looking for doesn't exist.</p>
+            <p className="text-muted-foreground">The project you're looking for doesn't exist or is still loading.</p>
             <Button onClick={() => navigate("/projects")}>Back to Projects</Button>
           </div>
         </div>
