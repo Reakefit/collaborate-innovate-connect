@@ -207,28 +207,94 @@ export type Database = {
       }
       profiles: {
         Row: {
+          availability: string | null
           avatar_url: string | null
+          bio: string | null
+          college: string | null
+          company_description: string | null
+          company_name: string | null
+          company_size: string | null
           created_at: string
+          education: Json | null
+          experience_level: string | null
+          founded: number | null
+          github_url: string | null
+          graduation_year: string | null
           id: string
+          industry: string | null
+          interests: string[] | null
+          linkedin_url: string | null
+          major: string | null
           name: string | null
+          portfolio_url: string | null
+          preferred_categories: string[] | null
+          project_needs: string | null
+          resume_url: string | null
           role: string
+          skills: string[] | null
+          stage: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
+          availability?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          college?: string | null
+          company_description?: string | null
+          company_name?: string | null
+          company_size?: string | null
           created_at?: string
+          education?: Json | null
+          experience_level?: string | null
+          founded?: number | null
+          github_url?: string | null
+          graduation_year?: string | null
           id: string
+          industry?: string | null
+          interests?: string[] | null
+          linkedin_url?: string | null
+          major?: string | null
           name?: string | null
+          portfolio_url?: string | null
+          preferred_categories?: string[] | null
+          project_needs?: string | null
+          resume_url?: string | null
           role: string
+          skills?: string[] | null
+          stage?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          availability?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          college?: string | null
+          company_description?: string | null
+          company_name?: string | null
+          company_size?: string | null
           created_at?: string
+          education?: Json | null
+          experience_level?: string | null
+          founded?: number | null
+          github_url?: string | null
+          graduation_year?: string | null
           id?: string
+          industry?: string | null
+          interests?: string[] | null
+          linkedin_url?: string | null
+          major?: string | null
           name?: string | null
+          portfolio_url?: string | null
+          preferred_categories?: string[] | null
+          project_needs?: string | null
+          resume_url?: string | null
           role?: string
+          skills?: string[] | null
+          stage?: string | null
           updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
@@ -659,6 +725,7 @@ export type Database = {
           rating: number
           reviewee_id: string
           reviewer_id: string
+          updated_at: string
         }
         Insert: {
           comment?: string | null
@@ -668,6 +735,7 @@ export type Database = {
           rating: number
           reviewee_id: string
           reviewer_id: string
+          updated_at?: string
         }
         Update: {
           comment?: string | null
@@ -677,6 +745,7 @@ export type Database = {
           rating?: number
           reviewee_id?: string
           reviewer_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -693,27 +762,39 @@ export type Database = {
           assigned_to: string | null
           completed: boolean
           created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
           id: string
           milestone_id: string
           project_id: string | null
+          status: string | null
           title: string
         }
         Insert: {
           assigned_to?: string | null
           completed?: boolean
           created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
           id?: string
           milestone_id: string
           project_id?: string | null
+          status?: string | null
           title: string
         }
         Update: {
           assigned_to?: string | null
           completed?: boolean
           created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
           id?: string
           milestone_id?: string
           project_id?: string | null
+          status?: string | null
           title?: string
         }
         Relationships: [

@@ -1,10 +1,11 @@
 
+// Basic profile types
 export interface Profile {
   id: string;
-  email: string;
+  email?: string;
   name: string;
   role: "student" | "startup";
-  createdAt: Date;
+  createdAt?: Date;
   avatarUrl?: string;
   // Startup-specific fields
   companyName?: string;
@@ -41,6 +42,7 @@ export interface Education {
   current: boolean;
 }
 
+// Enums for typed values
 export type TeamRole = "lead" | "member";
 export type TeamMemberStatus = "pending" | "active" | "rejected";
 export type ApplicationStatus = "pending" | "accepted" | "rejected";
@@ -48,7 +50,25 @@ export type ProjectStatus = "open" | "in_progress" | "completed" | "cancelled";
 export type MilestoneStatus = "not_started" | "in_progress" | "completed" | "delayed";
 export type TaskStatus = "not_started" | "in_progress" | "completed" | "blocked";
 export type TeamTaskStatus = "todo" | "in_progress" | "review" | "done";
+export type ProjectCategory = 
+  | "web_development" 
+  | "mobile_development" 
+  | "data_science" 
+  | "machine_learning" 
+  | "ui_ux_design"
+  | "devops"
+  | "cybersecurity"
+  | "blockchain"
+  | "other";
+  
+export type PaymentModel = 
+  | "hourly" 
+  | "fixed" 
+  | "equity" 
+  | "unpaid" 
+  | "stipend";
 
+// Team and membership models
 export interface Team {
   id: string;
   name: string;
@@ -68,12 +88,13 @@ export interface TeamMember {
   user_id: string;
   role: TeamRole;
   status: TeamMemberStatus;
-  joined_at: string;
+  joined_at?: string;
   user: {
     name: string;
   };
 }
 
+// Project and application models
 export interface Application {
   id: string;
   project_id: string;
@@ -110,6 +131,7 @@ export interface Project {
   resources?: ProjectResource[];
 }
 
+// Project related models
 export interface ProjectResource {
   id: string;
   project_id: string;
@@ -197,6 +219,7 @@ export interface ProjectNotification {
   created_at: string;
 }
 
+// Team related models
 export interface TeamTask {
   id: string;
   team_id: string;
@@ -231,24 +254,3 @@ export interface Deliverable {
   due_date?: string;
   milestone_id?: string;
 }
-
-export type ProjectCategory = 
-  | "web_development" 
-  | "mobile_development" 
-  | "data_science" 
-  | "machine_learning" 
-  | "ui_ux_design"
-  | "devops"
-  | "cybersecurity"
-  | "blockchain"
-  | "other";
-
-export type PaymentModel = 
-  | "hourly" 
-  | "fixed" 
-  | "equity" 
-  | "unpaid" 
-  | "stipend";
-
-// Export these as they will be used in multiple files
-export type { Message as ProjectDiscussion } from "../services/database";

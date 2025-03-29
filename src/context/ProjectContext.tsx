@@ -6,15 +6,15 @@ import {
   Project, Team, Application, ProjectMilestone, ProjectTask, 
   ProjectMessage, ProjectReview, ProjectNotification, TeamTask, 
   TeamMessage, ApplicationStatus, ProjectStatus, MilestoneStatus, 
-  TaskStatus, TeamTaskStatus
+  TaskStatus, TeamTaskStatus, TeamRole, TeamMemberStatus
 } from '@/types/database';
 
-// Re-export types for use in other components
-export { 
+// Export types
+export type { 
   Project, Team, Application, ProjectMilestone, ProjectTask, 
-  ProjectMessage as Message, ProjectReview, ProjectNotification, 
+  ProjectMessage, ProjectReview, ProjectNotification, 
   TeamTask, TeamMessage, ApplicationStatus, ProjectStatus, 
-  MilestoneStatus, TaskStatus, TeamTaskStatus
+  MilestoneStatus, TaskStatus, TeamTaskStatus, TeamRole, TeamMemberStatus
 };
 
 interface ProjectContextType {
@@ -168,7 +168,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             user_id,
             role,
             status,
-            user:user_id (
+            user:profiles!user_id (
               name
             )
           )
@@ -179,10 +179,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       // Process the teams
-      const processedTeams: Team[] = allTeams.map((team: any) => ({
+      const processedTeams = allTeams.map((team: any) => ({
         ...team,
         members: team.members || []
-      }));
+      })) as Team[];
 
       setTeams(processedTeams);
     } catch (error: any) {
@@ -221,9 +221,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const getMilestone = (milestoneId: string) => {
     // Find the project that contains the milestone
     for (const project of projects) {
-      const milestone = project.milestones?.find(milestone => milestone.id === milestoneId);
-      if (milestone) {
-        return milestone;
+      if (project.milestones) {
+        const milestone = project.milestones.find(m => m.id === milestoneId);
+        if (milestone) {
+          return milestone;
+        }
       }
     }
     return undefined;
@@ -239,9 +241,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     for (const project of projects) {
       if (project.milestones) {
         for (const milestone of project.milestones) {
-          const task = milestone.tasks?.find(task => task.id === taskId);
-          if (task) {
-            return task;
+          if (milestone.tasks) {
+            const task = milestone.tasks.find(task => task.id === taskId);
+            if (task) {
+              return task;
+            }
           }
         }
       }
@@ -299,11 +303,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       if (error) throw error;
       
-      setProjects(prev => [...prev, data as unknown as Project]);
+      const projectWithTypes = data as unknown as Project;
+      setProjects(prev => [...prev, projectWithTypes]);
       
       toast.success('Project created successfully');
       
-      return data as unknown as Project;
+      return projectWithTypes;
     } catch (error: any) {
       setError(error.message);
       toast.error(error.message || 'Failed to create project');
@@ -386,12 +391,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .from('project_milestones')
         .insert({ 
           ...milestoneData,
-          status: milestoneData.status || 'not_started',
+          status: milestoneData.status || 'not_started' as MilestoneStatus,
         })
         .select()
         .single();
       
       if (error) throw error;
+      
+      const typedMilestone = data as unknown as ProjectMilestone;
       
       // Update project with the new milestone
       setProjects(prev => {
@@ -399,7 +406,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           if (project.id === milestoneData.project_id) {
             return {
               ...project,
-              milestones: [...(project.milestones || []), data as unknown as ProjectMilestone]
+              milestones: [...(project.milestones || []), typedMilestone]
             };
           }
           return project;
@@ -408,7 +415,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       toast.success('Milestone created successfully');
       
-      return data as unknown as ProjectMilestone;
+      return typedMilestone;
     } catch (error: any) {
       setError(error.message);
       toast.error(error.message || 'Failed to create milestone');
@@ -505,11 +512,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setLoading(true);
       setError('');
       
-      // Ensure milestone_id is included if it's required by the database
+      // Ensure all required fields are present
       const taskToInsert = {
         ...taskData,
-        status: taskData.status || 'not_started',
-        created_by: user.id
+        status: taskData.status || 'not_started' as TaskStatus,
+        created_by: user.id,
+        milestone_id: taskData.milestone_id || null
       };
       
       const { data, error } = await supabase
@@ -519,10 +527,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .single();
       
       if (error) throw error;
+
+      const typedTask = data as unknown as ProjectTask;
       
       toast.success('Task created successfully');
       
-      return data as unknown as ProjectTask;
+      return typedTask;
     } catch (error: any) {
       setError(error.message);
       toast.error(error.message || 'Failed to create task');
@@ -805,20 +815,22 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .from('applications')
         .insert({
           ...applicationData,
-          user_id: user.id,
-          status: 'pending' as ApplicationStatus
+          user_id: applicationData.user_id || user.id,
+          status: applicationData.status || 'pending' as ApplicationStatus
         })
         .select()
         .single();
       
       if (error) throw error;
       
+      const typedApplication = data as unknown as Application;
+      
       // Update the applications state
-      setUserApplications(prev => [...prev, data as unknown as Application]);
+      setUserApplications(prev => [...prev, typedApplication]);
       
       toast.success('Application submitted successfully');
       
-      return data as unknown as Application;
+      return typedApplication;
     } catch (error: any) {
       setError(error.message);
       toast.error(error.message || 'Failed to submit application');
@@ -898,9 +910,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { error } = await supabase
         .from('project_notifications')
         .insert({
-          ...notificationData,
-          title: notificationData.title,
+          project_id: notificationData.project_id,
+          user_id: notificationData.user_id,
+          type: notificationData.type,
           content: notificationData.content,
+          title: notificationData.title,
+          message: notificationData.message,
           read: false
         });
       

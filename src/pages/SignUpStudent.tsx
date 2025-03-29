@@ -1,359 +1,153 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
-import { GraduationCap, ArrowLeft } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 
-const uploadResume = async (file: File) => {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${Math.random()}.${fileExt}`;
-  const filePath = `resumes/${fileName}`;
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
-  const { error: uploadError } = await supabase.storage
-    .from('public')
-    .upload(filePath, file);
-
-  if (uploadError) throw uploadError;
-
-  const { data: { publicUrl } } = supabase.storage
-    .from('public')
-    .getPublicUrl(filePath);
-
-  return publicUrl;
-};
-
-const studentSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-  email: z.string().email({ message: "Invalid email address" }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters" }),
-  college: z.string().min(2, { message: "College name is required" }),
-  course: z.string().min(2, { message: "Course name is required" }),
-  graduation_year: z.string().min(4, { message: "Graduation year is required" }),
-  skills: z.array(z.string()).min(1, { message: "Add at least one skill" }),
-  education_details: z.object({
-    degree: z.string().min(2, { message: "Degree is required" }),
-    major: z.string().min(2, { message: "Major is required" }),
-    gpa: z.string().optional(),
-    achievements: z.array(z.string()).optional(),
-  }),
-  resume: z.any().refine((file) => file?.size <= 5000000, "File size should be less than 5MB"),
+// Form schema
+const formSchema = z.object({
+  name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
+  email: z.string().email({ message: 'Please enter a valid email address' }),
+  password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
+  confirmPassword: z.string()
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword']
 });
-
-type StudentValues = z.infer<typeof studentSchema>;
 
 const SignUpStudent = () => {
   const navigate = useNavigate();
-  const { signUp, updateProfile } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { signUp } = useAuth();
+  const [loading, setLoading] = useState(false);
 
-  const form = useForm<StudentValues>({
-    resolver: zodResolver(studentSchema),
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
-      password: "",
-      name: "",
-      college: "",
-      graduation_year: "",
-      skills: [],
-      education_details: {
-        degree: "",
-        major: "",
-      },
-      resume: null,
-    },
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: ''
+    }
   });
 
-  const onSubmit = async (values: StudentValues) => {
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
     try {
-      setIsLoading(true);
-      setError(null);
-
-      // Upload resume
-      const resumeUrl = await uploadResume(values.resume);
-
-      // Create user profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .insert([{
-          name: values.name,
-          email: values.email,
-          role: 'student',
-          college: values.college,
-          course: values.course,
-          graduation_year: values.graduation_year,
-          skills: values.skills,
-          education_details: values.education_details,
-          resume_url: resumeUrl,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }])
-        .select()
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Create auth user
+      setLoading(true);
+      
+      // First, register the user with Supabase auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: values.email,
-        password: values.password,
+        email: data.email,
+        password: data.password,
         options: {
           data: {
-            name: values.name,
-            role: 'student',
-          },
-        },
+            name: data.name,
+            role: 'student'
+          }
+        }
       });
-
+      
       if (authError) throw authError;
-
-      toast.success("Account created successfully!");
-      navigate("/complete-profile");
+      
+      if (authData.user) {
+        // User created successfully
+        toast.success('Account created successfully! Please check your email to verify your account.');
+        navigate('/signin');
+      }
     } catch (error: any) {
-      setError(error.message);
+      toast.error(error.message || 'Error creating account');
+      console.error('Signup error:', error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const currentYear = new Date().getFullYear();
-  const graduationYears = Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
-
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-muted/30 to-muted/10">
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-2xl mx-auto">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/signup")}
-            className="mb-8"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-
-          <Card className="border-none shadow-lg">
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <div className="bg-primary/10 p-3 rounded-lg">
-                  <GraduationCap className="h-8 w-8 text-primary" />
-                </div>
-                <div>
-                  <CardTitle>Student Sign Up</CardTitle>
-                  <CardDescription>
-                    Create your account to start working on projects
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Full Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="John Doe" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input placeholder="john@example.com" type="email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input placeholder="••••••••" type="password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="college"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>College</FormLabel>
-                          <FormControl>
-                            <Input placeholder="University Name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="graduation_year"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Graduation Year</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select year" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {graduationYears.map((year) => (
-                                <SelectItem key={year} value={year}>
-                                  {year}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="course"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Course</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Computer Science" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="skills"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Skills (comma-separated)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="React, TypeScript, Node.js" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="education_details"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Education Details</FormLabel>
-                        <FormControl>
-                          <div className="space-y-4">
-                            <FormField
-                              control={form.control}
-                              name="education_details.degree"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Degree</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Bachelor's" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={form.control}
-                              name="education_details.major"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Major</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Computer Science" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="resume"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Resume</FormLabel>
-                        <FormControl>
-                          <Input type="file" accept=".pdf" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button
-                    type="submit"
-                    className="w-full bg-primary hover:bg-primary/90"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Creating account..." : "Create Account"}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-
-          <div className="mt-6 text-center">
-            <p className="text-muted-foreground">
-              Already have an account?{" "}
-              <Button variant="link" onClick={() => navigate("/signin/student")} className="p-0">
-                Sign in
-              </Button>
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-b from-blue-50 to-white">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">Create student account</CardTitle>
+          <CardDescription className="text-center">
+            Enter your information to create an account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                {...register('name')}
+              />
+              {errors.name && (
+                <p className="text-sm text-red-500">{errors.name.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="john.doe@example.com"
+                {...register('email')}
+              />
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                {...register('password')}
+              />
+              {errors.password && (
+                <p className="text-sm text-red-500">{errors.password.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                {...register('confirmPassword')}
+              />
+              {errors.confirmPassword && (
+                <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
+              )}
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Creating Account...' : 'Create Account'}
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="flex flex-col">
+          <p className="text-center text-sm text-muted-foreground">
+            Already have an account?{' '}
+            <Link to="/signin" className="text-primary underline">
+              Sign in
+            </Link>
+          </p>
+          <p className="text-center text-sm text-muted-foreground mt-1">
+            Are you a startup?{' '}
+            <Link to="/signup-startup" className="text-primary underline">
+              Create startup account
+            </Link>
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   );
 };
 
-export default SignUpStudent; 
+export default SignUpStudent;

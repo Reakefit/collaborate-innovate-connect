@@ -1,751 +1,700 @@
 
 import React, { useState, useEffect } from 'react';
-import { useAuth, UserProfile, Education } from "@/context/AuthContext";
 import { useNavigate } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { toast } from "sonner";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useAuth } from '@/context/AuthContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { X } from 'lucide-react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Education, Profile } from '@/types/database';
+import { toast } from 'sonner';
 
-// Create a proper schema for Education that matches our database type
-const educationSchema = z.object({
-  institution: z.string().min(2, {
-    message: "Institution must be at least 2 characters.",
-  }),
-  degree: z.string().min(2, {
-    message: "Degree must be at least 2 characters.",
-  }),
-  field: z.string().min(2, {
-    message: "Field must be at least 2 characters.",
-  }),
-  startYear: z.coerce.number().min(1900, {
-    message: "Start year must be a valid year after 1900.",
-  }).max(new Date().getFullYear(), {
-    message: "Start year cannot be in the future.",
-  }),
-  endYear: z.coerce.number().optional().nullable(),
-  current: z.boolean().default(false),
-});
-
+// Schema for student profile
 const studentProfileSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  skills: z.array(z.string()).min(1, {
-    message: "Please select at least one skill.",
-  }),
-  education: z.array(educationSchema).min(1, {
-    message: "Please add at least one education entry.",
-  }),
-  portfolio: z.string().url({
-    message: "Please enter a valid URL.",
-  }).optional().or(z.literal('')),
-  resume: z.string().url({
-    message: "Please enter a valid URL.",
-  }).optional().or(z.literal('')),
-  github: z.string().url({
-    message: "Please enter a valid URL.",
-  }).optional().or(z.literal('')),
-  linkedin: z.string().url({
-    message: "Please enter a valid URL.",
-  }).optional().or(z.literal('')),
-  bio: z.string().max(160, {
-    message: "Bio must be less than 160 characters.",
-  }).optional().or(z.literal('')),
+  name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
+  bio: z.string().optional(),
+  college: z.string().optional(),
+  major: z.string().optional(),
+  graduationYear: z.string().optional(),
+  experienceLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).optional(),
+  skills: z.array(z.string()).optional(),
   interests: z.array(z.string()).optional(),
-  preferredCategories: z.array(z.string()).optional(),
-  college: z.string().min(2, {
-    message: "College must be at least 2 characters.",
-  }).optional().or(z.literal('')),
-  graduationYear: z.string().refine((value) => {
-    if (!value) return true; // Allow empty string
-    const num = Number(value);
-    return !isNaN(num) && num >= new Date().getFullYear() && num <= new Date().getFullYear() + 10;
-  }, {
-    message: "Graduation year must be a valid year between the current year and 10 years from now.",
-  }).optional().or(z.literal('')),
-  major: z.string().min(2, {
-    message: "Major must be at least 2 characters.",
-  }).optional().or(z.literal('')),
+  availability: z.enum(['full_time', 'part_time', 'internship', 'contract']).optional(),
+  portfolio: z.string().url().optional().or(z.literal('')),
+  github: z.string().url().optional().or(z.literal('')),
+  linkedin: z.string().url().optional().or(z.literal('')),
+  resume: z.string().url().optional().or(z.literal('')),
+  education: z.array(z.object({
+    institution: z.string(),
+    degree: z.string(),
+    field: z.string(),
+    startYear: z.number(),
+    endYear: z.number().nullable(),
+    current: z.boolean()
+  })).optional()
 });
 
-const StudentProfileForm = () => {
-  const { user, profile, updateProfile } = useAuth();
-  const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [experienceLevel, setExperienceLevel] = useState<"beginner" | "intermediate" | "advanced" | "expert">(
-    profile?.experienceLevel || "beginner"
-  );
-  
-  const handleExperienceLevelChange = (value: string) => {
-    setExperienceLevel(value as "beginner" | "intermediate" | "advanced" | "expert");
-  };
-
-  const [availability, setAvailability] = useState<"full_time" | "part_time" | "internship" | "contract">(
-    profile?.availability || "part_time"
-  );
-  
-  const handleAvailabilityChange = (value: string) => {
-    setAvailability(value as "full_time" | "part_time" | "internship" | "contract");
-  };
-
-  // Convert education format if needed
-  const convertEducation = (education: any[] | undefined): Education[] => {
-    if (!education) return [];
-    
-    // Check if the education is already in the right format
-    if (education.length > 0 && 'institution' in education[0]) {
-      return education as Education[];
-    }
-    
-    // Convert from form format to Education format
-    return education.map(edu => ({
-      institution: edu.institution || '',
-      degree: edu.degree || '',
-      field: edu.field || '',
-      startYear: Number(edu.startYear) || new Date().getFullYear(),
-      endYear: edu.current ? null : (Number(edu.endYear) || null),
-      current: edu.current || false,
-    }));
-  };
-
-  const form = useForm<z.infer<typeof studentProfileSchema>>({
-    resolver: zodResolver(studentProfileSchema),
-    defaultValues: {
-      name: profile?.name || "",
-      skills: profile?.skills || [],
-      education: convertEducation(profile?.education),
-      portfolio: profile?.portfolio || "",
-      resume: profile?.resume || "",
-      github: profile?.github || "",
-      linkedin: profile?.linkedin || "",
-      bio: profile?.bio || "",
-      interests: profile?.interests || [],
-      preferredCategories: profile?.preferredCategories || [],
-      college: profile?.college || "",
-      graduationYear: profile?.graduationYear || "",
-      major: profile?.major || "",
-    },
-  });
-
-  useEffect(() => {
-    if (!user) {
-      navigate("/signin");
-      return;
-    }
-  }, [user, navigate]);
-
-  const handleSubmit = async (values: z.infer<typeof studentProfileSchema>) => {
-    try {
-      setIsSubmitting(true);
-      setError(null);
-
-      const profileData: Partial<UserProfile> = {
-        name: values.name,
-        skills: values.skills,
-        education: values.education,
-        portfolio: values.portfolio,
-        resume: values.resume,
-        github: values.github,
-        linkedin: values.linkedin,
-        bio: values.bio,
-        availability: availability,
-        interests: values.interests,
-        experienceLevel: experienceLevel,
-        preferredCategories: values.preferredCategories,
-        college: values.college,
-        graduationYear: values.graduationYear,
-        major: values.major,
-      };
-
-      await updateProfile(profileData);
-      toast.success("Profile updated successfully!");
-      navigate("/dashboard");
-    } catch (error: any) {
-      setError(error.message || "Failed to update profile");
-      toast.error(error.message || "Failed to update profile");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(handleSubmit)}>
-      <div className="space-y-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Your name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="skills"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Skills</FormLabel>
-              <div className="space-y-2">
-                {["javascript", "typescript", "react", "node", "python", "java"].map((skill) => (
-                  <div key={skill} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`skill-${skill}`}
-                      checked={field.value?.includes(skill)}
-                      onCheckedChange={(checked) => {
-                        return checked
-                          ? field.onChange([...field.value, skill])
-                          : field.onChange(field.value?.filter((s) => s !== skill));
-                      }}
-                    />
-                    <label
-                      htmlFor={`skill-${skill}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      {skill.charAt(0).toUpperCase() + skill.slice(1)}
-                    </label>
-                  </div>
-                ))}
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Education field - this needs special handling */}
-        <div className="space-y-2">
-          <FormLabel>Education</FormLabel>
-          <div className="space-y-4 border p-4 rounded-md">
-            <p className="text-sm text-gray-500">Add your education history</p>
-            {/* Display education entries */}
-            {form.watch('education')?.map((edu, index) => (
-              <div key={index} className="p-3 border rounded-md bg-gray-50">
-                <p><strong>Institution:</strong> {edu.institution}</p>
-                <p><strong>Degree:</strong> {edu.degree}</p>
-                <p><strong>Field:</strong> {edu.field}</p>
-                <p><strong>Years:</strong> {edu.startYear} - {edu.current ? 'Present' : edu.endYear}</p>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => {
-                    const currentEducation = [...form.watch('education')];
-                    currentEducation.splice(index, 1);
-                    form.setValue('education', currentEducation);
-                  }}
-                >
-                  Remove
-                </Button>
-              </div>
-            ))}
-            
-            {/* Add new education entry form */}
-            <div className="p-3 border rounded-md">
-              <h4 className="text-sm font-medium mb-2">Add Education</h4>
-              <div className="space-y-2">
-                <div>
-                  <Label htmlFor="institution">Institution</Label>
-                  <Input id="institution" placeholder="University/College name" />
-                </div>
-                <div>
-                  <Label htmlFor="degree">Degree</Label>
-                  <Input id="degree" placeholder="e.g., Bachelor's, Master's" />
-                </div>
-                <div>
-                  <Label htmlFor="field">Field of Study</Label>
-                  <Input id="field" placeholder="e.g., Computer Science" />
-                </div>
-                <div>
-                  <Label htmlFor="startYear">Start Year</Label>
-                  <Input id="startYear" type="number" min="1900" max={new Date().getFullYear()} placeholder="Start Year" />
-                </div>
-                <div>
-                  <Label htmlFor="endYear">End Year</Label>
-                  <Input id="endYear" type="number" min="1900" max={new Date().getFullYear() + 10} placeholder="End Year" />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="current" />
-                  <Label htmlFor="current">I currently study here</Label>
-                </div>
-                <Button 
-                  type="button" 
-                  variant="secondary"
-                  onClick={() => {
-                    const institution = (document.getElementById('institution') as HTMLInputElement)?.value;
-                    const degree = (document.getElementById('degree') as HTMLInputElement)?.value;
-                    const field = (document.getElementById('field') as HTMLInputElement)?.value;
-                    const startYear = (document.getElementById('startYear') as HTMLInputElement)?.value;
-                    const endYear = (document.getElementById('endYear') as HTMLInputElement)?.value;
-                    const current = (document.getElementById('current') as HTMLInputElement)?.checked;
-                    
-                    if (!institution || !degree || !field || !startYear) {
-                      toast.error("Please fill all required fields");
-                      return;
-                    }
-                    
-                    const newEducation = {
-                      institution,
-                      degree,
-                      field,
-                      startYear: Number(startYear),
-                      endYear: current ? null : (endYear ? Number(endYear) : null),
-                      current: !!current
-                    };
-                    
-                    const currentEducation = [...form.watch('education'), newEducation];
-                    form.setValue('education', currentEducation);
-                    
-                    // Clear the form
-                    (document.getElementById('institution') as HTMLInputElement).value = '';
-                    (document.getElementById('degree') as HTMLInputElement).value = '';
-                    (document.getElementById('field') as HTMLInputElement).value = '';
-                    (document.getElementById('startYear') as HTMLInputElement).value = '';
-                    (document.getElementById('endYear') as HTMLInputElement).value = '';
-                    (document.getElementById('current') as HTMLInputElement).checked = false;
-                  }}
-                >
-                  Add Education
-                </Button>
-              </div>
-            </div>
-          </div>
-          {form.formState.errors.education && (
-            <p className="text-sm font-medium text-destructive">{form.formState.errors.education.message}</p>
-          )}
-        </div>
-
-        <FormField
-          control={form.control}
-          name="portfolio"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Portfolio URL</FormLabel>
-              <FormControl>
-                <Input placeholder="Your portfolio URL" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="resume"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Resume URL</FormLabel>
-              <FormControl>
-                <Input placeholder="Your resume URL" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="github"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>GitHub URL</FormLabel>
-              <FormControl>
-                <Input placeholder="Your GitHub URL" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="linkedin"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>LinkedIn URL</FormLabel>
-              <FormControl>
-                <Input placeholder="Your LinkedIn URL" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="bio"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Bio</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Write a short bio about yourself"
-                  className="resize-none"
-                  {...field}
-                />
-              </FormControl>
-              <FormDescription>
-                Max 160 characters.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      
-      <div className="space-y-2">
-        <Label>Experience Level</Label>
-        <RadioGroup 
-          value={experienceLevel} 
-          onValueChange={handleExperienceLevelChange}
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="beginner" id="r1" />
-            <Label htmlFor="r1">Beginner</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="intermediate" id="r2" />
-            <Label htmlFor="r2">Intermediate</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="advanced" id="r3" />
-            <Label htmlFor="r3">Advanced</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="expert" id="r4" />
-            <Label htmlFor="r4">Expert</Label>
-          </div>
-        </RadioGroup>
-      </div>
-
-      <div className="space-y-2">
-        <Label>Availability</Label>
-        <RadioGroup 
-          value={availability} 
-          onValueChange={handleAvailabilityChange}
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="full_time" id="a1" />
-            <Label htmlFor="a1">Full Time</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="part_time" id="a2" />
-            <Label htmlFor="a2">Part Time</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="internship" id="a3" />
-            <Label htmlFor="a3">Internship</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="contract" id="a4" />
-            <Label htmlFor="a4">Contract</Label>
-          </div>
-        </RadioGroup>
-      </div>
-
-        <Button disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Submitting..." : "Submit"}
-        </Button>
-        {error && <p className="text-red-500">{error}</p>}
-      </div>
-    </form>
-  );
-};
-
-const StartupProfileForm = () => {
-  const { user, profile, updateProfile } = useAuth();
-  const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [foundedDate, setFoundedDate] = React.useState<Date | undefined>(new Date());
-
-  const startupProfileSchema = z.object({
-    name: z.string().min(2, {
-      message: "Name must be at least 2 characters.",
-    }),
-    companyName: z.string().min(2, {
-      message: "Company name must be at least 2 characters.",
-    }),
-    companyDescription: z.string().min(10, {
-      message: "Company description must be at least 10 characters.",
-    }),
-    industry: z.string().min(2, {
-      message: "Industry must be at least 2 characters.",
-    }),
-    companySize: z.string().optional(),
-    website: z.string().url({
-      message: "Please enter a valid URL.",
-    }).optional(),
-    stage: z.string().optional(),
-    projectNeeds: z.string().optional(),
-  });
-
-  const form = useForm<z.infer<typeof startupProfileSchema>>({
-    resolver: zodResolver(startupProfileSchema),
-    defaultValues: {
-      name: profile?.name || "",
-      companyName: profile?.companyName || "",
-      companyDescription: profile?.companyDescription || "",
-      industry: profile?.industry || "",
-      companySize: profile?.companySize || "",
-      website: profile?.website || "",
-      stage: profile?.stage || "",
-      projectNeeds: profile?.projectNeeds || "",
-    },
-  });
-
-  useEffect(() => {
-    if (!user) {
-      navigate("/signin");
-      return;
-    }
-  }, [user, navigate]);
-
-  const handleSubmit = async (values: z.infer<typeof startupProfileSchema>) => {
-    try {
-      setIsSubmitting(true);
-      setError(null);
-
-      const profileData: Partial<UserProfile> = {
-        name: values.name,
-        companyName: values.companyName,
-        companyDescription: values.companyDescription,
-        industry: values.industry,
-        companySize: values.companySize,
-        founded: foundedDate?.getFullYear(),
-        website: values.website,
-        stage: values.stage,
-        projectNeeds: values.projectNeeds,
-      };
-
-      await updateProfile(profileData);
-      toast.success("Profile updated successfully!");
-      navigate("/dashboard");
-    } catch (error: any) {
-      setError(error.message || "Failed to update profile");
-      toast.error(error.message || "Failed to update profile");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(handleSubmit)}>
-      <div className="space-y-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Your name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="companyName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Company Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Your company name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="companyDescription"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Company Description</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Write a short description about your company"
-                  className="resize-none"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="industry"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Industry</FormLabel>
-              <FormControl>
-                <Input placeholder="Your industry" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="companySize"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Company Size</FormLabel>
-              <FormControl>
-                <Input placeholder="Your company size" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="website"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Website URL</FormLabel>
-              <FormControl>
-                <Input placeholder="Your website URL" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="stage"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Stage</FormLabel>
-              <FormControl>
-                <Input placeholder="Your company stage" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="projectNeeds"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Project Needs</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Describe your project needs"
-                  className="resize-none"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="space-y-2">
-          <Label>Founded Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <FormControl>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-[240px] pl-3 text-left font-normal",
-                    !foundedDate && "text-muted-foreground"
-                  )}
-                >
-                  {foundedDate ? format(foundedDate, "PPP") : (
-                    <span>Pick a date</span>
-                  )}
-                </Button>
-              </FormControl>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={foundedDate}
-                onSelect={setFoundedDate}
-                disabled={(date) =>
-                  date > new Date() || date < new Date("1900-01-01")
-                }
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <Button disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Submitting..." : "Submit"}
-        </Button>
-        {error && <p className="text-red-500">{error}</p>}
-      </div>
-    </form>
-  );
-};
+// Schema for startup profile
+const startupProfileSchema = z.object({
+  name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
+  companyName: z.string().min(1, { message: 'Company name is required' }),
+  companyDescription: z.string().min(10, { message: 'Company description must be at least 10 characters' }),
+  founded: z.number().min(1800).max(new Date().getFullYear()),
+  industry: z.string().min(1, { message: 'Industry is required' }),
+  website: z.string().url().optional().or(z.literal('')),
+  companySize: z.string().optional(),
+  stage: z.string().optional(),
+  projectNeeds: z.string().optional()
+});
 
 const CompleteProfile = () => {
-  const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const { user, profile, updateProfile } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [newSkill, setNewSkill] = useState('');
+  const [newInterest, setNewInterest] = useState('');
+  const [educationEntries, setEducationEntries] = useState<Partial<Education>[]>([]);
+  const [currentEducation, setCurrentEducation] = useState<Partial<Education>>({});
 
-  useEffect(() => {
-    if (!user) {
-      navigate("/signin");
-      return;
+  const isStudent = profile?.role === 'student';
+  const schema = isStudent ? studentProfileSchema : startupProfileSchema;
+
+  const { control, handleSubmit, formState: { errors }, setValue, watch } = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      name: profile?.name || '',
+      bio: profile?.bio || '',
+      college: profile?.college || '',
+      major: profile?.major || '',
+      graduationYear: profile?.graduationYear || '',
+      experienceLevel: profile?.experienceLevel || 'beginner',
+      skills: profile?.skills || [],
+      interests: profile?.interests || [],
+      availability: profile?.availability || 'part_time',
+      portfolio: profile?.portfolio || '',
+      github: profile?.github || '',
+      linkedin: profile?.linkedin || '',
+      resume: profile?.resume || '',
+      education: profile?.education || [],
+      companyName: profile?.companyName || '',
+      companyDescription: profile?.companyDescription || '',
+      founded: profile?.founded || new Date().getFullYear(),
+      industry: profile?.industry || '',
+      website: profile?.website || '',
+      companySize: profile?.companySize || '',
+      stage: profile?.stage || '',
+      projectNeeds: profile?.projectNeeds || ''
     }
-  }, [user, navigate]);
+  });
 
-  if (!profile) {
-    return <p>Loading...</p>;
+  // Update form values when profile changes
+  useEffect(() => {
+    if (profile) {
+      setValue('name', profile.name);
+      setValue('bio', profile.bio || '');
+      setValue('college', profile.college || '');
+      setValue('major', profile.major || '');
+      setValue('graduationYear', profile.graduationYear || '');
+      setValue('experienceLevel', profile.experienceLevel || 'beginner');
+      setValue('skills', profile.skills || []);
+      setValue('interests', profile.interests || []);
+      setValue('availability', profile.availability || 'part_time');
+      setValue('portfolio', profile.portfolio || '');
+      setValue('github', profile.github || '');
+      setValue('linkedin', profile.linkedin || '');
+      setValue('resume', profile.resume || '');
+      setValue('education', profile.education || []);
+      setValue('companyName', profile.companyName || '');
+      setValue('companyDescription', profile.companyDescription || '');
+      setValue('founded', profile.founded || new Date().getFullYear());
+      setValue('industry', profile.industry || '');
+      setValue('website', profile.website || '');
+      setValue('companySize', profile.companySize || '');
+      setValue('stage', profile.stage || '');
+      setValue('projectNeeds', profile.projectNeeds || '');
+
+      // Set education entries for student profiles
+      if (profile.role === 'student' && profile.education) {
+        setEducationEntries(profile.education);
+      }
+    }
+  }, [profile, setValue]);
+
+  // Watch for values to use in the UI
+  const watchedSkills = watch('skills', []);
+  const watchedInterests = watch('interests', []);
+
+  // Add a new skill
+  const addSkill = () => {
+    if (newSkill.trim() && !watchedSkills.includes(newSkill.trim())) {
+      setValue('skills', [...watchedSkills, newSkill.trim()]);
+      setNewSkill('');
+    }
+  };
+
+  // Remove a skill
+  const removeSkill = (skillToRemove: string) => {
+    setValue('skills', watchedSkills.filter(skill => skill !== skillToRemove));
+  };
+
+  // Add a new interest
+  const addInterest = () => {
+    if (newInterest.trim() && !watchedInterests.includes(newInterest.trim())) {
+      setValue('interests', [...watchedInterests, newInterest.trim()]);
+      setNewInterest('');
+    }
+  };
+
+  // Remove an interest
+  const removeInterest = (interestToRemove: string) => {
+    setValue('interests', watchedInterests.filter(interest => interest !== interestToRemove));
+  };
+
+  // Add education entry
+  const addEducation = () => {
+    if (
+      currentEducation.institution && 
+      currentEducation.degree && 
+      currentEducation.field && 
+      currentEducation.startYear
+    ) {
+      const newEntry: Education = {
+        institution: currentEducation.institution,
+        degree: currentEducation.degree,
+        field: currentEducation.field,
+        startYear: Number(currentEducation.startYear),
+        endYear: currentEducation.current ? null : Number(currentEducation.endYear || 0),
+        current: Boolean(currentEducation.current)
+      };
+      
+      const updatedEntries = [...educationEntries, newEntry];
+      setEducationEntries(updatedEntries);
+      setValue('education', updatedEntries as Education[]);
+      
+      // Reset form
+      setCurrentEducation({});
+    } else {
+      toast.error('Please fill all required education fields');
+    }
+  };
+
+  // Remove education entry
+  const removeEducation = (index: number) => {
+    const updatedEntries = educationEntries.filter((_, i) => i !== index);
+    setEducationEntries(updatedEntries);
+    setValue('education', updatedEntries as Education[]);
+  };
+
+  // Handle form submission
+  const onSubmit = async (data: z.infer<typeof schema>) => {
+    setLoading(true);
+    try {
+      // Create profile data based on role
+      const profileData: Partial<Profile> = isStudent ? {
+        name: data.name,
+        bio: data.bio,
+        college: data.college,
+        major: data.major,
+        graduationYear: data.graduationYear,
+        experienceLevel: data.experienceLevel,
+        skills: data.skills,
+        interests: data.interests,
+        availability: data.availability,
+        portfolio: data.portfolio,
+        github: data.github,
+        linkedin: data.linkedin,
+        resume: data.resume,
+        education: data.education as Education[]
+      } : {
+        name: data.name,
+        companyName: data.companyName,
+        companyDescription: data.companyDescription,
+        founded: data.founded,
+        industry: data.industry,
+        website: data.website,
+        companySize: data.companySize,
+        stage: data.stage,
+        projectNeeds: data.projectNeeds
+      };
+
+      await updateProfile(profileData);
+      
+      toast.success('Profile updated successfully');
+      navigate('/dashboard');
+    } catch (error: any) {
+      toast.error(error.message || 'Error updating profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!user || !profile) {
+    return <div className="container mx-auto py-8">Loading profile...</div>;
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <Card>
+    <div className="container mx-auto py-8 px-4">
+      <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle>Complete Your Profile</CardTitle>
           <CardDescription>
-            {profile.role === "student"
-              ? "Tell us more about your skills and experience."
-              : "Tell us more about your startup."}
+            {isStudent 
+              ? 'Add information about your skills and experience to match with the right opportunities.' 
+              : 'Add information about your company to attract the right talent.'}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {profile.role === "student" ? (
-            <StudentProfileForm />
-          ) : (
-            <StartupProfileForm />
-          )}
+        
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Common fields for both roles */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Controller
+                    name="name"
+                    control={control}
+                    render={({ field }) => (
+                      <Input id="name" {...field} />
+                    )}
+                  />
+                  {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+                </div>
+                
+                {isStudent ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="college">College/University</Label>
+                    <Controller
+                      name="college"
+                      control={control}
+                      render={({ field }) => (
+                        <Input id="college" {...field} />
+                      )}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName">Company Name</Label>
+                    <Controller
+                      name="companyName"
+                      control={control}
+                      render={({ field }) => (
+                        <Input id="companyName" {...field} />
+                      )}
+                    />
+                    {errors.companyName && <p className="text-sm text-red-500">{errors.companyName.message}</p>}
+                  </div>
+                )}
+              </div>
+              
+              {/* Role-specific fields */}
+              {isStudent ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="major">Major/Field of Study</Label>
+                      <Controller
+                        name="major"
+                        control={control}
+                        render={({ field }) => (
+                          <Input id="major" {...field} />
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="graduationYear">Graduation Year</Label>
+                      <Controller
+                        name="graduationYear"
+                        control={control}
+                        render={({ field }) => (
+                          <Input id="graduationYear" type="text" {...field} />
+                        )}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="experienceLevel">Experience Level</Label>
+                    <Controller
+                      name="experienceLevel"
+                      control={control}
+                      render={({ field }) => (
+                        <Select 
+                          onValueChange={(value: string) => field.onChange(value)} 
+                          defaultValue={field.value}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your experience level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="beginner">Beginner</SelectItem>
+                            <SelectItem value="intermediate">Intermediate</SelectItem>
+                            <SelectItem value="advanced">Advanced</SelectItem>
+                            <SelectItem value="expert">Expert</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="availability">Availability</Label>
+                    <Controller
+                      name="availability"
+                      control={control}
+                      render={({ field }) => (
+                        <Select 
+                          onValueChange={(value: string) => field.onChange(value)} 
+                          defaultValue={field.value}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your availability" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="full_time">Full-time</SelectItem>
+                            <SelectItem value="part_time">Part-time</SelectItem>
+                            <SelectItem value="internship">Internship</SelectItem>
+                            <SelectItem value="contract">Contract</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="bio">Bio</Label>
+                    <Controller
+                      name="bio"
+                      control={control}
+                      render={({ field }) => (
+                        <Textarea 
+                          id="bio" 
+                          placeholder="Tell us a bit about yourself" 
+                          className="min-h-[100px]" 
+                          {...field} 
+                        />
+                      )}
+                    />
+                  </div>
+                  
+                  {/* Skills section */}
+                  <div className="space-y-2">
+                    <Label>Skills</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="Add a skill" 
+                        value={newSkill} 
+                        onChange={(e) => setNewSkill(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
+                      />
+                      <Button type="button" onClick={addSkill}>Add</Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {watchedSkills.map((skill, index) => (
+                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                          {skill}
+                          <X className="h-3 w-3 cursor-pointer" onClick={() => removeSkill(skill)} />
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Interests section */}
+                  <div className="space-y-2">
+                    <Label>Interests</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="Add an interest" 
+                        value={newInterest} 
+                        onChange={(e) => setNewInterest(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addInterest())}
+                      />
+                      <Button type="button" onClick={addInterest}>Add</Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {watchedInterests.map((interest, index) => (
+                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                          {interest}
+                          <X className="h-3 w-3 cursor-pointer" onClick={() => removeInterest(interest)} />
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Education section */}
+                  <div className="space-y-4">
+                    <Label>Education</Label>
+                    
+                    <div className="space-y-4 border rounded-md p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="institution">Institution</Label>
+                          <Input 
+                            id="institution" 
+                            value={currentEducation.institution || ''} 
+                            onChange={(e) => setCurrentEducation({...currentEducation, institution: e.target.value})}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="degree">Degree</Label>
+                          <Input 
+                            id="degree" 
+                            value={currentEducation.degree || ''} 
+                            onChange={(e) => setCurrentEducation({...currentEducation, degree: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="field">Field of Study</Label>
+                        <Input 
+                          id="field" 
+                          value={currentEducation.field || ''} 
+                          onChange={(e) => setCurrentEducation({...currentEducation, field: e.target.value})}
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="startYear">Start Year</Label>
+                          <Input 
+                            id="startYear" 
+                            type="number" 
+                            value={currentEducation.startYear || ''} 
+                            onChange={(e) => setCurrentEducation({...currentEducation, startYear: parseInt(e.target.value)})}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="endYear">End Year</Label>
+                          <Input 
+                            id="endYear" 
+                            type="number" 
+                            value={currentEducation.endYear || ''} 
+                            onChange={(e) => setCurrentEducation({...currentEducation, endYear: parseInt(e.target.value)})}
+                            disabled={currentEducation.current}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="current"
+                          checked={currentEducation.current || false}
+                          onChange={(e) => setCurrentEducation({...currentEducation, current: e.target.checked})}
+                          className="h-4 w-4"
+                        />
+                        <Label htmlFor="current" className="text-sm font-normal">Currently studying here</Label>
+                      </div>
+                      
+                      <Button type="button" onClick={addEducation} className="w-full">
+                        Add Education Entry
+                      </Button>
+                    </div>
+                    
+                    {/* Education entries list */}
+                    {educationEntries.length > 0 && (
+                      <div className="space-y-3 mt-4">
+                        <h3 className="font-medium">Education History</h3>
+                        {educationEntries.map((edu, index) => (
+                          <div key={index} className="border rounded-md p-3 flex justify-between">
+                            <div>
+                              <p className="font-medium">{edu.institution}</p>
+                              <p className="text-sm">{edu.degree} in {edu.field}</p>
+                              <p className="text-sm text-gray-500">
+                                {edu.startYear} - {edu.current ? 'Present' : edu.endYear}
+                              </p>
+                            </div>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => removeEducation(index)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* URLs section */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="portfolio">Portfolio URL</Label>
+                      <Controller
+                        name="portfolio"
+                        control={control}
+                        render={({ field }) => (
+                          <Input id="portfolio" {...field} />
+                        )}
+                      />
+                      {errors.portfolio && <p className="text-sm text-red-500">{errors.portfolio.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="github">GitHub URL</Label>
+                      <Controller
+                        name="github"
+                        control={control}
+                        render={({ field }) => (
+                          <Input id="github" {...field} />
+                        )}
+                      />
+                      {errors.github && <p className="text-sm text-red-500">{errors.github.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="linkedin">LinkedIn URL</Label>
+                      <Controller
+                        name="linkedin"
+                        control={control}
+                        render={({ field }) => (
+                          <Input id="linkedin" {...field} />
+                        )}
+                      />
+                      {errors.linkedin && <p className="text-sm text-red-500">{errors.linkedin.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="resume">Resume URL</Label>
+                      <Controller
+                        name="resume"
+                        control={control}
+                        render={({ field }) => (
+                          <Input id="resume" {...field} />
+                        )}
+                      />
+                      {errors.resume && <p className="text-sm text-red-500">{errors.resume.message}</p>}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* Startup-specific fields */
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="companyDescription">Company Description</Label>
+                    <Controller
+                      name="companyDescription"
+                      control={control}
+                      render={({ field }) => (
+                        <Textarea 
+                          id="companyDescription" 
+                          placeholder="Tell us about your company" 
+                          className="min-h-[100px]" 
+                          {...field} 
+                        />
+                      )}
+                    />
+                    {errors.companyDescription && <p className="text-sm text-red-500">{errors.companyDescription.message}</p>}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="industry">Industry</Label>
+                      <Controller
+                        name="industry"
+                        control={control}
+                        render={({ field }) => (
+                          <Input id="industry" {...field} />
+                        )}
+                      />
+                      {errors.industry && <p className="text-sm text-red-500">{errors.industry.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="founded">Founded Year</Label>
+                      <Controller
+                        name="founded"
+                        control={control}
+                        render={({ field }) => (
+                          <Input id="founded" type="number" {...field} 
+                            onChange={(e) => field.onChange(parseInt(e.target.value))}
+                          />
+                        )}
+                      />
+                      {errors.founded && <p className="text-sm text-red-500">{errors.founded.message}</p>}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="website">Company Website</Label>
+                      <Controller
+                        name="website"
+                        control={control}
+                        render={({ field }) => (
+                          <Input id="website" {...field} />
+                        )}
+                      />
+                      {errors.website && <p className="text-sm text-red-500">{errors.website.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="companySize">Company Size</Label>
+                      <Controller
+                        name="companySize"
+                        control={control}
+                        render={({ field }) => (
+                          <Input id="companySize" {...field} />
+                        )}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="stage">Company Stage</Label>
+                    <Controller
+                      name="stage"
+                      control={control}
+                      render={({ field }) => (
+                        <Select 
+                          onValueChange={(value: string) => field.onChange(value)} 
+                          defaultValue={field.value || ''}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select company stage" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="idea">Idea Stage</SelectItem>
+                            <SelectItem value="mvp">MVP</SelectItem>
+                            <SelectItem value="pre_seed">Pre-Seed</SelectItem>
+                            <SelectItem value="seed">Seed</SelectItem>
+                            <SelectItem value="series_a">Series A</SelectItem>
+                            <SelectItem value="series_b">Series B+</SelectItem>
+                            <SelectItem value="growth">Growth</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="projectNeeds">Project Needs</Label>
+                    <Controller
+                      name="projectNeeds"
+                      control={control}
+                      render={({ field }) => (
+                        <Textarea 
+                          id="projectNeeds" 
+                          placeholder="What kind of projects are you looking for?" 
+                          className="min-h-[100px]" 
+                          {...field} 
+                        />
+                      )}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Saving...' : 'Save Profile'}
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>

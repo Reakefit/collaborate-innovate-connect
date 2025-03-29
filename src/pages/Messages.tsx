@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProjectMessage, Project } from "@/types/database";
 import { fetchProjectMessages } from '@/services/database';
 import { format } from 'date-fns';
+import { supabase } from '@/lib/supabase';
 
 const Messages = () => {
   const { user, profile } = useAuth();

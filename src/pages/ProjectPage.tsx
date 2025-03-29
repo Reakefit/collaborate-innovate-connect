@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,14 +14,19 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/context/ProjectContext";
 import { useAuth } from "@/context/AuthContext";
-import { Project, Application, ProjectMilestone, ProjectTask, TeamRole, TeamMemberStatus, MilestoneStatus, TaskStatus, ProjectReview } from "@/types/database";
-import { fetchProjectById, fetchProjectApplications, fetchProjectMilestones, fetchProjectTasks, fetchProjectReviews } from '@/services/database';
-import { submitApplication } from '@/services/database';
+import { 
+  Project, Application, ProjectMilestone, ProjectTask, 
+  MilestoneStatus, TaskStatus, ProjectReview, ProjectResource
+} from "@/types/database";
+import { 
+  fetchProjectById, fetchProjectApplications, fetchProjectMilestones, 
+  fetchProjectTasks, fetchProjectReviews 
+} from '@/services/database';
 import { toast } from 'sonner';
-import { Progress } from "@/components/ui/progress"
-import { Separator } from "@/components/ui/separator"
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 
-const ProjectDetail = () => {
+const ProjectPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
@@ -594,4 +599,4 @@ const ProjectDetail = () => {
   );
 };
 
-export default ProjectDetail;
+export default ProjectPage;

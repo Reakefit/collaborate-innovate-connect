@@ -1,155 +1,178 @@
 
-import { supabase } from '@/lib/supabase';
-import { Project, ProjectMilestone, ProjectTask, MilestoneStatus, TaskStatus } from '@/types/database';
+import { supabase } from "@/lib/supabase";
+import { ProjectTask, ProjectMilestone, Project, TaskStatus, MilestoneStatus } from "@/types/database";
+import { updateTaskStatus } from './database';
 
-export const getTaskCompletion = async (projectId: string) => {
+// Calculate progress percentages for projects, milestones, and tasks
+export const calculateTaskProgress = (task: ProjectTask): number => {
+  if (task.status === 'completed') return 100;
+  if (task.status === 'in_progress') return 50;
+  if (task.status === 'blocked') return 25;
+  return 0; // not_started
+};
+
+export const calculateMilestoneProgress = (milestone: ProjectMilestone): number => {
+  if (!milestone.tasks || milestone.tasks.length === 0) {
+    // No tasks, base progress on milestone status
+    if (milestone.status === 'completed') return 100;
+    if (milestone.status === 'in_progress') return 50;
+    if (milestone.status === 'delayed') return 25;
+    return 0; // not_started
+  }
+
+  // Calculate based on tasks
+  const totalTasks = milestone.tasks.length;
+  const completedTasks = milestone.tasks.filter(task => 
+    task.status === 'completed'
+  ).length;
+  
+  return Math.round((completedTasks / totalTasks) * 100);
+};
+
+export const calculateProjectProgress = (project: Project): number => {
+  if (!project.milestones || project.milestones.length === 0) {
+    // No milestones, return a default progress based on project status
+    if (project.status === 'completed') return 100;
+    if (project.status === 'in_progress') return 50;
+    if (project.status === 'cancelled') return 0;
+    return 10; // open but not started
+  }
+
+  // Calculate based on milestones
+  const totalMilestones = project.milestones.length;
+  let totalProgress = 0;
+
+  project.milestones.forEach(milestone => {
+    totalProgress += calculateMilestoneProgress(milestone);
+  });
+
+  return Math.round(totalProgress / totalMilestones);
+};
+
+// Update task status
+export const updateTask = async (taskId: string, status: TaskStatus): Promise<boolean> => {
   try {
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('project_id', projectId);
-
+    const { error } = await updateTaskStatus(taskId, status);
+    
     if (error) throw error;
-
-    const totalTasks = data.length;
-    const completedTasks = data.filter(task => 
-      task.completed || task.status === 'completed'
-    ).length;
-
-    return {
-      totalTasks,
-      completedTasks,
-      completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
-    };
+    
+    return true;
   } catch (error) {
-    console.error('Error getting task completion:', error);
-    return { totalTasks: 0, completedTasks: 0, completionRate: 0 };
+    console.error('Error updating task status:', error);
+    return false;
   }
 };
 
-export const updateMilestoneProgress = async (milestoneId: string) => {
+// Update milestone status
+export const updateMilestone = async (milestoneId: string, status: MilestoneStatus): Promise<boolean> => {
   try {
+    const { error } = await supabase
+      .from('project_milestones')
+      .update({ status })
+      .eq('id', milestoneId);
+    
+    if (error) throw error;
+    
+    return true;
+  } catch (error) {
+    console.error('Error updating milestone status:', error);
+    return false;
+  }
+};
+
+// Auto-update milestone status based on tasks completion
+export const updateMilestoneFromTasks = async (milestoneId: string): Promise<boolean> => {
+  try {
+    // First get all tasks for this milestone
     const { data: tasks, error: tasksError } = await supabase
-      .from('tasks')
+      .from('project_tasks')
       .select('*')
       .eq('milestone_id', milestoneId);
-
+    
     if (tasksError) throw tasksError;
-
-    const totalTasks = tasks.length;
+    
+    if (tasks.length === 0) return true; // No tasks, nothing to update
+    
+    // Calculate completion percentage
     const completedTasks = tasks.filter(task => 
-      task.completed || (task.status && task.status === 'completed')
+      task.status === 'completed'
     ).length;
-
-    const progressValue = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-    // No need to modify the actual DB schema, just include progress in our UI calculations
-    const milestoneUpdate = {
-      // Don't include progress in the DB update
-      // Instead, we'll calculate it on the fly when needed
-    };
-
-    if (Object.keys(milestoneUpdate).length > 0) {
-      const { error: updateError } = await supabase
-        .from('milestones')
-        .update(milestoneUpdate)
-        .eq('id', milestoneId);
-
-      if (updateError) throw updateError;
+    
+    const completionPercentage = (completedTasks / tasks.length) * 100;
+    
+    // Determine new status based on completion
+    let newStatus: MilestoneStatus = 'not_started';
+    
+    if (completionPercentage === 100) {
+      newStatus = 'completed';
+    } else if (completionPercentage > 0) {
+      newStatus = 'in_progress';
     }
-
-    return { progress: progressValue };
+    
+    // Has any blocked tasks?
+    const hasBlocked = tasks.some(task => 
+      task.status === 'blocked'
+    );
+    
+    if (hasBlocked && newStatus !== 'completed') {
+      newStatus = 'delayed';
+    }
+    
+    // Update milestone status
+    const { error } = await supabase
+      .from('project_milestones')
+      .update({ status: newStatus })
+      .eq('id', milestoneId);
+    
+    if (error) throw error;
+    
+    return true;
   } catch (error) {
-    console.error('Error updating milestone progress:', error);
-    throw error;
+    console.error('Error updating milestone from tasks:', error);
+    return false;
   }
 };
 
-export const updateProjectProgress = async (projectId: string) => {
+// Auto-update project status based on milestones completion
+export const updateProjectFromMilestones = async (projectId: string): Promise<boolean> => {
   try {
+    // First get all milestones for this project
     const { data: milestones, error: milestonesError } = await supabase
-      .from('milestones')
+      .from('project_milestones')
       .select('*')
       .eq('project_id', projectId);
-
+    
     if (milestonesError) throw milestonesError;
-
-    const { data: tasks, error: tasksError } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('project_id', projectId);
-
-    if (tasksError) throw tasksError;
-
-    // Calculate overall progress
-    const totalTasks = tasks.length;
-    let completedTasks = 0;
-
-    // Count completed tasks with type safety
-    for (const task of tasks) {
-      if (task.completed || (task.status && task.status === 'completed')) {
-        completedTasks++;
-      }
-    }
-
-    const progressValue = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-    // No need to modify the actual DB schema, just include progress in our UI calculations
-    return { progress: progressValue };
-  } catch (error) {
-    console.error('Error updating project progress:', error);
-    throw error;
-  }
-};
-
-export const getProjectProgressDetails = async (projectId: string) => {
-  try {
-    const { data: milestones, error: milestonesError } = await supabase
-      .from('milestones')
-      .select('*')
-      .eq('project_id', projectId);
-
-    if (milestonesError) throw milestonesError;
-
-    const { data: tasks, error: tasksError } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('project_id', projectId);
-
-    if (tasksError) throw tasksError;
-
-    // Calculate milestone progress
-    const milestoneProgress = milestones.map(milestone => {
-      const milestoneTasks = tasks.filter(task => task.milestone_id === milestone.id);
-      const totalTasks = milestoneTasks.length;
-      const completedTasks = milestoneTasks.filter(task => 
-        task.completed || (task.status && task.status === 'completed')
-      ).length;
-      const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-      return {
-        ...milestone,
-        progress,
-        totalTasks,
-        completedTasks
-      };
-    });
-
-    // Overall project progress
-    const totalTasks = tasks.length;
-    const completedTasks = tasks.filter(task => 
-      task.completed || (task.status && task.status === 'completed')
+    
+    if (milestones.length === 0) return true; // No milestones, nothing to update
+    
+    // Calculate completion percentage
+    const completedMilestones = milestones.filter(milestone => 
+      milestone.status === 'completed'
     ).length;
-    const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-    return {
-      milestones: milestoneProgress,
-      overallProgress,
-      totalTasks,
-      completedTasks
-    };
+    
+    const completionPercentage = (completedMilestones / milestones.length) * 100;
+    
+    // Determine new status based on completion
+    let newStatus: ProjectStatus = 'open';
+    
+    if (completionPercentage === 100) {
+      newStatus = 'completed';
+    } else if (completionPercentage > 0) {
+      newStatus = 'in_progress';
+    }
+    
+    // Update project status
+    const { error } = await supabase
+      .from('projects')
+      .update({ status: newStatus })
+      .eq('id', projectId);
+    
+    if (error) throw error;
+    
+    return true;
   } catch (error) {
-    console.error('Error getting project progress details:', error);
-    throw error;
+    console.error('Error updating project from milestones:', error);
+    return false;
   }
 };
