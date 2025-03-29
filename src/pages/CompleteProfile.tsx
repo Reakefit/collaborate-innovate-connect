@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -13,6 +14,7 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Profile, Education } from '@/types/database';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 
 const FormWatch = ({ children, control }) => {
   useWatch({
@@ -222,13 +224,6 @@ const CompleteProfile = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const FormWatch = ({ children, control }) => {
-    useWatch({
-      control
-    });
-    return children;
   };
 
   const skillValues = form.watch("skills") || [];
@@ -618,15 +613,15 @@ const CompleteProfile = () => {
                               <SelectTrigger>
                                 <SelectValue placeholder="Select company stage" />
                               </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="idea">Idea</SelectItem>
-                                <SelectItem value="seed">Seed</SelectItem>
-                                <SelectItem value="early">Early Stage</SelectItem>
-                                <SelectItem value="growth">Growth Stage</SelectItem>
-                                <SelectItem value="mature">Mature Stage</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="idea">Idea</SelectItem>
+                              <SelectItem value="seed">Seed</SelectItem>
+                              <SelectItem value="early">Early Stage</SelectItem>
+                              <SelectItem value="growth">Growth Stage</SelectItem>
+                              <SelectItem value="mature">Mature Stage</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
