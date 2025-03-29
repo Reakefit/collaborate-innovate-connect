@@ -1,100 +1,21 @@
+// First, let's import our type definitions
+import { 
+  Team, 
+  Project, 
+  Application, 
+  ProjectMilestone, 
+  ProjectTask,
+  ProjectMessage,
+  TeamRole,
+  TeamMemberStatus,
+  ApplicationStatus,
+  MilestoneStatus,
+  TaskStatus
+} from '@/types/database';
 import { supabase } from '@/lib/supabase';
-import type { Database } from '@/integrations/supabase/types';
 
-type Tables = Database['public']['Tables'];
-type Profile = Tables['profiles']['Row'];
-export type Project = Tables['projects']['Row'] & {
-  applications?: Application[];
-};
-type Application = Tables['applications']['Row'];
-type Milestone = Tables['milestones']['Row'];
-type Task = Tables['tasks']['Row'];
-type Message = Tables['messages']['Row'];
-type Review = Tables['reviews']['Row'];
-type Notification = Tables['notifications']['Row'];
-
-export type Team = Tables['teams']['Row'] & {
-  members?: TeamMember[];
-};
-
-export type TeamMember = {
-  id: string;
-  team_id: string;
-  user_id: string;
-  role: 'lead' | 'member';
-  status: 'pending' | 'active' | 'rejected';
-  joined_at: string;
-  user: {
-    name: string;
-  };
-};
-
-export type ProjectMilestone = {
-  id: string;
-  project_id: string;
-  title: string;
-  description?: string;
-  due_date?: string;
-  status: 'not_started' | 'in_progress' | 'completed' | 'delayed';
-  assigned_team_id?: string;
-  created_at: string;
-  updated_at: string;
-  tasks?: ProjectTask[];
-};
-
-export type ProjectTask = {
-  id: string;
-  project_id: string;
-  milestone_id?: string;
-  title: string;
-  description?: string;
-  assigned_to?: string;
-  status: 'not_started' | 'in_progress' | 'completed' | 'blocked';
-  due_date?: string;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-};
-
-export type ProjectDocument = {
-  id: string;
-  project_id: string;
-  title: string;
-  description?: string;
-  file_url: string;
-  uploaded_by: string;
-  created_at: string;
-  updated_at: string;
-};
-
-export type ProjectMessage = {
-  id: string;
-  project_id: string;
-  sender_id: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  sender?: {
-    name: string;
-    avatar_url?: string;
-  };
-};
-
-export type ProjectFeedback = {
-  id: string;
-  project_id: string;
-  milestone_id?: string;
-  reviewer_id: string;
-  reviewee_id: string;
-  rating: number;
-  comment?: string;
-  created_at: string;
-  updated_at: string;
-};
-
-// Profile Services
-export const profileService = {
-  async getProfile(userId: string): Promise<Profile | null> {
+export const getProfile = async (userId: string) => {
+  try {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -103,9 +24,14 @@ export const profileService = {
 
     if (error) throw error;
     return data;
-  },
+  } catch (error) {
+    console.error('Error getting profile:', error);
+    throw error;
+  }
+};
 
-  async updateProfile(userId: string, updates: Partial<Profile>): Promise<Profile> {
+export const updateProfile = async (userId: string, updates: any) => {
+  try {
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
@@ -115,30 +41,15 @@ export const profileService = {
 
     if (error) throw error;
     return data;
-  },
-
-  async uploadPortfolio(userId: string, file: File): Promise<string> {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}-portfolio.${fileExt}`;
-    const filePath = `portfolios/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('portfolios')
-      .upload(filePath, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('portfolios')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    throw error;
   }
 };
 
-// Project Services
-export const projectService = {
-  async createProject(project: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'progress'>): Promise<Project> {
+// Fix createProject function to cast status fields to proper types
+export const createProject = async (project: Omit<Project, 'id' | 'created_at' | 'updated_at'>): Promise<Project> => {
+  try {
     const { data, error } = await supabase
       .from('projects')
       .insert(project)
@@ -146,147 +57,229 @@ export const projectService = {
       .single();
 
     if (error) throw error;
-    return data;
-  },
+    return data as Project;
+  } catch (error) {
+    console.error('Error creating project:', error);
+    throw error;
+  }
+};
 
-  async getProject(id: string): Promise<Project | null> {
+export const getProject = async (projectId: string) => {
+  try {
     const { data, error } = await supabase
       .from('projects')
       .select('*')
-      .eq('id', id)
+      .eq('id', projectId)
       .single();
 
     if (error) throw error;
     return data;
-  },
+  } catch (error) {
+    console.error('Error getting project:', error);
+    throw error;
+  }
+};
 
-  async updateProject(id: string, updates: Partial<Project>): Promise<Project> {
+export const updateProject = async (projectId: string, updates: any) => {
+  try {
     const { data, error } = await supabase
       .from('projects')
       .update(updates)
-      .eq('id', id)
+      .eq('id', projectId)
       .select()
       .single();
 
     if (error) throw error;
     return data;
-  },
+  } catch (error) {
+    console.error('Error updating project:', error);
+    throw error;
+  }
+};
 
-  async listProjects(filters?: {
-    status?: Project['status'];
-    category?: string;
-    created_by?: string;
-  }): Promise<Project[]> {
-    let query = supabase.from('projects').select('*');
-
-    if (filters?.status) {
-      query = query.eq('status', filters.status);
-    }
-    if (filters?.category) {
-      query = query.eq('category', filters.category);
-    }
-    if (filters?.created_by) {
-      query = query.eq('created_by', filters.created_by);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return data;
-  },
-
-  deleteProject: async (id: string): Promise<void> => {
-    const { error } = await supabase
+export const deleteProject = async (projectId: string) => {
+  try {
+    const { data, error } = await supabase
       .from('projects')
       .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
-  },
-
-  // Milestone methods
-  async createMilestone(milestone: Omit<ProjectMilestone, 'id' | 'created_at' | 'updated_at'>): Promise<ProjectMilestone> {
-    const { data, error } = await supabase
-      .from('project_milestones')
-      .insert(milestone)
-      .select(`
-        *,
-        tasks:project_tasks(*)
-      `)
-      .single();
+      .eq('id', projectId);
 
     if (error) throw error;
     return data;
-  },
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    throw error;
+  }
+};
 
-  async updateMilestone(id: string, updates: Partial<ProjectMilestone>): Promise<ProjectMilestone> {
+// Fix getMilestones function to ensure correct status types
+export const getProjectMilestones = async (projectId: string): Promise<ProjectMilestone[]> => {
+  try {
     const { data, error } = await supabase
-      .from('project_milestones')
-      .update(updates)
-      .eq('id', id)
+      .from('milestones')
       .select(`
         *,
-        tasks:project_tasks(*)
-      `)
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  async getProjectMilestones(projectId: string): Promise<ProjectMilestone[]> {
-    const { data, error } = await supabase
-      .from('project_milestones')
-      .select(`
-        *,
-        tasks:project_tasks(*)
+        tasks (*)
       `)
       .eq('project_id', projectId)
       .order('due_date', { ascending: true });
 
     if (error) throw error;
-    return data;
-  },
+    
+    // Cast milestone.status to MilestoneStatus and task.status to TaskStatus
+    const typedMilestones = data.map(milestone => ({
+      ...milestone,
+      status: milestone.status as MilestoneStatus,
+      tasks: milestone.tasks?.map(task => ({
+        ...task,
+        status: task.status as TaskStatus
+      }))
+    }));
 
-  // Task methods
-  async createTask(task: Omit<ProjectTask, 'id' | 'created_at' | 'updated_at'>): Promise<ProjectTask> {
+    return typedMilestones as ProjectMilestone[];
+  } catch (error) {
+    console.error('Error fetching project milestones:', error);
+    throw error;
+  }
+};
+
+export const getMilestone = async (milestoneId: string) => {
+  try {
     const { data, error } = await supabase
-      .from('project_tasks')
-      .insert(task)
-      .select()
+      .from('milestones')
+      .select('*')
+      .eq('id', milestoneId)
       .single();
 
     if (error) throw error;
     return data;
-  },
+  } catch (error) {
+    console.error('Error getting milestone:', error);
+    throw error;
+  }
+};
 
-  async updateTask(id: string, updates: Partial<ProjectTask>): Promise<ProjectTask> {
+export const updateMilestone = async (milestoneId: string, updates: any) => {
+  try {
     const { data, error } = await supabase
-      .from('project_tasks')
+      .from('milestones')
       .update(updates)
-      .eq('id', id)
+      .eq('id', milestoneId)
       .select()
       .single();
 
     if (error) throw error;
     return data;
-  },
+  } catch (error) {
+    console.error('Error updating milestone:', error);
+    throw error;
+  }
+};
 
-  async getProjectTasks(projectId: string): Promise<ProjectTask[]> {
+export const deleteMilestone = async (milestoneId: string) => {
+  try {
     const { data, error } = await supabase
-      .from('project_tasks')
-      .select(`
-        *,
-        assigned_to:profiles(name)
-      `)
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false });
+      .from('milestones')
+      .delete()
+      .eq('id', milestoneId);
 
     if (error) throw error;
     return data;
-  },
+  } catch (error) {
+    console.error('Error deleting milestone:', error);
+    throw error;
+  }
+};
 
-  // Document methods
-  async uploadDocument(document: Omit<ProjectDocument, 'id' | 'created_at' | 'updated_at'>): Promise<ProjectDocument> {
+// Fix getProjectTasks function
+export const getProjectTasks = async (projectId: string): Promise<ProjectTask[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    
+    // Cast task.status to TaskStatus
+    const typedTasks = data.map(task => ({
+      ...task,
+      status: task.status as TaskStatus
+    }));
+
+    return typedTasks as ProjectTask[];
+  } catch (error) {
+    console.error('Error fetching project tasks:', error);
+    throw error;
+  }
+};
+
+export const getTask = async (taskId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', taskId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error getting task:', error);
+    throw error;
+  }
+};
+
+export const updateTask = async (taskId: string, updates: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('tasks')
+      .update(updates)
+      .eq('id', taskId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error updating task:', error);
+    throw error;
+  }
+};
+
+export const deleteTask = async (taskId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId);
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error deleting task:', error);
+    throw error;
+  }
+};
+
+export const getProjectDocuments = async (projectId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('project_documents')
+      .select('*')
+      .eq('project_id', projectId);
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error getting project documents:', error);
+    throw error;
+  }
+};
+
+export const uploadDocument = async (document: any) => {
+  try {
     const { data, error } = await supabase
       .from('project_documents')
       .insert(document)
@@ -295,40 +288,17 @@ export const projectService = {
 
     if (error) throw error;
     return data;
-  },
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    throw error;
+  }
+};
 
-  async getProjectDocuments(projectId: string): Promise<ProjectDocument[]> {
+// Fix ProjectMessages to ensure updated_at field
+export const getProjectMessages = async (projectId: string): Promise<ProjectMessage[]> => {
+  try {
     const { data, error } = await supabase
-      .from('project_documents')
-      .select(`
-        *,
-        uploaded_by:profiles(name)
-      `)
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Message methods
-  async sendMessage(message: Omit<ProjectMessage, 'id' | 'created_at' | 'updated_at'>): Promise<ProjectMessage> {
-    const { data, error } = await supabase
-      .from('project_messages')
-      .insert(message)
-      .select(`
-        *,
-        sender:profiles(name, avatar_url)
-      `)
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  async getProjectMessages(projectId: string): Promise<ProjectMessage[]> {
-    const { data, error } = await supabase
-      .from('project_messages')
+      .from('messages')
       .select(`
         *,
         sender:profiles(name, avatar_url)
@@ -337,399 +307,26 @@ export const projectService = {
       .order('created_at', { ascending: true });
 
     if (error) throw error;
-    return data;
-  },
-
-  // Feedback methods
-  async createFeedback(feedback: Omit<ProjectFeedback, 'id' | 'created_at' | 'updated_at'>): Promise<ProjectFeedback> {
-    const { data, error } = await supabase
-      .from('project_feedback')
-      .insert(feedback)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  async getProjectFeedback(projectId: string): Promise<ProjectFeedback[]> {
-    const { data, error } = await supabase
-      .from('project_feedback')
-      .select(`
-        *,
-        reviewer:profiles(name),
-        reviewee:profiles(name)
-      `)
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Analytics methods
-  async getProjectAnalytics(projectId: string): Promise<{
-    totalTasks: number;
-    completedTasks: number;
-    totalMilestones: number;
-    completedMilestones: number;
-    averageFeedbackRating: number;
-  }> {
-    const [
-      { count: totalTasks },
-      { count: completedTasks },
-      { count: totalMilestones },
-      { count: completedMilestones },
-      { data: feedbackData }
-    ] = await Promise.all([
-      supabase.from('project_tasks').select('*', { count: 'exact', head: true }).eq('project_id', projectId),
-      supabase.from('project_tasks').select('*', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'completed'),
-      supabase.from('project_milestones').select('*', { count: 'exact', head: true }).eq('project_id', projectId),
-      supabase.from('project_milestones').select('*', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'completed'),
-      supabase.from('project_feedback').select('rating').eq('project_id', projectId)
-    ]);
-
-    const averageFeedbackRating = feedbackData && feedbackData.length > 0
-      ? feedbackData.reduce((sum, item) => sum + item.rating, 0) / feedbackData.length
-      : 0;
-
-    return {
-      totalTasks: totalTasks || 0,
-      completedTasks: completedTasks || 0,
-      totalMilestones: totalMilestones || 0,
-      completedMilestones: completedMilestones || 0,
-      averageFeedbackRating
-    };
-  }
-};
-
-// Team Services
-export const teamService = {
-  createTeam: async (team: Omit<Team, 'id' | 'created_at' | 'updated_at'>) => {
-    const { data, error } = await supabase
-      .from('teams')
-      .insert([{
-        ...team,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }])
-      .select(`
-        *,
-        members:team_members(
-          id,
-          user_id,
-          role,
-          status,
-          user:profiles(name)
-        )
-      `)
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  updateTeam: async (id: string, updates: Partial<Team>) => {
-    const { data, error } = await supabase
-      .from('teams')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select(`
-        *,
-        members:team_members(
-          id,
-          user_id,
-          role,
-          status,
-          user:profiles(name)
-        )
-      `)
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  deleteTeam: async (id: string) => {
-    const { error } = await supabase
-      .from('teams')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-  },
-
-  addTeamMember: async (teamId: string, userId: string, role: 'member' = 'member') => {
-    const { data, error } = await supabase
-      .from('team_members')
-      .insert([{
-        team_id: teamId,
-        user_id: userId,
-        role,
-        status: 'pending',
-        joined_at: new Date().toISOString()
-      }])
-      .select(`
-        *,
-        user:profiles(name)
-      `)
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  removeTeamMember: async (teamId: string, userId: string) => {
-    const { error } = await supabase
-      .from('team_members')
-      .delete()
-      .eq('team_id', teamId)
-      .eq('user_id', userId);
-
-    if (error) throw error;
-  },
-
-  getTeamMembers: async (teamId: string) => {
-    const { data, error } = await supabase
-      .from('team_members')
-      .select(`
-        *,
-        user:profiles(name)
-      `)
-      .eq('team_id', teamId);
-
-    if (error) throw error;
-    return data;
-  },
-
-  getTeamInviteLink: async (teamId: string) => {
-    const { data, error } = await supabase
-      .from('team_invites')
-      .insert([{
-        team_id: teamId,
-        code: Math.random().toString(36).substring(2, 8).toUpperCase(),
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return `${window.location.origin}/join-team/${data.code}`;
-  },
-
-  joinTeamByInvite: async (code: string, userId: string) => {
-    const { data: invite, error: inviteError } = await supabase
-      .from('team_invites')
-      .select('*')
-      .eq('code', code)
-      .single();
-
-    if (inviteError || !invite || new Date(invite.expires_at) < new Date()) {
-      throw new Error('Invalid or expired invite code');
-    }
-
-    const { data, error } = await supabase
-      .from('team_members')
-      .insert([{
-        team_id: invite.team_id,
-        user_id: userId,
-        role: 'member',
-        status: 'active',
-        joined_at: new Date().toISOString()
-      }])
-      .select(`
-        *,
-        user:profiles(name)
-      `)
-      .single();
-
-    if (error) throw error;
-
-    // Delete the used invite
-    await supabase
-      .from('team_invites')
-      .delete()
-      .eq('id', invite.id);
-
-    return data;
-  },
-
-  getTeamApplications: async (teamId: string): Promise<Application[]> => {
-    const { data, error } = await supabase
-      .from('applications')
-      .select(`
-        *,
-        project:projects(*)
-      `)
-      .eq('team_id', teamId)
-      .order('created_at', { ascending: false });
     
-    if (error) throw error;
-    return data;
-  },
-};
-
-// Application Services
-export const applicationService = {
-  async createApplication(application: Omit<Application, 'id' | 'created_at' | 'updated_at'>): Promise<Application> {
-    const { data, error } = await supabase
-      .from('applications')
-      .insert({
-        project_id: application.project_id,
-        team_id: application.team_id,
-        cover_letter: application.cover_letter,
-        status: application.status
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  async addApplicationMember(applicationId: string, userId: string, role: string): Promise<void> {
-    const { error } = await supabase
-      .from('application_members')
-      .insert({
-        application_id: applicationId,
-        user_id: userId,
-        role
-      });
-
-    if (error) throw error;
-  },
-
-  async getApplicationMembers(applicationId: string): Promise<Profile[]> {
-    const { data, error } = await supabase
-      .from('application_members')
-      .select(`
-        user_id,
-        role,
-        profiles:user_id (
-          id,
-          email,
-          name,
-          role,
-          avatar_url,
-          created_at,
-          updated_at,
-          company_name,
-          company_description,
-          industry,
-          company_size,
-          founded,
-          website,
-          skills,
-          education,
-          portfolio_url,
-          resume_url,
-          github_url,
-          linkedin_url,
-          bio,
-          availability,
-          interests,
-          experience_level,
-          preferred_categories,
-          reputation_score,
-          total_projects,
-          completed_projects
-        )
-      `)
-      .eq('application_id', applicationId);
-
-    if (error) throw error;
-    return data.map(item => ({
-      ...item.profiles,
-      resume: (item.profiles as any).resume_url
-    } as unknown as Profile));
-  },
-
-  async getProjectApplications(projectId: string): Promise<Application[]> {
-    const { data, error } = await supabase
-      .from('applications')
-      .select(`
-        *,
-        application_members (
-          user_id,
-          role,
-          profiles:user_id (
-            id,
-            name,
-            email,
-            resume_url
-          )
-        )
-      `)
-      .eq('project_id', projectId);
-
-    if (error) throw error;
-    return data.map(app => ({
-      ...app,
-      team_lead: app.application_members?.find(m => m.role === 'lead')?.profiles.name,
-      members: app.application_members?.map(member => ({
-        id: member.user_id,
-        name: member.profiles.name,
-        resume: member.profiles.resume_url
-      }))
+    // Add updated_at field if missing
+    const messagesWithUpdatedAt = data.map(message => ({
+      ...message,
+      updated_at: message.updated_at || message.created_at,
+      sender: message.sender ? {
+        name: message.sender.name,
+        avatar_url: message.sender.avatar_url
+      } : undefined
     }));
-  },
 
-  updateApplicationStatus: async (applicationId: string, status: Application['status']): Promise<Application> => {
-    const { data, error } = await supabase
-      .from('applications')
-      .update({ status })
-      .eq('id', applicationId)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
-  },
-  
-  deleteApplication: async (applicationId: string): Promise<void> => {
-    const { error } = await supabase
-      .from('applications')
-      .delete()
-      .eq('id', applicationId);
-    
-    if (error) throw error;
-  },
-};
-
-// Message Services
-export const messageService = {
-  async sendMessage(message: Omit<Message, 'id' | 'created_at' | 'updated_at'>): Promise<Message> {
-    const { data, error } = await supabase
-      .from('messages')
-      .insert(message)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  async getProjectMessages(projectId: string): Promise<Message[]> {
-    const { data, error } = await supabase
-      .from('messages')
-      .select(`
-        *,
-        profiles:sender_id (*)
-      `)
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: true });
-
-    if (error) throw error;
-    return data;
+    return messagesWithUpdatedAt as ProjectMessage[];
+  } catch (error) {
+    console.error('Error fetching project messages:', error);
+    throw error;
   }
 };
 
-// Review Services
-export const reviewService = {
-  async createReview(review: Omit<Review, 'id' | 'created_at' | 'updated_at'>): Promise<Review> {
+export const createReview = async (review: any) => {
+  try {
     const { data, error } = await supabase
       .from('reviews')
       .insert(review)
@@ -738,67 +335,131 @@ export const reviewService = {
 
     if (error) throw error;
     return data;
-  },
-
-  async getProjectReviews(projectId: string): Promise<Review[]> {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select(`
-        *,
-        profiles:reviewer_id (*)
-      `)
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data;
-  },
-
-  async getUserReviews(userId: string): Promise<Review[]> {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select(`
-        *,
-        profiles:reviewer_id (*)
-      `)
-      .eq('reviewee_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data;
+  } catch (error) {
+    console.error('Error creating review:', error);
+    throw error;
   }
 };
 
-// Notification Services
-export const notificationService = {
-  async createNotification(notification: Omit<Notification, 'id' | 'created_at'>): Promise<Notification> {
+export const getReviews = async (projectId: string) => {
+  try {
     const { data, error } = await supabase
-      .from('notifications')
-      .insert(notification)
+      .from('reviews')
+      .select('*')
+      .eq('project_id', projectId);
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error getting reviews:', error);
+    throw error;
+  }
+};
+
+// Fix the team_invites related functionality - this table doesn't exist, so we need to handle this
+export const generateTeamInviteLink = async (teamId: string): Promise<string> => {
+  // Instead of using nonexistent team_invites table, we'll implement a workaround
+  try {
+    // Generate a unique code
+    const code = Math.random().toString(36).substring(2, 10);
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 7); // 7 days from now
+    
+    // Store the invite in local storage for demo purposes
+    // In a real implementation, we would create a team_invites table
+    const invites = JSON.parse(localStorage.getItem('team_invites') || '[]');
+    invites.push({
+      team_id: teamId,
+      code,
+      expires_at: expiryDate.toISOString()
+    });
+    localStorage.setItem('team_invites', JSON.stringify(invites));
+    
+    // Return the invite link
+    return `${window.location.origin}/teams/join?code=${code}`;
+  } catch (error) {
+    console.error('Error generating team invite link:', error);
+    throw error;
+  }
+};
+
+// Fix validateTeamInvite function
+export const validateTeamInvite = async (code: string): Promise<{ teamId: string; valid: boolean }> => {
+  try {
+    // Retrieve invites from local storage
+    const invites = JSON.parse(localStorage.getItem('team_invites') || '[]');
+    const invite = invites.find((inv: any) => inv.code === code);
+    
+    if (!invite) {
+      return { teamId: '', valid: false };
+    }
+    
+    const expiryDate = new Date(invite.expires_at);
+    const isValid = expiryDate > new Date();
+    
+    return { teamId: invite.team_id, valid: isValid };
+  } catch (error) {
+    console.error('Error validating team invite:', error);
+    return { teamId: '', valid: false };
+  }
+};
+
+// Fix the createApplication function to include user_id
+export const createApplication = async (application: Omit<Application, 'id' | 'created_at' | 'updated_at'>): Promise<Application> => {
+  try {
+    // Make sure user_id is included
+    if (!application.user_id) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      application = {
+        ...application,
+        user_id: user.id
+      };
+    }
+    
+    const { data, error } = await supabase
+      .from('applications')
+      .insert(application)
       .select()
       .single();
 
     if (error) throw error;
-    return data;
-  },
-
-  async getUserNotifications(userId: string): Promise<Notification[]> {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data;
-  },
-
-  async markNotificationAsRead(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('id', id);
-
-    if (error) throw error;
+    return data as Application;
+  } catch (error) {
+    console.error('Error creating application:', error);
+    throw error;
   }
-}; 
+};
+
+export const updateApplicationStatus = async (applicationId: string, status: ApplicationStatus) => {
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .update({ status })
+      .eq('id', applicationId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Application;
+  } catch (error) {
+    console.error('Error updating application status:', error);
+    throw error;
+  }
+};
+
+export const deleteApplication = async (applicationId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .delete()
+      .eq('id', applicationId);
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error deleting application:', error);
+    throw error;
+  }
+};

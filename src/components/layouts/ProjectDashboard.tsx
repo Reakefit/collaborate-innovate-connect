@@ -1,114 +1,124 @@
+
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProjects } from '@/context/ProjectContext';
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Bell, Search, LayoutDashboard, Briefcase, Users, MessageSquare, CheckSquare, Settings } from 'lucide-react';
 
-interface ProjectDashboardProps {
-  children: React.ReactNode;
-}
-
-const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ children }) => {
-  const navigate = useNavigate();
+const ProjectDashboard = () => {
+  const { projects, teams, applications, loading } = useProjects();
   const { user, profile } = useAuth();
-  const { projects } = useProjects();
 
-  if (!user || !profile) {
-    return null;
-  }
-
-  return (
-    <div className="min-h-screen flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-background border-r flex flex-col">
-        <div className="p-4 border-b">
-          <div className="flex items-center space-x-4">
-            <Avatar>
-              <AvatarFallback>{profile.name[0]}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h2 className="font-semibold">{profile.name}</h2>
-              <p className="text-sm text-muted-foreground">{profile.role}</p>
-            </div>
+  if (loading) {
+    return (
+      <div className="py-8">
+        <div className="container mx-auto">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+            <div className="h-64 bg-gray-200 rounded mb-4"></div>
+            <div className="h-32 bg-gray-200 rounded"></div>
           </div>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-1">
-          <Link
-            to="/dashboard"
-            className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-accent"
-          >
-            <LayoutDashboard className="h-5 w-5" />
-            <span>Dashboard</span>
-          </Link>
-          <Link
-            to="/projects"
-            className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-accent"
-          >
-            <Briefcase className="h-5 w-5" />
-            <span>Projects</span>
-          </Link>
-          <Link
-            to="/teams"
-            className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-accent"
-          >
-            <Users className="h-5 w-5" />
-            <span>Teams</span>
-          </Link>
-          <Link
-            to="/messages"
-            className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-accent"
-          >
-            <MessageSquare className="h-5 w-5" />
-            <span>Messages</span>
-          </Link>
-          <Link
-            to="/tasks"
-            className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-accent"
-          >
-            <CheckSquare className="h-5 w-5" />
-            <span>Tasks</span>
-          </Link>
-        </nav>
-
-        <div className="p-4 border-t">
-          <Button variant="ghost" className="w-full justify-start">
-            <Settings className="h-5 w-5 mr-2" />
-            Settings
-          </Button>
         </div>
       </div>
+    );
+  }
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Bar */}
-        <div className="h-16 border-b flex items-center px-6">
-          <div className="flex-1 flex items-center space-x-4">
-            <div className="relative w-96">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search..."
-                className="pl-9"
-              />
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-            </Button>
-          </div>
+  // Filter projects based on user role
+  const userProjects = profile?.role === "startup" 
+    ? projects.filter(p => p.created_by === user?.id)
+    : projects;
+
+  // Get teams user is part of
+  const userTeams = teams.filter(team => 
+    team.members?.some(member => member.user_id === user?.id)
+  );
+
+  return (
+    <div className="py-8">
+      <div className="container mx-auto">
+        <h1 className="text-3xl font-bold mb-6">Project Dashboard</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Projects</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{userProjects.length}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Teams</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{userTeams.length}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Applications</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{applications.length}</div>
+            </CardContent>
+          </Card>
         </div>
-
-        {/* Page Content */}
-        <div className="flex-1 overflow-auto">
-          {children}
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Projects</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {userProjects.length > 0 ? (
+                <div className="space-y-4">
+                  {userProjects.slice(0, 5).map(project => (
+                    <div key={project.id} className="flex justify-between items-center border-b pb-2">
+                      <div>
+                        <p className="font-medium">{project.title}</p>
+                        <p className="text-sm text-muted-foreground">{project.status}</p>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(project.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No projects found</p>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Teams</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {userTeams.length > 0 ? (
+                <div className="space-y-4">
+                  {userTeams.slice(0, 5).map(team => (
+                    <div key={team.id} className="flex justify-between items-center border-b pb-2">
+                      <div>
+                        <p className="font-medium">{team.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {team.members?.length || 0} member(s)
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No teams found</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
   );
 };
 
-export default ProjectDashboard; 
+export default ProjectDashboard;

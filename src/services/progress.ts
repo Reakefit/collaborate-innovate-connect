@@ -1,99 +1,155 @@
+
 import { supabase } from '@/lib/supabase';
-import type { Database } from '@/integrations/supabase/types';
+import { Project, ProjectMilestone, ProjectTask, MilestoneStatus, TaskStatus } from '@/types/database';
 
-type Tables = Database['public']['Tables'];
-type Milestone = Tables['milestones']['Row'];
-type Task = Tables['tasks']['Row'];
-
-export const progressService = {
-  async calculateProjectProgress(projectId: string): Promise<number> {
-    const { data: milestones, error: milestonesError } = await supabase
-      .from('milestones')
+export const getTaskCompletion = async (projectId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('tasks')
       .select('*')
       .eq('project_id', projectId);
 
-    if (milestonesError) throw milestonesError;
-    if (!milestones?.length) return 0;
+    if (error) throw error;
 
-    const totalMilestones = milestones.length;
-    const completedMilestones = milestones.filter(m => m.status === 'completed').length;
+    const totalTasks = data.length;
+    const completedTasks = data.filter(task => 
+      task.completed || task.status === 'completed'
+    ).length;
 
-    return Math.round((completedMilestones / totalMilestones) * 100);
-  },
+    return {
+      totalTasks,
+      completedTasks,
+      completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+    };
+  } catch (error) {
+    console.error('Error getting task completion:', error);
+    return { totalTasks: 0, completedTasks: 0, completionRate: 0 };
+  }
+};
 
-  async updateMilestoneProgress(milestoneId: string): Promise<void> {
+export const updateMilestoneProgress = async (milestoneId: string) => {
+  try {
     const { data: tasks, error: tasksError } = await supabase
       .from('tasks')
       .select('*')
       .eq('milestone_id', milestoneId);
 
     if (tasksError) throw tasksError;
-    if (!tasks?.length) return;
 
     const totalTasks = tasks.length;
-    const completedTasks = tasks.filter(t => t.status === 'done').length;
-    const progress = Math.round((completedTasks / totalTasks) * 100);
+    const completedTasks = tasks.filter(task => 
+      task.completed || (task.status && task.status === 'completed')
+    ).length;
 
-    const { error: updateError } = await supabase
-      .from('milestones')
-      .update({ progress })
-      .eq('id', milestoneId);
+    const progressValue = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-    if (updateError) throw updateError;
-  },
-
-  async updateProjectProgress(projectId: string): Promise<void> {
-    const progress = await this.calculateProjectProgress(projectId);
-
-    const { error } = await supabase
-      .from('projects')
-      .update({ progress })
-      .eq('id', projectId);
-
-    if (error) throw error;
-  },
-
-  async getMilestoneProgress(milestoneId: string): Promise<{
-    total: number;
-    completed: number;
-    inProgress: number;
-    blocked: number;
-  }> {
-    const { data: tasks, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('milestone_id', milestoneId);
-
-    if (error) throw error;
-    if (!tasks?.length) return { total: 0, completed: 0, inProgress: 0, blocked: 0 };
-
-    return {
-      total: tasks.length,
-      completed: tasks.filter(t => t.status === 'done').length,
-      inProgress: tasks.filter(t => t.status === 'in_progress').length,
-      blocked: tasks.filter(t => t.status === 'blocked').length
+    // No need to modify the actual DB schema, just include progress in our UI calculations
+    const milestoneUpdate = {
+      // Don't include progress in the DB update
+      // Instead, we'll calculate it on the fly when needed
     };
-  },
 
-  async getProjectProgress(projectId: string): Promise<{
-    total: number;
-    completed: number;
-    inProgress: number;
-    blocked: number;
-  }> {
-    const { data: milestones, error } = await supabase
+    if (Object.keys(milestoneUpdate).length > 0) {
+      const { error: updateError } = await supabase
+        .from('milestones')
+        .update(milestoneUpdate)
+        .eq('id', milestoneId);
+
+      if (updateError) throw updateError;
+    }
+
+    return { progress: progressValue };
+  } catch (error) {
+    console.error('Error updating milestone progress:', error);
+    throw error;
+  }
+};
+
+export const updateProjectProgress = async (projectId: string) => {
+  try {
+    const { data: milestones, error: milestonesError } = await supabase
       .from('milestones')
       .select('*')
       .eq('project_id', projectId);
 
-    if (error) throw error;
-    if (!milestones?.length) return { total: 0, completed: 0, inProgress: 0, blocked: 0 };
+    if (milestonesError) throw milestonesError;
+
+    const { data: tasks, error: tasksError } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('project_id', projectId);
+
+    if (tasksError) throw tasksError;
+
+    // Calculate overall progress
+    const totalTasks = tasks.length;
+    let completedTasks = 0;
+
+    // Count completed tasks with type safety
+    for (const task of tasks) {
+      if (task.completed || (task.status && task.status === 'completed')) {
+        completedTasks++;
+      }
+    }
+
+    const progressValue = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    // No need to modify the actual DB schema, just include progress in our UI calculations
+    return { progress: progressValue };
+  } catch (error) {
+    console.error('Error updating project progress:', error);
+    throw error;
+  }
+};
+
+export const getProjectProgressDetails = async (projectId: string) => {
+  try {
+    const { data: milestones, error: milestonesError } = await supabase
+      .from('milestones')
+      .select('*')
+      .eq('project_id', projectId);
+
+    if (milestonesError) throw milestonesError;
+
+    const { data: tasks, error: tasksError } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('project_id', projectId);
+
+    if (tasksError) throw tasksError;
+
+    // Calculate milestone progress
+    const milestoneProgress = milestones.map(milestone => {
+      const milestoneTasks = tasks.filter(task => task.milestone_id === milestone.id);
+      const totalTasks = milestoneTasks.length;
+      const completedTasks = milestoneTasks.filter(task => 
+        task.completed || (task.status && task.status === 'completed')
+      ).length;
+      const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+      return {
+        ...milestone,
+        progress,
+        totalTasks,
+        completedTasks
+      };
+    });
+
+    // Overall project progress
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(task => 
+      task.completed || (task.status && task.status === 'completed')
+    ).length;
+    const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
     return {
-      total: milestones.length,
-      completed: milestones.filter(m => m.status === 'completed').length,
-      inProgress: milestones.filter(m => m.status === 'in_progress').length,
-      blocked: milestones.filter(m => m.status === 'blocked').length
+      milestones: milestoneProgress,
+      overallProgress,
+      totalTasks,
+      completedTasks
     };
+  } catch (error) {
+    console.error('Error getting project progress details:', error);
+    throw error;
   }
-}; 
+};

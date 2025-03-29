@@ -1,453 +1,247 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import ProjectDashboard from "@/components/layouts/ProjectDashboard";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import React, { useState } from 'react';
+import { useAuth } from "@/context/AuthContext";
+import { useProjects } from "@/context/ProjectContext";
+import { useNavigate } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
-import { useProjects } from "@/context/ProjectContext";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
-
-const createProjectSchema = z.object({
-  title: z.string().min(3, { message: "Title must be at least 3 characters." }),
-  description: z.string().min(10, { message: "Description must be at least 10 characters." }),
-  category: z.string().min(1, { message: "Please select a category." }),
-  deliverables: z.string().min(5, { message: "Please provide at least one deliverable." }),
-  startDate: z.date().min(new Date(), { message: "Start date must be in the future." }),
-  endDate: z.date().min(new Date(), { message: "End date must be in the future." }),
-  paymentModel: z.string().min(1, { message: "Please select a payment model." }),
-  stipendAmount: z.string().optional(),
-  requiredSkills: z.string().min(3, { message: "Please provide at least one required skill." }),
-  teamSize: z.string().refine(value => {
-    const num = Number(value);
-    return !isNaN(num) && num > 0 && num <= 10;
-  }, {
-    message: "Team size must be a number between 1 and 10."
-  }),
-}).refine((data) => {
-  return data.endDate > data.startDate;
-}, {
-  message: "End date must be after start date",
-  path: ["endDate"],
-});
-
-type CreateProjectValues = z.infer<typeof createProjectSchema>;
-
-const paymentModels = [
-  { value: "Pro-bono", label: "Pro-bono", description: "No payment required" },
-  { value: "Stipend", label: "Stipend", description: "Fixed payment amount" },
-  { value: "Equity", label: "Equity", description: "Company shares" },
-  { value: "Certificate", label: "Certificate", description: "Completion certificate" },
-];
-
-const commonDeliverables = [
-  "Project Documentation",
-  "Source Code",
-  "User Interface Design",
-  "API Documentation",
-  "Testing Report",
-  "Deployment Guide",
-  "User Manual",
-  "Performance Analysis",
-  "Security Audit",
-  "Market Research Report",
-];
+import { Plus, X } from "lucide-react";
 
 const CreateProject = () => {
-  const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { createProject } = useProjects();
+  const navigate = useNavigate();
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [deliverables, setDeliverables] = useState<string[]>([]);
+  const [newDeliverable, setNewDeliverable] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [paymentModel, setPaymentModel] = useState('');
+  const [stipendAmount, setStipendAmount] = useState('');
+  const [requiredSkills, setRequiredSkills] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState('');
+  const [teamSize, setTeamSize] = useState('');
+  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedDeliverables, setSelectedDeliverables] = useState<string[]>([]);
-  const [newDeliverable, setNewDeliverable] = useState("");
 
-  const form = useForm<CreateProjectValues>({
-    resolver: zodResolver(createProjectSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      category: "",
-      deliverables: "",
-      startDate: new Date(),
-      endDate: new Date(),
-      paymentModel: "",
-      stipendAmount: "0",
-      requiredSkills: "",
-      teamSize: "1",
-    },
-  });
-
-  const addDeliverable = (deliverable: string) => {
-    if (deliverable.trim() && !selectedDeliverables.includes(deliverable.trim())) {
-      setSelectedDeliverables([...selectedDeliverables, deliverable.trim()]);
-      form.setValue("deliverables", selectedDeliverables.join(", "));
+  const handleAddDeliverable = () => {
+    if (newDeliverable.trim() !== '') {
+      setDeliverables([...deliverables, newDeliverable.trim()]);
+      setNewDeliverable('');
     }
-    setNewDeliverable("");
   };
 
-  const removeDeliverable = (deliverable: string) => {
-    setSelectedDeliverables(selectedDeliverables.filter(d => d !== deliverable));
-    form.setValue("deliverables", selectedDeliverables.filter(d => d !== deliverable).join(", "));
+  const handleRemoveDeliverable = (index: number) => {
+    const updatedDeliverables = [...deliverables];
+    updatedDeliverables.splice(index, 1);
+    setDeliverables(updatedDeliverables);
   };
 
-  const onSubmit = async (values: CreateProjectValues) => {
-    if (!user || !profile) {
-      toast.error("You must be logged in to create a project");
+  const handleAddSkill = () => {
+    if (newSkill.trim() !== '') {
+      setRequiredSkills([...requiredSkills, newSkill.trim()]);
+      setNewSkill('');
+    }
+  };
+
+  const handleRemoveSkill = (index: number) => {
+    const updatedSkills = [...requiredSkills];
+    updatedSkills.splice(index, 1);
+    setRequiredSkills(updatedSkills);
+  };
+
+  const handleCreateProject = async () => {
+    if (!user) return;
+
+    // Validate form inputs
+    if (!title || !description || !category || !startDate || !endDate || !paymentModel || requiredSkills.length === 0) {
+      setError("Please fill out all required fields");
       return;
     }
 
-    setIsSubmitting(true);
     try {
+      setIsSubmitting(true);
+      
       const projectData = {
-        title: values.title.trim(),
-        description: values.description.trim(),
-        category: values.category.trim(),
-        deliverables: values.deliverables.split(',').map(d => d.trim()).filter(Boolean),
-        start_date: values.startDate.toISOString(),
-        end_date: values.endDate.toISOString(),
-        payment_model: values.paymentModel.trim(),
-        stipend_amount: values.paymentModel === "Stipend" && values.stipendAmount 
-          ? Number(values.stipendAmount) 
-          : null,
-        required_skills: values.requiredSkills.split(',').map(s => s.trim()).filter(Boolean),
-        team_size: Number(values.teamSize),
+        title,
+        description,
+        category,
+        deliverables,
+        start_date: startDate,
+        end_date: endDate,
+        payment_model: paymentModel,
+        stipend_amount: stipendAmount ? Number(stipendAmount) : 0,
+        required_skills: requiredSkills,
+        team_size: teamSize ? Number(teamSize) : 1,
         created_by: user.id,
         status: "open" as const,
+        selected_team: null // Add this line to fix the missing property error
       };
 
       await createProject(projectData);
-      toast.success("Project created successfully!");
       navigate("/projects");
-    } catch (error) {
-      console.error("Error creating project:", error);
-      toast.error("Failed to create project. Please try again.");
+    } catch (error: any) {
+      setError(error.message || "Failed to create project");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <ProjectDashboard>
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
-        <Card className="border-none shadow-lg bg-gradient-to-b from-white to-gray-50">
-          <CardHeader className="space-y-1 pb-8">
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              Create New Project
-            </CardTitle>
-            <CardDescription className="text-base text-muted-foreground">
-              Fill in the details below to create a new project. Be specific about your requirements to attract the right talent.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                {/* Basic Information Section */}
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-primary">Basic Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="title"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base font-medium">Project Title</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Enter a clear, concise title" 
-                              className="h-11 bg-white border-gray-200 focus:border-primary" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base font-medium">Category</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="h-11 bg-white border-gray-200 focus:border-primary">
-                                <SelectValue placeholder="Select a category" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="MVP Development">MVP Development</SelectItem>
-                              <SelectItem value="Market Research">Market Research</SelectItem>
-                              <SelectItem value="GTM Strategy">GTM Strategy</SelectItem>
-                              <SelectItem value="Design">Design</SelectItem>
-                              <SelectItem value="Content Creation">Content Creation</SelectItem>
-                              <SelectItem value="Social Media">Social Media</SelectItem>
-                              <SelectItem value="Data Analysis">Data Analysis</SelectItem>
-                              <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-medium">Project Description</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Describe your project in detail. Include the problem you're trying to solve, your goals, and any specific requirements."
-                            className="resize-none min-h-[120px] bg-white border-gray-200 focus:border-primary"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Project Details Section */}
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-primary">Project Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="paymentModel"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2">
-                          <FormLabel className="text-base font-medium">Payment Model</FormLabel>
-                          <div className="grid grid-cols-2 gap-4">
-                            {paymentModels.map((model) => (
-                              <div
-                                key={model.value}
-                                className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                                  field.value === model.value
-                                    ? "border-primary bg-primary/5"
-                                    : "border-gray-200 hover:border-primary/50"
-                                }`}
-                                onClick={() => field.onChange(model.value)}
-                              >
-                                <div className="font-medium">{model.label}</div>
-                                <div className="text-sm text-muted-foreground">{model.description}</div>
-                              </div>
-                            ))}
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {form.getValues("paymentModel") === "Stipend" && (
-                      <FormField
-                        control={form.control}
-                        name="stipendAmount"
-                        render={({ field }) => (
-                          <FormItem className="col-span-2">
-                            <FormLabel className="text-base font-medium">Stipend Amount</FormLabel>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                              <FormControl>
-                                <Input 
-                                  placeholder="Enter stipend amount" 
-                                  type="number" 
-                                  min="0"
-                                  step="100"
-                                  className="h-11 bg-white border-gray-200 focus:border-primary pl-8"
-                                  {...field} 
-                                />
-                              </FormControl>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
-                    <FormField
-                      control={form.control}
-                      name="teamSize"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base font-medium">Team Size</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Enter team size" 
-                              type="number" 
-                              min="1"
-                              max="10"
-                              className="h-11 bg-white border-gray-200 focus:border-primary"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="startDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base font-medium">Start Date</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="date"
-                              className="h-11 bg-white border-gray-200 focus:border-primary"
-                              value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
-                              onChange={(e) => field.onChange(new Date(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="endDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base font-medium">End Date</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="date"
-                              className="h-11 bg-white border-gray-200 focus:border-primary"
-                              value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
-                              onChange={(e) => field.onChange(new Date(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                {/* Requirements Section */}
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-primary">Requirements</h3>
-                  <div className="space-y-6">
-                    <FormField
-                      control={form.control}
-                      name="deliverables"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base font-medium">Deliverables</FormLabel>
-                          <div className="space-y-4">
-                            <div className="flex gap-2 flex-wrap">
-                              {selectedDeliverables.map((deliverable) => (
-                                <Badge
-                                  key={deliverable}
-                                  variant="secondary"
-                                  className="px-3 py-1 text-sm flex items-center gap-1"
-                                >
-                                  {deliverable}
-                                  <button
-                                    type="button"
-                                    onClick={() => removeDeliverable(deliverable)}
-                                    className="ml-1 hover:text-destructive"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </Badge>
-                              ))}
-                            </div>
-                            <div className="flex gap-2">
-                              <Input
-                                placeholder="Add a new deliverable"
-                                value={newDeliverable}
-                                onChange={(e) => setNewDeliverable(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    addDeliverable(newDeliverable);
-                                  }
-                                }}
-                                className="h-11 bg-white border-gray-200 focus:border-primary"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => addDeliverable(newDeliverable)}
-                                className="h-11"
-                              >
-                                Add
-                              </Button>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              Common deliverables:
-                            </div>
-                            <div className="flex gap-2 flex-wrap">
-                              {commonDeliverables.map((deliverable) => (
-                                <Badge
-                                  key={deliverable}
-                                  variant="outline"
-                                  className="px-3 py-1 text-sm cursor-pointer hover:bg-primary/10"
-                                  onClick={() => addDeliverable(deliverable)}
-                                >
-                                  {deliverable}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="requiredSkills"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base font-medium">Required Skills</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="e.g., React, UI Design, Data Analysis" 
-                              className="h-11 bg-white border-gray-200 focus:border-primary"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Comma-separated list of required skills
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <CardFooter className="flex justify-end pt-6">
-                  <Button 
-                    type="submit" 
-                    size="lg" 
-                    disabled={isSubmitting}
-                    className="bg-primary hover:bg-primary/90 text-white px-8"
-                  >
-                    {isSubmitting ? "Creating..." : "Create Project"}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-8">Create New Project</h1>
+      {error && <div className="text-red-500 mb-4">{error}</div>}
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="title">Title</Label>
+          <Input
+            type="text"
+            id="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Project Title"
+          />
+        </div>
+        <div>
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Project Description"
+          />
+        </div>
+        <div>
+          <Label htmlFor="category">Category</Label>
+          <Select onValueChange={setCategory}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select a category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="MVP Development">MVP Development</SelectItem>
+              <SelectItem value="Market Research">Market Research</SelectItem>
+              <SelectItem value="GTM Strategy">GTM Strategy</SelectItem>
+              <SelectItem value="Design">Design</SelectItem>
+              <SelectItem value="Content Creation">Content Creation</SelectItem>
+              <SelectItem value="Social Media">Social Media</SelectItem>
+              <SelectItem value="Data Analysis">Data Analysis</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Deliverables</Label>
+          <div className="flex">
+            <Input
+              type="text"
+              placeholder="Add deliverable"
+              value={newDeliverable}
+              onChange={(e) => setNewDeliverable(e.target.value)}
+            />
+            <Button type="button" onClick={handleAddDeliverable} className="ml-2">
+              <Plus className="h-4 w-4 mr-2" />
+              Add
+            </Button>
+          </div>
+          <div className="flex flex-wrap mt-2">
+            {deliverables.map((deliverable, index) => (
+              <Badge key={index} className="mr-2 mb-2">
+                {deliverable}
+                <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => handleRemoveDeliverable(index)} />
+              </Badge>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="startDate">Start Date</Label>
+            <Input
+              type="date"
+              id="startDate"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="endDate">End Date</Label>
+            <Input
+              type="date"
+              id="endDate"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="paymentModel">Payment Model</Label>
+          <Select onValueChange={setPaymentModel}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select payment model" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Pro-bono">Pro-bono</SelectItem>
+              <SelectItem value="Stipend">Stipend</SelectItem>
+              <SelectItem value="Equity">Equity</SelectItem>
+              <SelectItem value="Certificate">Certificate</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {paymentModel === 'Stipend' && (
+          <div>
+            <Label htmlFor="stipendAmount">Stipend Amount</Label>
+            <Input
+              type="number"
+              id="stipendAmount"
+              value={stipendAmount}
+              onChange={(e) => setStipendAmount(e.target.value)}
+              placeholder="Stipend Amount"
+            />
+          </div>
+        )}
+        <div>
+          <Label>Required Skills</Label>
+          <div className="flex">
+            <Input
+              type="text"
+              placeholder="Add skill"
+              value={newSkill}
+              onChange={(e) => setNewSkill(e.target.value)}
+            />
+            <Button type="button" onClick={handleAddSkill} className="ml-2">
+              <Plus className="h-4 w-4 mr-2" />
+              Add
+            </Button>
+          </div>
+          <div className="flex flex-wrap mt-2">
+            {requiredSkills.map((skill, index) => (
+              <Badge key={index} className="mr-2 mb-2">
+                {skill}
+                <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => handleRemoveSkill(index)} />
+              </Badge>
+            ))}
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="teamSize">Team Size</Label>
+          <Input
+            type="number"
+            id="teamSize"
+            value={teamSize}
+            onChange={(e) => setTeamSize(e.target.value)}
+            placeholder="Team Size"
+          />
+        </div>
+        <Button onClick={handleCreateProject} disabled={isSubmitting}>
+          {isSubmitting ? "Creating..." : "Create Project"}
+        </Button>
       </div>
-    </ProjectDashboard>
+    </div>
   );
 };
 

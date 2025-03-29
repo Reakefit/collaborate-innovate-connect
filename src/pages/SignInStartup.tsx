@@ -1,131 +1,88 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
-import { Building2, ArrowLeft } from "lucide-react";
-
-const startupSignInSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
-});
-
-type StartupSignInValues = z.infer<typeof startupSignInSchema>;
+import React, { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Mail, Lock } from "lucide-react";
+import { Link } from 'react-router-dom';
 
 const SignInStartup = () => {
-  const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
 
-  const form = useForm<StartupSignInValues>({
-    resolver: zodResolver(startupSignInSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  const onSubmit = async (values: StartupSignInValues) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+    
     try {
       setIsLoading(true);
-      await signIn(values.email, values.password, "startup");
-      toast.success("Signed in successfully!");
-      navigate("/dashboard");
+      // Fix this line - remove the third parameter
+      await signIn(email, password);
+      navigate('/dashboard');
     } catch (error: any) {
-      toast.error(error.message || "Failed to sign in");
+      setError(error.message || 'Failed to sign in');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-muted/30 to-muted/10">
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-md mx-auto">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/signin")}
-            className="mb-8"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-
-          <Card className="border-none shadow-lg">
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <div className="bg-primary/10 p-3 rounded-lg">
-                  <Building2 className="h-8 w-8 text-primary" />
-                </div>
-                <div>
-                  <CardTitle>Startup Sign In</CardTitle>
-                  <CardDescription>
-                    Welcome back! Sign in to manage your projects and team
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input placeholder="team@company.com" type="email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input placeholder="••••••••" type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button
-                    type="submit"
-                    className="w-full bg-primary hover:bg-primary/90"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-
-          <div className="mt-6 text-center">
-            <p className="text-muted-foreground">
-              Don't have an account?{" "}
-              <Button variant="link" onClick={() => navigate("/signup/startup")} className="p-0">
-                Sign up
-              </Button>
-            </p>
+    <div className="flex justify-center items-center h-screen bg-gradient-to-br from-muted/30 to-muted/10">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center">Sign In as Startup</CardTitle>
+          <CardDescription className="text-center">
+            Enter your email and password to sign in
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="email">
+              <Mail className="mr-2 h-4 w-4" />
+              Email
+            </Label>
+            <Input
+              id="email"
+              placeholder="mail@example.com"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
-        </div>
-      </div>
+          <div className="grid gap-2">
+            <Label htmlFor="password">
+              <Lock className="mr-2 h-4 w-4" />
+              Password
+            </Label>
+            <Input
+              id="password"
+              placeholder="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <Button onClick={handleSubmit} disabled={isLoading}>
+            {isLoading ? "Signing In..." : "Sign In"}
+          </Button>
+          <div className="text-sm text-muted-foreground text-center">
+            Don't have an account? <Link to="/signup/startup" className="text-primary hover:underline">Sign up</Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-export default SignInStartup; 
+export default SignInStartup;

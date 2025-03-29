@@ -22,6 +22,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Deliverable, TaskStatus } from '@/types/database';
 
 // Define the Application type
 interface Application {
@@ -44,16 +45,6 @@ interface Application {
       };
     }>;
   };
-}
-
-// Define the Deliverable type
-interface Deliverable {
-  id: string;
-  title: string;
-  description: string;
-  status: 'not_started' | 'in_progress' | 'completed';
-  due_date?: string;
-  milestone_id?: string;
 }
 
 // Define the Resource type
@@ -284,7 +275,14 @@ export default function ProjectPage() {
   const fetchFeedback = async () => {
     if (!projectId) return;
     const data = await getProjectReviews(projectId);
-    setFeedback(data);
+    
+    // Convert the data to include the required updated_at field
+    const feedbackWithUpdated = data.map(item => ({
+      ...item,
+      updated_at: item.created_at // Use created_at as a fallback for updated_at
+    }));
+    
+    setFeedback(feedbackWithUpdated as ProjectFeedback[]);
   };
 
   const fetchAnalytics = async () => {
@@ -314,7 +312,10 @@ export default function ProjectPage() {
         id: milestone.id,
         title: milestone.title,
         description: milestone.description || '',
-        status: milestone.status,
+        // Cast the status to the allowed types for Deliverable
+        status: (milestone.status === 'completed' ? 'completed' : 
+                milestone.status === 'in_progress' ? 'in_progress' : 
+                'not_started') as Deliverable['status'],
         due_date: milestone.due_date,
         milestone_id: milestone.id
       }));
@@ -896,190 +897,3 @@ export default function ProjectPage() {
                         <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
                           Download
                         </a>
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </Card>
-          </TabsContent>
-        )}
-      </Tabs>
-
-      {/* Application Modal */}
-      <Dialog open={showApplicationModal} onOpenChange={setShowApplicationModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Apply to Project</DialogTitle>
-            <DialogDescription>
-              Submit your application to work on this project.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...applicationForm}>
-            <form onSubmit={applicationForm.handleSubmit(handleApplyToProject)} className="space-y-4">
-              <FormField
-                control={applicationForm.control}
-                name="cover_letter"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cover Letter</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Explain why you're interested in this project and what you can contribute..."
-                        className="min-h-[200px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="submit">Submit Application</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create Milestone Modal */}
-      <Dialog open={showMilestoneModal} onOpenChange={setShowMilestoneModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Milestone</DialogTitle>
-            <DialogDescription>
-              Add a new milestone to track project progress.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...milestoneForm}>
-            <form onSubmit={milestoneForm.handleSubmit(handleCreateMilestone)} className="space-y-4">
-              <FormField
-                control={milestoneForm.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter milestone title" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={milestoneForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Enter milestone description" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={milestoneForm.control}
-                name="due_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Due Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="submit">Create Milestone</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create Task Modal */}
-      <Dialog open={showTaskModal} onOpenChange={setShowTaskModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Task</DialogTitle>
-            <DialogDescription>
-              Add a new task to track project work.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...taskForm}>
-            <form onSubmit={taskForm.handleSubmit(handleCreateTask)} className="space-y-4">
-              <FormField
-                control={taskForm.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter task title" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={taskForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Enter task description" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={taskForm.control}
-                name="due_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Due Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={taskForm.control}
-                name="milestone_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Milestone</FormLabel>
-                    <FormControl>
-                      <select
-                        className="w-full rounded-md border border-input bg-background px-3 py-2"
-                        {...field}
-                      >
-                        <option value="">Select a milestone</option>
-                        {milestones.map((milestone) => (
-                          <option key={milestone.id} value={milestone.id}>
-                            {milestone.title}
-                          </option>
-                        ))}
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="submit">Create Task</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-} 

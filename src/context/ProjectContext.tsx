@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "./AuthContext";
@@ -7,57 +8,25 @@ import {
   applicationService
 } from "@/services/database";
 import type { Database } from "@/integrations/supabase/types";
-import type { TeamMember } from '@/services/database';
-
-type Tables = Database['public']['Tables'];
-export type Project = Tables['projects']['Row'] & {
-  milestones?: (Tables['milestones']['Row'] & {
-    tasks?: Tables['tasks']['Row'][];
-  })[];
-  reviews?: Tables['reviews']['Row'][];
-  applications?: Application[];
-};
-export type Team = {
-  id: string;
-  name: string;
-  description: string;
-  lead_id: string;
-  skills: string[];
-  portfolio_url?: string | null;
-  achievements?: any;
-  members?: {
-    id: string;
-    user_id: string;
-    role: 'lead' | 'member';
-    status: 'pending' | 'active' | 'rejected';
-    user: {
-      name: string;
-    };
-  }[];
-  created_at: string;
-  updated_at: string;
-};
-export type Application = {
-  id: string;
-  project_id: string;
-  team_id: string;
-  user_id: string;
-  cover_letter: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  created_at: string;
-  updated_at: string;
-  team?: Team;
-  project?: Project;
-};
-export type Milestone = Tables['milestones']['Row'] & {
-  tasks?: Tables['tasks']['Row'][];
-};
-export type Task = Tables['tasks']['Row'];
-export type Message = Tables['messages']['Row'] & {
-  sender_name?: string;
-};
-export type Review = Tables['reviews']['Row'];
-export type Notification = Tables['notifications']['Row'];
+import {
+  Application,
+  Team,
+  Project,
+  ProjectMilestone,
+  ProjectTask,
+  ProjectMessage,
+  ProjectReview,
+  ProjectNotification,
+  ProjectFeedback,
+  ApplicationStatus,
+  MilestoneStatus,
+  TaskStatus,
+  TeamRole,
+  TeamMemberStatus,
+  TeamTask,
+  TeamMessage,
+  TeamMember
+} from "@/types/database";
 
 export type ProjectCategory = 
   | "MVP Development" 
@@ -70,56 +39,6 @@ export type ProjectCategory =
   | "Other";
 
 export type PaymentModel = "Pro-bono" | "Stipend" | "Equity" | "Certificate";
-
-export type ProjectMilestone = {
-  id: string;
-  project_id: string;
-  title: string;
-  description: string;
-  due_date: string | null;
-  assigned_team_id: string | null;
-  status: 'not_started' | 'in_progress' | 'completed' | 'delayed';
-  created_at: string;
-  updated_at: string;
-};
-
-export type ProjectTask = {
-  id: string;
-  project_id: string;
-  milestone_id: string | null;
-  title: string;
-  description: string;
-  assigned_to: string | null;
-  status: 'not_started' | 'in_progress' | 'completed' | 'delayed';
-  due_date: string | null;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-};
-
-export type ProjectMessage = {
-  id: string;
-  project_id: string;
-  sender_id: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  sender?: {
-    id: string;
-    name: string;
-    avatar_url?: string;
-  };
-};
-
-export type ProjectNotification = {
-  id: string;
-  project_id: string;
-  user_id: string;
-  type: 'message' | 'deadline' | 'task' | 'milestone';
-  content: string;
-  read: boolean;
-  created_at: string;
-};
 
 export interface ProjectContextType {
   projects: Project[];
@@ -137,13 +56,13 @@ export interface ProjectContextType {
   createTeam: (team: Omit<Team, 'id' | 'created_at' | 'updated_at'>) => Promise<Team>;
   updateTeam: (id: string, updates: Partial<Team>) => Promise<Team>;
   deleteTeam: (id: string) => Promise<void>;
-  addTeamMember: (teamId: string, userId: string, role?: 'member') => Promise<TeamMember>;
+  addTeamMember: (teamId: string, userId: string, role?: TeamRole) => Promise<TeamMember>;
   removeTeamMember: (teamId: string, userId: string) => Promise<void>;
   getTeamInviteLink: (teamId: string) => Promise<string>;
   getTeamApplications: (teamId: string) => Promise<Application[]>;
   // Application Management
   createApplication: (application: Omit<Application, 'id' | 'created_at' | 'updated_at'>) => Promise<Application>;
-  updateApplicationStatus: (applicationId: string, status: Application['status']) => Promise<Application>;
+  updateApplicationStatus: (applicationId: string, status: ApplicationStatus) => Promise<Application>;
   deleteApplication: (applicationId: string) => Promise<void>;
   applyToProject: (projectId: string, teamId: string, coverLetter: string) => Promise<Application>;
   // Milestone Management
@@ -160,8 +79,8 @@ export interface ProjectContextType {
   sendMessage: (message: Omit<ProjectMessage, 'id' | 'created_at' | 'updated_at'>) => Promise<ProjectMessage>;
   getProjectMessages: (projectId: string) => Promise<ProjectMessage[]>;
   // Review Management
-  createReview: (review: Omit<Review, 'id' | 'created_at'>) => Promise<Review>;
-  getProjectReviews: (projectId: string) => Promise<Review[]>;
+  createReview: (review: Omit<ProjectReview, 'id' | 'created_at'>) => Promise<ProjectReview>;
+  getProjectReviews: (projectId: string) => Promise<ProjectReview[]>;
   // Notification Management
   createNotification: (notification: Omit<ProjectNotification, 'id' | 'created_at'>) => Promise<ProjectNotification>;
   getProjectNotifications: (projectId: string, userId: string) => Promise<ProjectNotification[]>;
@@ -218,7 +137,7 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProjects(data || []);
+      setProjects(data as Project[] || []);
     } catch (error: any) {
       setError(error.message);
       throw error;
@@ -242,7 +161,18 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTeams(data || []);
+      
+      // Explicitly cast each team member's role and status to the appropriate types
+      const typedTeams: Team[] = (data || []).map(team => ({
+        ...team,
+        members: team.members?.map(member => ({
+          ...member,
+          role: member.role as TeamRole,
+          status: member.status as TeamMemberStatus
+        }))
+      }));
+      
+      setTeams(typedTeams);
     } catch (error: any) {
       setError(error.message);
       throw error;
@@ -298,11 +228,25 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         return;
       }
 
-      const typedData = (data || []).map(item => ({
-        ...item,
-        team: item.team?.[0] as unknown as Team,
-        project: item.project?.[0] as unknown as Project
-      })) as Application[];
+      // Explicitly cast data to Application type with proper typing for nested objects
+      const typedData: Application[] = (data || []).map(item => {
+        // Cast the team members' role and status to the appropriate types
+        const typedTeam = item.team?.[0] ? {
+          ...item.team[0],
+          members: item.team[0].members?.map(member => ({
+            ...member,
+            role: member.role as TeamRole,
+            status: member.status as TeamMemberStatus
+          }))
+        } : undefined;
+        
+        return {
+          ...item,
+          status: item.status as ApplicationStatus,
+          team: typedTeam as Team | undefined,
+          project: item.project?.[0] as Project | undefined
+        };
+      });
       
       setUserApplications(typedData);
       setApplications(typedData);
@@ -336,8 +280,8 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .insert({
           team_id: teamData.id,
           user_id: team.lead_id,
-          role: 'lead',
-          status: 'active'
+          role: 'lead' as TeamRole,
+          status: 'active' as TeamMemberStatus
         });
 
       if (memberError) throw memberError;
@@ -360,8 +304,18 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
 
       if (fetchError) throw fetchError;
 
-      setTeams([fullTeam, ...teams]);
-      return fullTeam;
+      // Create properly typed team object
+      const typedTeam: Team = {
+        ...fullTeam,
+        members: fullTeam.members?.map(member => ({
+          ...member,
+          role: member.role as TeamRole,
+          status: member.status as TeamMemberStatus
+        }))
+      };
+
+      setTeams(prevTeams => [typedTeam, ...prevTeams]);
+      return typedTeam;
     } catch (error: any) {
       console.error('Error creating team:', error);
       setError(error.message);
@@ -380,8 +334,17 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
 
       if (error) throw error;
 
-      setTeams(teams.map(team => team.id === id ? data : team));
-      return data;
+      const updatedTeam: Team = {
+        ...data,
+        members: data.members?.map(member => ({
+          ...member,
+          role: member.role as TeamRole,
+          status: member.status as TeamMemberStatus
+        }))
+      };
+
+      setTeams(teams.map(team => team.id === id ? updatedTeam : team));
+      return updatedTeam;
     } catch (error: any) {
       setError(error.message);
       throw error;
@@ -404,15 +367,15 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
     }
   };
 
-  const addTeamMember = async (teamId: string, userId: string, role?: 'member'): Promise<TeamMember> => {
+  const addTeamMember = async (teamId: string, userId: string, role: TeamRole = 'member'): Promise<TeamMember> => {
     try {
       const { data, error } = await supabase
         .from('team_members')
         .insert([{
           team_id: teamId,
           user_id: userId,
-          role: role || 'member',
-          status: 'pending',
+          role: role,
+          status: 'pending' as TeamMemberStatus,
           joined_at: new Date().toISOString()
         }])
         .select(`
@@ -427,8 +390,8 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         id: data.id,
         team_id: data.team_id,
         user_id: data.user_id,
-        role: data.role,
-        status: data.status,
+        role: data.role as TeamRole,
+        status: data.status as TeamMemberStatus,
         joined_at: data.joined_at,
         user: {
           name: data.user.name
@@ -464,9 +427,9 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
 
     try {
       const newProject = await projectService.createProject(project);
-      setProjects(prev => [...prev, newProject]);
+      setProjects(prevProjects => [...prevProjects, newProject as Project]);
       toast.success("Project created successfully");
-      return newProject;
+      return newProject as Project;
     } catch (error: any) {
       toast.error(error.message || "Failed to create project");
       throw error;
@@ -478,9 +441,9 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
 
     try {
       const updatedProject = await projectService.updateProject(id, project);
-      setProjects(prev => prev.map(p => p.id === id ? updatedProject : p));
+      setProjects(prevProjects => prevProjects.map(p => p.id === id ? updatedProject as Project : p));
       toast.success("Project updated successfully");
-      return updatedProject;
+      return updatedProject as Project;
     } catch (error: any) {
       toast.error(error.message || "Failed to update project");
       throw error;
@@ -526,21 +489,26 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .single();
 
       if (error) throw error;
-      return data;
+      return data as Project;
     } catch (error) {
       console.error('Error fetching project:', error);
       throw error;
     }
   };
 
-  const updateApplicationStatus = async (applicationId: string, status: Application['status']) => {
+  const updateApplicationStatus = async (applicationId: string, status: ApplicationStatus) => {
     if (!user) throw new Error("You must be logged in to update an application");
 
     try {
       const updatedApplication = await applicationService.updateApplicationStatus(applicationId, status);
-      setUserApplications(prev => prev.map(a => a.id === applicationId ? updatedApplication : a));
+      setUserApplications(prev => 
+        prev.map(a => a.id === applicationId ? {
+          ...a, 
+          status: status 
+        } : a)
+      );
       toast.success(`Application status updated to ${status}`);
-      return updatedApplication;
+      return updatedApplication as Application;
     } catch (error: any) {
       toast.error(error.message || "Failed to update application status");
       throw error;
@@ -577,14 +545,16 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
 
   const applyToProject = async (projectId: string, teamId: string, coverLetter: string) => {
     try {
+      if (!user) throw new Error("You must be logged in to apply to a project");
+      
       const { data, error } = await supabase
         .from('applications')
         .insert({
           project_id: projectId,
           team_id: teamId,
-          user_id: user?.id,
+          user_id: user.id,
           cover_letter: coverLetter,
-          status: 'pending'
+          status: 'pending' as ApplicationStatus
         })
         .select(`
           *,
@@ -620,11 +590,12 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
 
       if (error) throw error;
 
-      const newApplication = {
+      const newApplication: Application = {
         ...data,
-        team: data.team?.[0] as unknown as Team,
-        project: data.project?.[0] as unknown as Project
-      } as Application;
+        status: data.status as ApplicationStatus,
+        team: data.team?.[0] as Team,
+        project: data.project?.[0] as Project
+      };
       
       setUserApplications(prev => [...prev, newApplication]);
       setApplications(prev => [...prev, newApplication]);
@@ -645,7 +616,7 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .single();
 
       if (error) throw error;
-      return data;
+      return data as ProjectMilestone;
     } catch (error) {
       console.error('Error creating milestone:', error);
       throw error;
@@ -662,7 +633,7 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .single();
 
       if (error) throw error;
-      return data;
+      return data as ProjectMilestone;
     } catch (error) {
       console.error('Error updating milestone:', error);
       throw error;
@@ -695,7 +666,15 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data;
+      
+      return data.map(milestone => ({
+        ...milestone,
+        status: milestone.status as MilestoneStatus,
+        tasks: milestone.tasks?.map(task => ({
+          ...task,
+          status: task.status as TaskStatus
+        }))
+      })) as ProjectMilestone[];
     } catch (error) {
       console.error('Error fetching project milestones:', error);
       throw error;
@@ -711,7 +690,7 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .single();
 
       if (error) throw error;
-      return data;
+      return data as ProjectTask;
     } catch (error) {
       console.error('Error creating task:', error);
       throw error;
@@ -728,7 +707,7 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .single();
 
       if (error) throw error;
-      return data;
+      return data as ProjectTask;
     } catch (error) {
       console.error('Error updating task:', error);
       throw error;
@@ -758,7 +737,11 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data;
+      
+      return data.map(task => ({
+        ...task,
+        status: task.status as TaskStatus
+      })) as ProjectTask[];
     } catch (error) {
       console.error('Error fetching project tasks:', error);
       throw error;
@@ -774,7 +757,7 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .single();
 
       if (error) throw error;
-      return data;
+      return data as ProjectMessage;
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;
@@ -793,14 +776,14 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data;
+      return data as ProjectMessage[];
     } catch (error) {
       console.error('Error fetching messages:', error);
       throw error;
     }
   };
 
-  const createReview = async (review: Omit<Review, 'id' | 'created_at'>) => {
+  const createReview = async (review: Omit<ProjectReview, 'id' | 'created_at'>) => {
     try {
       const { data, error } = await supabase
         .from('reviews')
@@ -809,7 +792,7 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .single();
 
       if (error) throw error;
-      return data;
+      return data as ProjectReview;
     } catch (error) {
       console.error('Error creating review:', error);
       throw error;
@@ -825,7 +808,7 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as ProjectReview[];
     } catch (error) {
       console.error('Error fetching project reviews:', error);
       throw error;
@@ -836,12 +819,20 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
     try {
       const { data, error } = await supabase
         .from('notifications')
-        .insert(notification)
+        .insert({
+          project_id: notification.project_id,
+          user_id: notification.user_id,
+          title: notification.title,
+          message: notification.message,
+          type: notification.type,
+          content: notification.content,
+          read: notification.read || false
+        })
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as ProjectNotification;
     } catch (error) {
       console.error('Error creating notification:', error);
       throw error;
@@ -858,7 +849,7 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as ProjectNotification[];
     } catch (error) {
       console.error('Error fetching project notifications:', error);
       throw error;
@@ -902,14 +893,14 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
     }
   };
 
-  const value = {
-        projects,
-        teams,
-        userApplications,
+  const value: ProjectContextType = {
+    projects,
+    teams,
+    userApplications,
     applications,
     loading,
-    error,
-        createProject,
+    error: error,
+    createProject,
     updateProject,
     deleteProject,
     getProject,
@@ -923,16 +914,16 @@ export const ProjectProvider = ({ children }: { children: React.ReactNode }) => 
     createApplication,
     updateApplicationStatus,
     deleteApplication,
-        applyToProject,
-        createMilestone,
-        updateMilestone,
+    applyToProject,
+    createMilestone,
+    updateMilestone,
     deleteMilestone,
     getProjectMilestones,
     createTask,
     updateTask,
     deleteTask,
     getProjectTasks,
-        sendMessage,
+    sendMessage,
     getProjectMessages,
     createReview,
     getProjectReviews,

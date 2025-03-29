@@ -1,53 +1,15 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Session, User, Provider } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Profile, Education } from "@/types/database";
 
 export type UserRole = "student" | "startup";
 
 export type EducationLevel = "high_school" | "bachelors" | "masters" | "phd" | "other";
 
-export interface Education {
-  institution: string;
-  degree: string;
-  field: string;
-  startYear: number;
-  endYear: number | null;
-  current: boolean;
-}
-
-export interface UserProfile {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  createdAt: Date;
-  avatarUrl?: string;
-  // Startup-specific fields
-  companyName?: string;
-  companyDescription?: string;
-  industry?: string;
-  companySize?: string;
-  founded?: number;
-  website?: string;
-  stage?: string;
-  projectNeeds?: string;
-  // Student-specific fields
-  skills?: string[];
-  education?: Education[];
-  portfolio?: string;
-  resume?: string;
-  github?: string;
-  linkedin?: string;
-  bio?: string;
-  availability?: "full_time" | "part_time" | "internship" | "contract";
-  interests?: string[];
-  experienceLevel?: "beginner" | "intermediate" | "advanced" | "expert";
-  preferredCategories?: string[];
-  college?: string;
-  graduationYear?: string;
-  major?: string;
-}
+export type UserProfile = Profile;
 
 interface AuthContextType {
   user: User | null;
