@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { useAuth, UserProfile } from "@/context/AuthContext";
+import { useAuth, UserProfile, Education } from "@/context/AuthContext";
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+// Create a proper schema for Education that matches our database type
 const educationSchema = z.object({
   institution: z.string().min(2, {
     message: "Institution must be at least 2 characters.",
@@ -29,19 +31,12 @@ const educationSchema = z.object({
   field: z.string().min(2, {
     message: "Field must be at least 2 characters.",
   }),
-  startYear: z.string().refine((value) => {
-    const num = Number(value);
-    return !isNaN(num) && num > 1900 && num <= new Date().getFullYear();
-  }, {
-    message: "Start year must be a valid year between 1900 and the current year.",
+  startYear: z.coerce.number().min(1900, {
+    message: "Start year must be a valid year after 1900.",
+  }).max(new Date().getFullYear(), {
+    message: "Start year cannot be in the future.",
   }),
-  endYear: z.string().optional().refine((value) => {
-    if (!value) return true; // Allow empty value
-    const num = Number(value);
-    return !isNaN(num) && num >= 1900 && num <= new Date().getFullYear();
-  }, {
-    message: "End year must be a valid year between 1900 and the current year.",
-  }),
+  endYear: z.coerce.number().optional().nullable(),
   current: z.boolean().default(false),
 });
 
@@ -57,33 +52,34 @@ const studentProfileSchema = z.object({
   }),
   portfolio: z.string().url({
     message: "Please enter a valid URL.",
-  }).optional(),
+  }).optional().or(z.literal('')),
   resume: z.string().url({
     message: "Please enter a valid URL.",
-  }).optional(),
+  }).optional().or(z.literal('')),
   github: z.string().url({
     message: "Please enter a valid URL.",
-  }).optional(),
+  }).optional().or(z.literal('')),
   linkedin: z.string().url({
     message: "Please enter a valid URL.",
-  }).optional(),
+  }).optional().or(z.literal('')),
   bio: z.string().max(160, {
     message: "Bio must be less than 160 characters.",
-  }).optional(),
+  }).optional().or(z.literal('')),
   interests: z.array(z.string()).optional(),
   preferredCategories: z.array(z.string()).optional(),
   college: z.string().min(2, {
     message: "College must be at least 2 characters.",
-  }),
+  }).optional().or(z.literal('')),
   graduationYear: z.string().refine((value) => {
+    if (!value) return true; // Allow empty string
     const num = Number(value);
     return !isNaN(num) && num >= new Date().getFullYear() && num <= new Date().getFullYear() + 10;
   }, {
     message: "Graduation year must be a valid year between the current year and 10 years from now.",
-  }),
+  }).optional().or(z.literal('')),
   major: z.string().min(2, {
     message: "Major must be at least 2 characters.",
-  }),
+  }).optional().or(z.literal('')),
 });
 
 const StudentProfileForm = () => {
@@ -92,14 +88,40 @@ const StudentProfileForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [experienceLevel, setExperienceLevel] = useState<"beginner" | "intermediate" | "advanced" | "expert">("beginner");
-  const handleExperienceLevelChange = (value: "beginner" | "intermediate" | "advanced" | "expert") => {
-    setExperienceLevel(value);
+  const [experienceLevel, setExperienceLevel] = useState<"beginner" | "intermediate" | "advanced" | "expert">(
+    profile?.experienceLevel || "beginner"
+  );
+  
+  const handleExperienceLevelChange = (value: string) => {
+    setExperienceLevel(value as "beginner" | "intermediate" | "advanced" | "expert");
   };
 
-  const [availability, setAvailability] = useState<"full_time" | "part_time" | "internship" | "contract">("part_time");
-  const handleAvailabilityChange = (value: "full_time" | "part_time" | "internship" | "contract") => {
-    setAvailability(value);
+  const [availability, setAvailability] = useState<"full_time" | "part_time" | "internship" | "contract">(
+    profile?.availability || "part_time"
+  );
+  
+  const handleAvailabilityChange = (value: string) => {
+    setAvailability(value as "full_time" | "part_time" | "internship" | "contract");
+  };
+
+  // Convert education format if needed
+  const convertEducation = (education: any[] | undefined): Education[] => {
+    if (!education) return [];
+    
+    // Check if the education is already in the right format
+    if (education.length > 0 && 'institution' in education[0]) {
+      return education as Education[];
+    }
+    
+    // Convert from form format to Education format
+    return education.map(edu => ({
+      institution: edu.institution || '',
+      degree: edu.degree || '',
+      field: edu.field || '',
+      startYear: Number(edu.startYear) || new Date().getFullYear(),
+      endYear: edu.current ? null : (Number(edu.endYear) || null),
+      current: edu.current || false,
+    }));
   };
 
   const form = useForm<z.infer<typeof studentProfileSchema>>({
@@ -107,7 +129,7 @@ const StudentProfileForm = () => {
     defaultValues: {
       name: profile?.name || "",
       skills: profile?.skills || [],
-      education: profile?.education || [],
+      education: convertEducation(profile?.education),
       portfolio: profile?.portfolio || "",
       resume: profile?.resume || "",
       github: profile?.github || "",
@@ -185,43 +207,134 @@ const StudentProfileForm = () => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Skills</FormLabel>
-              <Select
-                onValueChange={(value) => field.onChange([...field.value, value])}
-                defaultValue={field.value[0]}
-                multiple
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your skills" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="javascript">JavaScript</SelectItem>
-                  <SelectItem value="typescript">TypeScript</SelectItem>
-                  <SelectItem value="react">React</SelectItem>
-                  <SelectItem value="node">Node.js</SelectItem>
-                  <SelectItem value="python">Python</SelectItem>
-                  <SelectItem value="java">Java</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                {["javascript", "typescript", "react", "node", "python", "java"].map((skill) => (
+                  <div key={skill} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`skill-${skill}`}
+                      checked={field.value?.includes(skill)}
+                      onCheckedChange={(checked) => {
+                        return checked
+                          ? field.onChange([...field.value, skill])
+                          : field.onChange(field.value?.filter((s) => s !== skill));
+                      }}
+                    />
+                    <label
+                      htmlFor={`skill-${skill}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {skill.charAt(0).toUpperCase() + skill.slice(1)}
+                    </label>
+                  </div>
+                ))}
+              </div>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="education"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Education</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Your education details" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+        {/* Education field - this needs special handling */}
+        <div className="space-y-2">
+          <FormLabel>Education</FormLabel>
+          <div className="space-y-4 border p-4 rounded-md">
+            <p className="text-sm text-gray-500">Add your education history</p>
+            {/* Display education entries */}
+            {form.watch('education')?.map((edu, index) => (
+              <div key={index} className="p-3 border rounded-md bg-gray-50">
+                <p><strong>Institution:</strong> {edu.institution}</p>
+                <p><strong>Degree:</strong> {edu.degree}</p>
+                <p><strong>Field:</strong> {edu.field}</p>
+                <p><strong>Years:</strong> {edu.startYear} - {edu.current ? 'Present' : edu.endYear}</p>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => {
+                    const currentEducation = [...form.watch('education')];
+                    currentEducation.splice(index, 1);
+                    form.setValue('education', currentEducation);
+                  }}
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+            
+            {/* Add new education entry form */}
+            <div className="p-3 border rounded-md">
+              <h4 className="text-sm font-medium mb-2">Add Education</h4>
+              <div className="space-y-2">
+                <div>
+                  <Label htmlFor="institution">Institution</Label>
+                  <Input id="institution" placeholder="University/College name" />
+                </div>
+                <div>
+                  <Label htmlFor="degree">Degree</Label>
+                  <Input id="degree" placeholder="e.g., Bachelor's, Master's" />
+                </div>
+                <div>
+                  <Label htmlFor="field">Field of Study</Label>
+                  <Input id="field" placeholder="e.g., Computer Science" />
+                </div>
+                <div>
+                  <Label htmlFor="startYear">Start Year</Label>
+                  <Input id="startYear" type="number" min="1900" max={new Date().getFullYear()} placeholder="Start Year" />
+                </div>
+                <div>
+                  <Label htmlFor="endYear">End Year</Label>
+                  <Input id="endYear" type="number" min="1900" max={new Date().getFullYear() + 10} placeholder="End Year" />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="current" />
+                  <Label htmlFor="current">I currently study here</Label>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="secondary"
+                  onClick={() => {
+                    const institution = (document.getElementById('institution') as HTMLInputElement)?.value;
+                    const degree = (document.getElementById('degree') as HTMLInputElement)?.value;
+                    const field = (document.getElementById('field') as HTMLInputElement)?.value;
+                    const startYear = (document.getElementById('startYear') as HTMLInputElement)?.value;
+                    const endYear = (document.getElementById('endYear') as HTMLInputElement)?.value;
+                    const current = (document.getElementById('current') as HTMLInputElement)?.checked;
+                    
+                    if (!institution || !degree || !field || !startYear) {
+                      toast.error("Please fill all required fields");
+                      return;
+                    }
+                    
+                    const newEducation = {
+                      institution,
+                      degree,
+                      field,
+                      startYear: Number(startYear),
+                      endYear: current ? null : (endYear ? Number(endYear) : null),
+                      current: !!current
+                    };
+                    
+                    const currentEducation = [...form.watch('education'), newEducation];
+                    form.setValue('education', currentEducation);
+                    
+                    // Clear the form
+                    (document.getElementById('institution') as HTMLInputElement).value = '';
+                    (document.getElementById('degree') as HTMLInputElement).value = '';
+                    (document.getElementById('field') as HTMLInputElement).value = '';
+                    (document.getElementById('startYear') as HTMLInputElement).value = '';
+                    (document.getElementById('endYear') as HTMLInputElement).value = '';
+                    (document.getElementById('current') as HTMLInputElement).checked = false;
+                  }}
+                >
+                  Add Education
+                </Button>
+              </div>
+            </div>
+          </div>
+          {form.formState.errors.education && (
+            <p className="text-sm font-medium text-destructive">{form.formState.errors.education.message}</p>
           )}
-        />
+        </div>
 
         <FormField
           control={form.control}
@@ -304,7 +417,7 @@ const StudentProfileForm = () => {
         <Label>Experience Level</Label>
         <RadioGroup 
           value={experienceLevel} 
-          onValueChange={handleExperienceLevelChange as (value: string) => void}
+          onValueChange={handleExperienceLevelChange}
         >
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="beginner" id="r1" />
@@ -329,7 +442,7 @@ const StudentProfileForm = () => {
         <Label>Availability</Label>
         <RadioGroup 
           value={availability} 
-          onValueChange={handleAvailabilityChange as (value: string) => void}
+          onValueChange={handleAvailabilityChange}
         >
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="full_time" id="a1" />

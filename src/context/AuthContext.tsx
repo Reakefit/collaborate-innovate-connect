@@ -10,6 +10,7 @@ export type UserRole = "student" | "startup";
 export type EducationLevel = "high_school" | "bachelors" | "masters" | "phd" | "other";
 
 export type UserProfile = Profile;
+export { Education };
 
 interface AuthContextType {
   user: User | null;
@@ -119,7 +120,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .insert({
             id: userId,
             name: user?.email?.split('@')[0] || 'User',
-            role: 'student' // Default role
+            role: 'student', // Default role
+            email: user?.email || ''
           })
           .select()
           .single();

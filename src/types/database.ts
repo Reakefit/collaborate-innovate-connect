@@ -57,15 +57,7 @@ export interface Team {
   skills: string[];
   portfolio_url?: string | null;
   achievements?: any;
-  members?: {
-    id: string;
-    user_id: string;
-    role: TeamRole;
-    status: TeamMemberStatus;
-    user: {
-      name: string;
-    };
-  }[];
+  members?: TeamMember[];
   created_at: string;
   updated_at: string;
 }
@@ -115,6 +107,17 @@ export interface Project {
   applications?: Application[];
   milestones?: ProjectMilestone[];
   reviews?: ProjectReview[];
+  resources?: ProjectResource[];
+}
+
+export interface ProjectResource {
+  id: string;
+  project_id: string;
+  title: string;
+  url: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ProjectMilestone {
@@ -142,6 +145,7 @@ export interface ProjectTask {
   created_by: string;
   created_at: string;
   updated_at: string;
+  completed?: boolean;
 }
 
 export interface ProjectMessage {
@@ -166,6 +170,7 @@ export interface ProjectReview {
   rating: number;
   comment?: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface ProjectFeedback {
@@ -226,3 +231,24 @@ export interface Deliverable {
   due_date?: string;
   milestone_id?: string;
 }
+
+export type ProjectCategory = 
+  | "web_development" 
+  | "mobile_development" 
+  | "data_science" 
+  | "machine_learning" 
+  | "ui_ux_design"
+  | "devops"
+  | "cybersecurity"
+  | "blockchain"
+  | "other";
+
+export type PaymentModel = 
+  | "hourly" 
+  | "fixed" 
+  | "equity" 
+  | "unpaid" 
+  | "stipend";
+
+// Export these as they will be used in multiple files
+export type { Message as ProjectDiscussion } from "../services/database";
