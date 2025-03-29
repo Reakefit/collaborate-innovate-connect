@@ -1,3 +1,4 @@
+
 // Update Profile interface to include all necessary fields
 export interface Profile {
   id: string;
@@ -69,6 +70,7 @@ export interface Project {
   created_at: string;
   updated_at: string;
   selected_team?: string;
+  team_size?: number;
   milestones?: ProjectMilestone[];
   resources?: ProjectResource[];
   applications?: Application[];
@@ -159,4 +161,55 @@ export interface Application {
   updated_at: string;
   team?: Team;
   team_lead?: TeamMember;
+}
+
+// Add missing types needed for the Messages page
+export interface ProjectMessage {
+  id: string;
+  project_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  sender?: {
+    name: string;
+  };
+}
+
+// Add missing types needed for the Team page
+export interface TeamMessage {
+  id: string;
+  team_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  sender?: {
+    name: string;
+  };
+}
+
+export type TeamTaskStatus = "todo" | "in_progress" | "review" | "completed";
+
+export interface TeamTask {
+  id: string;
+  team_id: string;
+  title: string;
+  description?: string;
+  status: TeamTaskStatus;
+  due_date?: string;
+  assigned_to?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectReview {
+  id: string;
+  project_id: string;
+  reviewer_id: string;
+  reviewee_id: string;
+  rating: number;
+  comment?: string;
+  created_at: string;
+  updated_at: string;
 }
