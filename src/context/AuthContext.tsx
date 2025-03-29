@@ -5,13 +5,16 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Profile, Education } from '@/types/database';
 
+type Provider = "google" | "github" | "linkedin_oidc";
+
 interface AuthContextType {
   user: any;
   profile: Profile | null;
   loading: boolean;
-  signUp: (data: any) => Promise<void>;
+  signUp: (email: string, password: string, name: string, role: "student" | "startup") => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  signInWithProvider: (provider: Provider) => Promise<void>;
   updateProfile: (profileData: Partial<Profile>) => Promise<void>;
   getUserProfile: (userId: string) => Promise<Profile | null>;
 }
@@ -23,6 +26,7 @@ export const AuthContext = createContext<AuthContextType>({
   signUp: async () => {},
   signIn: async () => {},
   signOut: async () => {},
+  signInWithProvider: async () => {},
   updateProfile: async () => {},
   getUserProfile: async () => null,
 });
@@ -62,17 +66,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getProfile();
   }, [user]);
 
-  const signUp = async (data: any) => {
+  const signUp = async (email: string, password: string, name: string, role: "student" | "startup") => {
     setLoading(true);
     try {
       const { data: authData, error } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
+        email,
+        password,
         options: {
           data: {
-            name: data.name,
-            role: data.role,
-            avatar_url: data.avatar_url,
+            name,
+            role,
+            avatar_url: "",
           },
         },
       });
@@ -106,6 +110,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       navigate('/dashboard');
     } catch (error: any) {
       toast.error(error.message || 'Error signing in');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithProvider = async (provider: Provider) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: provider,
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+    } catch (error: any) {
+      toast.error(error.message || `Error signing in with ${provider}`);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -189,6 +215,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
+        // Fix type issues with founded and graduation_year
+        const founded = typeof data.founded === 'number' ? String(data.founded) : data.founded;
+        
+        // Fix type issues with array fields
+        const skills = Array.isArray(data.skills) ? data.skills : [];
+        const interests = Array.isArray(data.interests) ? data.interests : [];
+        const preferred_categories = Array.isArray(data.preferred_categories) ? data.preferred_categories : [];
+        const project_needs = Array.isArray(data.project_needs) ? data.project_needs : [];
+
         const profile: Profile = {
           id: data.id,
           name: data.name || '',
@@ -199,20 +234,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           company_description: data.company_description || '',
           industry: data.industry || '',
           company_size: data.company_size || '',
-          founded: data.founded || '',
+          founded: founded || '',
           website: data.website || '',
           stage: data.stage || '',
-          project_needs: data.project_needs || [],
-          skills: data.skills || [],
+          project_needs: project_needs,
+          skills: skills,
           education: educationData,
           portfolio_url: data.portfolio_url || '',
           resume_url: data.resume_url || '',
           github_url: data.github_url || '',
           linkedin_url: data.linkedin_url || '',
           availability: data.availability || '',
-          interests: data.interests || [],
+          interests: interests,
           experience_level: data.experience_level || '',
-          preferred_categories: data.preferred_categories || [],
+          preferred_categories: preferred_categories,
           college: data.college || '',
           graduation_year: data.graduation_year || '',
           major: data.major || '',
@@ -236,6 +271,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signIn,
     signOut,
+    signInWithProvider,
     updateProfile,
     getUserProfile
   };

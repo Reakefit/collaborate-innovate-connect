@@ -42,6 +42,7 @@ const SignInForm = () => {
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Sign in error:", error);
+      toast.error(error.message || "Failed to sign in");
     } finally {
       setIsSubmitting(false);
     }
@@ -54,6 +55,7 @@ const SignInForm = () => {
       // No need to navigate, OAuth will redirect
     } catch (error) {
       console.error("Google sign in error:", error);
+      toast.error("Failed to sign in with Google");
     } finally {
       setIsGoogleLoading(false);
     }
@@ -66,6 +68,7 @@ const SignInForm = () => {
       // No need to navigate, OAuth will redirect
     } catch (error) {
       console.error("LinkedIn sign in error:", error);
+      toast.error("Failed to sign in with LinkedIn");
     } finally {
       setIsLinkedInLoading(false);
     }

@@ -61,6 +61,7 @@ const SignUpForm = () => {
       // No need to navigate, OAuth will redirect
     } catch (error) {
       console.error("Google sign up error:", error);
+      toast.error("Failed to sign up with Google");
     } finally {
       setIsGoogleLoading(false);
     }
@@ -73,6 +74,7 @@ const SignUpForm = () => {
       // No need to navigate, OAuth will redirect
     } catch (error) {
       console.error("LinkedIn sign up error:", error);
+      toast.error("Failed to sign up with LinkedIn");
     } finally {
       setIsLinkedInLoading(false);
     }

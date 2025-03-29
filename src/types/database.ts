@@ -55,17 +55,17 @@ export interface Project {
   id: string;
   title: string;
   description: string;
-  category: ProjectCategory;
+  category: ProjectCategory | string;
   deliverables: string[];
   required_skills: string[];
   start_date: string;
   end_date: string;
-  payment_model: PaymentModel;
+  payment_model: PaymentModel | string;
   stipend_amount?: string;
   equity_percentage?: string;
   hourly_rate?: string;
   fixed_amount?: string;
-  status: ProjectStatus;
+  status: ProjectStatus | string;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -84,7 +84,7 @@ export interface ProjectMilestone {
   title: string;
   description?: string;
   due_date?: string;
-  status: MilestoneStatus;
+  status: MilestoneStatus | string;
   created_at: string;
   updated_at: string;
   assigned_team_id?: string;
@@ -99,7 +99,7 @@ export interface ProjectTask {
   project_id: string;
   title: string;
   description?: string;
-  status: TaskStatus;
+  status: TaskStatus | string;
   due_date?: string;
   assigned_to?: string;
   created_by?: string;
@@ -139,8 +139,8 @@ export interface TeamMember {
   id: string;
   team_id: string;
   user_id: string;
-  role: TeamRole;
-  status: TeamMemberStatus;
+  role: TeamRole | string;
+  status: TeamMemberStatus | string;
   joined_at?: string;
   name: string;
   user?: {
@@ -156,7 +156,7 @@ export interface Application {
   team_id: string;
   user_id: string;
   cover_letter: string;
-  status: ApplicationStatus;
+  status: ApplicationStatus | string;
   created_at: string;
   updated_at: string;
   team?: Team;
@@ -196,7 +196,7 @@ export interface TeamTask {
   team_id: string;
   title: string;
   description?: string;
-  status: TeamTaskStatus;
+  status: TeamTaskStatus | string;
   due_date?: string;
   assigned_to?: string;
   created_by: string;

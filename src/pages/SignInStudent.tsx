@@ -5,7 +5,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Mail, Lock } from "lucide-react";
 
 const SignInStudent = () => {
@@ -48,7 +48,7 @@ const SignInStudent = () => {
           <form onSubmit={handleSubmit}>
             <div className="grid gap-2">
               <Label htmlFor="email">
-                <Mail className="mr-2 h-4 w-4" />
+                <Mail className="mr-2 h-4 w-4 inline" />
                 Email
               </Label>
               <Input
@@ -59,9 +59,9 @@ const SignInStudent = () => {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-2 mt-4">
               <Label htmlFor="password">
-                <Lock className="mr-2 h-4 w-4" />
+                <Lock className="mr-2 h-4 w-4 inline" />
                 Password
               </Label>
               <Input
@@ -72,7 +72,7 @@ const SignInStudent = () => {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            {error && <p className="text-red-500">{error}</p>}
+            {error && <p className="text-red-500 mt-2">{error}</p>}
             <Button disabled={isLoading} className="w-full mt-4" type="submit">
               {isLoading ? 'Signing In...' : 'Sign In'}
             </Button>

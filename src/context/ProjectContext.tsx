@@ -1,37 +1,54 @@
+
 // Import only the necessary part to fix the import issue with 'default' binding
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/lib/supabase';
 import { 
   Project, ProjectMilestone, ProjectTask, Application, 
-  MilestoneStatus, TaskStatus, ProjectStatus 
+  MilestoneStatus, TaskStatus, ProjectStatus, Team, TeamMember 
 } from '@/types/database';
 import { toast } from 'sonner';
 
 interface ProjectContextType {
   projects: Project[];
   applications: Application[];
+  teams: Team[];
   loading: boolean;
   fetchProjects: () => Promise<void>;
+  fetchTeams: () => Promise<void>;
   createProject: (projectData: any) => Promise<Project>;
   fetchProject: (projectId: string) => Promise<Project | null>;
   applyToProject: (projectId: string, teamId: string, coverLetter: string) => Promise<void>;
   updateTaskStatus: (taskId: string, status: TaskStatus) => Promise<void>;
   addTask: (projectId: string, milestoneId: string, taskData: any) => Promise<void>;
   addMilestone: (projectId: string, milestoneData: any) => Promise<void>;
+  createTeam: (teamData: any) => Promise<Team>;
+  deleteTeam: (teamId: string) => Promise<void>;
+  addTeamMember: (teamId: string, email: string) => Promise<void>;
+  removeTeamMember: (teamId: string, memberId: string) => Promise<void>;
+  updateApplicationStatus: (applicationId: string, status: string) => Promise<void>;
+  getUserProjects: () => Project[];
 }
 
 const ProjectContext = createContext<ProjectContextType>({
   projects: [],
   applications: [],
+  teams: [],
   loading: false,
   fetchProjects: async () => {},
+  fetchTeams: async () => {},
   createProject: async () => { throw new Error("createProject function not implemented."); },
   fetchProject: async () => null,
   applyToProject: async () => {},
   updateTaskStatus: async () => {},
   addTask: async () => {},
   addMilestone: async () => {},
+  createTeam: async () => { throw new Error("createTeam function not implemented."); },
+  deleteTeam: async () => {},
+  addTeamMember: async () => {},
+  removeTeamMember: async () => {},
+  updateApplicationStatus: async () => {},
+  getUserProjects: () => [],
 });
 
 export const useProject = () => useContext(ProjectContext);
@@ -39,6 +56,7 @@ export const useProject = () => useContext(ProjectContext);
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
@@ -54,22 +72,38 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       if (projectsData) {
-        setProjects(projectsData);
+        // Ensure each project has the required properties
+        const typedProjects: Project[] = projectsData.map(project => ({
+          ...project,
+          required_skills: project.required_skills || [],
+          deliverables: project.deliverables || [],
+          milestones: [],
+          resources: [],
+          applications: [],
+          updated_at: project.updated_at || project.created_at,
+          status: project.status as ProjectStatus,
+          payment_model: project.payment_model as any, // Cast to appropriate type
+        }));
+        
+        setProjects(typedProjects);
       }
 
       // Fetch applications
       if (user) {
         const { data: applicationsData, error: applicationsError } = await supabase
           .from('applications')
-          .select('*')
-          .eq('user_id', user.id);
+          .select('*');
 
         if (applicationsError) {
           throw applicationsError;
         }
 
         if (applicationsData) {
-          setApplications(applicationsData);
+          const typedApplications: Application[] = applicationsData.map(app => ({
+            ...app,
+            status: app.status as any,
+          }));
+          setApplications(typedApplications);
         } else {
           setApplications([]);
         }
@@ -80,11 +114,51 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } finally {
       setLoading(false);
     }
-  }, [supabase, user]);
+  }, [user]);
+
+  const fetchTeams = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: teamsData, error: teamsError } = await supabase
+        .from('teams')
+        .select('*, members:team_members(*, user:profiles(name))');
+
+      if (teamsError) {
+        throw teamsError;
+      }
+
+      if (teamsData) {
+        const typedTeams: Team[] = teamsData.map(team => {
+          const members = team.members ? team.members.map((member: any) => ({
+            ...member,
+            name: member.user?.name || '',
+            role: member.role as any,
+            status: member.status as any,
+          })) : [];
+          
+          return {
+            ...team,
+            skills: team.skills || [],
+            members,
+          };
+        });
+        
+        setTeams(typedTeams);
+      } else {
+        setTeams([]);
+      }
+    } catch (error: any) {
+      console.error('Error fetching teams:', error.message);
+      toast.error(error.message || 'Error fetching teams');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+    fetchTeams();
+  }, [fetchProjects, fetchTeams]);
 
   const createProject = async (projectData: any): Promise<Project> => {
     try {
@@ -99,8 +173,21 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       if (data) {
-        setProjects((prevProjects) => [...prevProjects, data]);
-        return data;
+        // Ensure that project conforms to the Project type
+        const newProject: Project = {
+          ...data,
+          required_skills: data.required_skills || [],
+          deliverables: data.deliverables || [],
+          milestones: [],
+          resources: [],
+          applications: [],
+          updated_at: data.updated_at || data.created_at,
+          status: data.status as ProjectStatus,
+          payment_model: data.payment_model as any,
+        };
+        
+        setProjects(prevProjects => [...prevProjects, newProject]);
+        return newProject;
       } else {
         throw new Error("Project creation failed");
       }
@@ -117,9 +204,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .from('projects')
         .select(`
           *,
-          milestones (
+          milestones:project_milestones (
             *,
-            tasks (*)
+            tasks:project_tasks (*)
           )
         `)
         .eq('id', projectId)
@@ -130,7 +217,33 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
       
       if (data) {
-        return data as Project;
+        // Ensure milestones and tasks conform to the right types
+        const milestones = data.milestones?.map((milestone: any) => {
+          return {
+            ...milestone,
+            status: milestone.status as MilestoneStatus,
+            tasks: milestone.tasks?.map((task: any) => ({
+              ...task,
+              status: task.status as TaskStatus,
+              completed: Boolean(task.completed),
+            })) || [],
+          };
+        }) || [];
+        
+        // Create a properly typed Project object
+        const typedProject: Project = {
+          ...data,
+          milestones,
+          resources: [],
+          applications: [],
+          required_skills: data.required_skills || [],
+          deliverables: data.deliverables || [],
+          updated_at: data.updated_at || data.created_at,
+          status: data.status as ProjectStatus,
+          payment_model: data.payment_model as any,
+        };
+        
+        return typedProject;
       } else {
         return null;
       }
@@ -164,7 +277,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (error) throw error;
 
       if (data) {
-        setApplications((prevApplications) => [...prevApplications, data]);
+        const newApplication: Application = {
+          ...data,
+          status: data.status as any,
+          team: teams.find(t => t.id === teamId),
+        };
+        
+        setApplications(prevApplications => [...prevApplications, newApplication]);
         toast.success("Application submitted successfully!");
       }
     } catch (error: any) {
@@ -190,8 +309,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             ...milestone,
             tasks: milestone.tasks?.map(task =>
               task.id === taskId ? { ...task, status } : task
-            )
-          }))
+            ) || []
+          })) || []
         }))
       );
     } catch (error: any) {
@@ -211,6 +330,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (error) throw error;
       
       if (data) {
+        const newTask: ProjectTask = {
+          ...data,
+          status: data.status as TaskStatus,
+          completed: Boolean(data.completed),
+        };
+        
         // Optimistically update the tasks in the local state
         setProjects(prevProjects =>
           prevProjects.map(project => {
@@ -221,11 +346,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   if (milestone.id === milestoneId) {
                     return {
                       ...milestone,
-                      tasks: [...(milestone.tasks || []), data]
+                      tasks: [...(milestone.tasks || []), newTask]
                     };
                   }
                   return milestone;
-                })
+                }) || []
               };
             }
             return project;
@@ -249,13 +374,19 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (error) throw error;
       
       if (data) {
+        const newMilestone: ProjectMilestone = {
+          ...data,
+          status: data.status as MilestoneStatus,
+          tasks: [],
+        };
+        
         // Optimistically update the milestones in the local state
         setProjects(prevProjects =>
           prevProjects.map(project => {
             if (project.id === projectId) {
               return {
                 ...project,
-                milestones: [...(project.milestones || []), data]
+                milestones: [...(project.milestones || []), newMilestone]
               };
             }
             return project;
@@ -268,17 +399,184 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // Team-related functions
+  const createTeam = async (teamData: any): Promise<Team> => {
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .insert([teamData])
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        const newTeam: Team = {
+          ...data,
+          skills: data.skills || [],
+          members: [],
+        };
+        
+        setTeams(prevTeams => [...prevTeams, newTeam]);
+        return newTeam;
+      } else {
+        throw new Error("Team creation failed");
+      }
+    } catch (error: any) {
+      console.error('Error creating team:', error.message);
+      toast.error(error.message || 'Error creating team');
+      throw error;
+    }
+  };
+
+  const deleteTeam = async (teamId: string) => {
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .delete()
+        .eq('id', teamId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setTeams(prevTeams => prevTeams.filter(team => team.id !== teamId));
+      toast.success("Team deleted successfully!");
+    } catch (error: any) {
+      console.error("Error deleting team:", error.message);
+      toast.error(error.message || "Error deleting team");
+    }
+  };
+
+  const addTeamMember = async (teamId: string, email: string) => {
+    try {
+      // First get the user id from the email
+      const { data: userData, error: userError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .single();
+        
+      if (userError) throw new Error("User not found with that email");
+      
+      if (userData) {
+        const { data, error } = await supabase
+          .from('team_members')
+          .insert([{
+            team_id: teamId,
+            user_id: userData.id,
+            role: 'member',
+            status: 'invited'
+          }])
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        if (data) {
+          // Update local state
+          setTeams(prevTeams => 
+            prevTeams.map(team => {
+              if (team.id === teamId) {
+                const newMember: TeamMember = {
+                  ...data,
+                  name: email.split('@')[0],  // Use part of email as name until profile is loaded
+                  role: data.role as any,
+                  status: data.status as any,
+                };
+                return {
+                  ...team,
+                  members: [...(team.members || []), newMember]
+                };
+              }
+              return team;
+            })
+          );
+          toast.success("Team member invited successfully!");
+        }
+      }
+    } catch (error: any) {
+      console.error("Error adding team member:", error.message);
+      toast.error(error.message || "Error adding team member");
+    }
+  };
+
+  const removeTeamMember = async (teamId: string, memberId: string) => {
+    try {
+      const { error } = await supabase
+        .from('team_members')
+        .delete()
+        .eq('id', memberId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setTeams(prevTeams => 
+        prevTeams.map(team => {
+          if (team.id === teamId) {
+            return {
+              ...team,
+              members: team.members?.filter(member => member.id !== memberId) || []
+            };
+          }
+          return team;
+        })
+      );
+      toast.success("Team member removed successfully!");
+    } catch (error: any) {
+      console.error("Error removing team member:", error.message);
+      toast.error(error.message || "Error removing team member");
+    }
+  };
+
+  const updateApplicationStatus = async (applicationId: string, status: string) => {
+    try {
+      const { error } = await supabase
+        .from('applications')
+        .update({ status })
+        .eq('id', applicationId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setApplications(prevApplications => 
+        prevApplications.map(app => 
+          app.id === applicationId ? { ...app, status: status as any } : app
+        )
+      );
+      toast.success("Application status updated successfully!");
+    } catch (error: any) {
+      console.error("Error updating application status:", error.message);
+      toast.error(error.message || "Error updating application status");
+    }
+  };
+
+  const getUserProjects = () => {
+    if (!user) return [];
+    
+    return projects.filter(project => project.created_by === user.id);
+  };
+
   const value: ProjectContextType = {
     projects,
     applications,
+    teams,
     loading,
     fetchProjects,
+    fetchTeams,
     createProject,
     fetchProject,
     applyToProject,
     updateTaskStatus,
     addTask,
-    addMilestone
+    addMilestone,
+    createTeam,
+    deleteTeam,
+    addTeamMember,
+    removeTeamMember,
+    updateApplicationStatus,
+    getUserProjects
   };
 
   return (

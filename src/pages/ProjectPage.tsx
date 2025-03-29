@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -31,21 +32,20 @@ const CreateTaskForm = ({ milestoneId, projectId, onSuccess }: {
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [assignedTo, setAssignedTo] = useState("");
   
-  const form = useForm<{
-    title: string;
-    description: string;
-  }>({
-    resolver: zodResolver(z.object({
-      title: z.string().min(3, "Title must be at least 3 characters"),
-      description: z.string().optional(),
-    })),
+  const taskSchema = z.object({
+    title: z.string().min(3, "Title must be at least 3 characters"),
+    description: z.string().optional(),
+  });
+  
+  const form = useForm<z.infer<typeof taskSchema>>({
+    resolver: zodResolver(taskSchema),
     defaultValues: {
       title: "",
       description: "",
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof form.formState.resolver["schema"]>) => {
+  const onSubmit = async (values: z.infer<typeof taskSchema>) => {
     try {
       if (!user) return;
       
@@ -143,7 +143,7 @@ const CustomCalendar = ({ selected, onSelect, disabled }: {
 const ProjectPage = () => {
   const { id } = useParams<{ id: string }>();
   const { user, profile } = useAuth();
-  const { projects, loading, fetchProject, updateTaskStatus } = useProject();
+  const { projects, loading, fetchProject, updateTaskStatus, addMilestone } = useProject();
   const navigate = useNavigate();
   const [showCreateMilestoneModal, setShowCreateMilestoneModal] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState<ProjectMilestone | null>(null);
@@ -185,7 +185,7 @@ const ProjectPage = () => {
   
   const handleCreateMilestone = async () => {
     try {
-      if (!id) return;
+      if (!id || !addMilestone) return;
       
       await addMilestone(id, {
         title: milestoneTitle,

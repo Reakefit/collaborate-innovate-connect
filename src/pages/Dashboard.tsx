@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Project, Application, Team } from "@/types/database";
 
 const Dashboard = () => {
   const { user, profile } = useAuth();
-  const { projects, teams, applications, loading } = useProject();
+  const { projects, applications, teams, loading, getUserProjects } = useProject();
   const navigate = useNavigate();
   
   const [userProjects, setUserProjects] = useState<Project[]>([]);
@@ -23,21 +24,19 @@ const Dashboard = () => {
     }
 
     if (profile?.role === "startup") {
-      setUserProjects(projects.filter(p => p.created_by === user.id));
+      setUserProjects(getUserProjects());
     } else {
       setUserProjects(projects.filter(p => 
-        applications.some(a => a.team?.members?.some(m => m.user_id === user.id) && a.status === 'accepted')
+        applications.some(a => a.project_id === p.id && a.status === 'accepted')
       ));
     }
 
-    setUserApplications(applications.filter(a => 
-      a.team?.members?.some(m => m.user_id === user.id)
-    ));
+    setUserApplications(applications.filter(a => a.user_id === user.id));
 
     setUserTeams(teams.filter(team => 
       team.members?.some(member => member.user_id === user.id)
     ));
-  }, [user, profile, projects, applications, teams, navigate]);
+  }, [user, profile, projects, applications, teams, navigate, getUserProjects]);
 
   if (loading) {
     return (
@@ -191,26 +190,31 @@ const Dashboard = () => {
               <CardContent>
                 {userApplications.length > 0 ? (
                   <div className="space-y-4">
-                    {userApplications.slice(0, 5).map((application) => (
-                      <div
-                        key={application.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div>
-                          <h3 className="font-medium">{application.project?.title}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {application.team?.name}
-                          </p>
+                    {userApplications.slice(0, 5).map((application) => {
+                      // Find project for this application
+                      const project = projects.find(p => p.id === application.project_id);
+                      
+                      return (
+                        <div
+                          key={application.id}
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                        >
+                          <div>
+                            <h3 className="font-medium">{project?.title || "Unknown Project"}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {application.status}
+                            </p>
+                          </div>
+                          <div className={`px-2 py-1 rounded-full text-xs ${
+                            application.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                            application.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {application.status}
+                          </div>
                         </div>
-                        <div className={`px-2 py-1 rounded-full text-xs ${
-                          application.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                          application.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {application.status}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-muted-foreground">No applications yet</p>

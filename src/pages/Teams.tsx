@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProject } from '@/context/ProjectContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -134,7 +135,7 @@ const Teams = () => {
                 <ul>
                   {team.members.map((member) => (
                     <li key={member.id} className="flex items-center justify-between py-2 border-b">
-                      <span>{member.user?.name} ({member.role})</span>
+                      <span>{member.user?.name || member.name} ({member.role})</span>
                       {member.user_id !== user?.id && (
                         <Button variant="outline" size="sm" onClick={() => handleRemoveMember(team.id, member.id)}>
                           Remove

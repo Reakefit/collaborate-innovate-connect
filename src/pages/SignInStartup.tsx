@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Mail, Lock } from "lucide-react";
 import { Link } from 'react-router-dom';
 
@@ -48,7 +48,7 @@ const SignInStartup = () => {
         <CardContent className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="email">
-              <Mail className="mr-2 h-4 w-4" />
+              <Mail className="mr-2 h-4 w-4 inline" />
               Email
             </Label>
             <Input
@@ -61,7 +61,7 @@ const SignInStartup = () => {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="password">
-              <Lock className="mr-2 h-4 w-4" />
+              <Lock className="mr-2 h-4 w-4 inline" />
               Password
             </Label>
             <Input

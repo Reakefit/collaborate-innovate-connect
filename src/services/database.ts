@@ -2,7 +2,7 @@
 import { supabase } from '@/lib/supabase';
 import { 
   Project, Application, ProjectMilestone, ProjectTask, 
-  ProjectMessage, ProjectReview, TeamTask, TeamMessage, Team, TeamMember
+  ProjectMessage, ProjectReview, TeamTask, TeamMessage, Team, TeamMember, TeamTaskStatus
 } from '@/types/database';
 
 // Function to fetch project messages
@@ -21,7 +21,10 @@ export const fetchProjectMessages = async (projectId: string): Promise<ProjectMe
     return [];
   }
 
-  return data || [];
+  return (data || []).map(msg => ({
+    ...msg,
+    sender: msg.sender || { name: 'Unknown User' }
+  }));
 };
 
 // Function to fetch team messages
@@ -30,7 +33,7 @@ export const fetchTeamMessages = async (teamId: string): Promise<TeamMessage[]> 
     .from('team_messages')
     .select(`
       *,
-      sender:profiles(name)
+      sender:profiles(name, avatar_url)
     `)
     .eq('team_id', teamId)
     .order('created_at', { ascending: true });
@@ -40,7 +43,16 @@ export const fetchTeamMessages = async (teamId: string): Promise<TeamMessage[]> 
     return [];
   }
 
-  return data || [];
+  return (data || []).map(msg => ({
+    ...msg,
+    sender: msg.sender ? { 
+      name: msg.sender.name || 'Unknown User', 
+      avatar_url: msg.sender.avatar_url || '' 
+    } : { 
+      name: 'Unknown User', 
+      avatar_url: '' 
+    }
+  }));
 };
 
 // Function to fetch team by ID
@@ -62,7 +74,26 @@ export const fetchTeamById = async (teamId: string): Promise<Team | null> => {
     return null;
   }
 
-  return team;
+  if (team) {
+    const typedMembers: TeamMember[] = (team.members || []).map((member: any) => ({
+      id: member.id,
+      team_id: member.team_id,
+      user_id: member.user_id,
+      role: member.role,
+      status: member.status,
+      joined_at: member.joined_at,
+      name: member.user?.name || 'Unknown User',
+      user: member.user,
+    }));
+
+    return {
+      ...team,
+      skills: team.skills || [],
+      members: typedMembers,
+    };
+  }
+
+  return null;
 };
 
 // Function to fetch team tasks
@@ -71,7 +102,7 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
     .from('team_tasks')
     .select(`
       *,
-      assigned_to:profiles(name)
+      assigned_to_profile:profiles(name)
     `)
     .eq('team_id', teamId)
     .order('created_at', { ascending: false });
@@ -81,7 +112,20 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
     return [];
   }
 
-  return data || [];
+  return (data || []).map(task => ({
+    id: task.id,
+    team_id: task.team_id,
+    title: task.title,
+    description: task.description || '',
+    status: (task.status === 'done' ? 'completed' : task.status) as TeamTaskStatus,
+    due_date: task.due_date,
+    assigned_to: task.assigned_to,
+    created_by: task.created_by,
+    created_at: task.created_at,
+    updated_at: task.updated_at,
+    assigned_to_profile: task.assigned_to_profile || { name: 'Unassigned' }
+  }));
 };
 
 // Add more database service functions as needed
+
