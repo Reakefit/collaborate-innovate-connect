@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -9,7 +10,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signUp: (data: any) => Promise<void>;
-  signIn: (data: any) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (profileData: Partial<Profile>) => Promise<void>;
   getUserProfile: (userId: string) => Promise<Profile | null>;
@@ -42,9 +43,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     (async () => {
-      const { data: { user } } = await session;
-
-      setUser(user ?? null);
+      const { data } = await session;
+      setUser(data.session?.user ?? null);
       setLoading(false);
     })();
   }, []);
@@ -54,7 +54,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const getProfile = async () => {
       if (user) {
         const userProfile = await getUserProfile(user.id);
-        setProfile(userProfile);
+        if (userProfile) {
+          setProfile(userProfile);
+        }
       }
     };
     getProfile();
@@ -90,12 +92,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signIn = async (data: any) => {
+  const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
+        email,
+        password,
       });
       if (error) {
         throw error;
@@ -131,14 +133,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("User not authenticated");
       }
 
-      // Convert education array if it exists and is not already in the right format
-      if (profileData.education && !Array.isArray(profileData.education)) {
-        profileData.education = profileData.education as unknown as Education[];
+      // Create a clean object for the update
+      const cleanData: any = { ...profileData };
+      
+      // Make sure education is properly formatted if it exists
+      if (profileData.education) {
+        cleanData.education = profileData.education;
       }
 
       const { error } = await supabase
         .from("profiles")
-        .update(profileData)
+        .update(cleanData)
         .eq("id", user.id);
 
       if (error) throw error;
@@ -159,7 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const getUserProfile = async (userId: string) => {
+  const getUserProfile = async (userId: string): Promise<Profile | null> => {
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -171,48 +176,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (data) {
         // Convert education field if it's stored as JSON
+        let educationData: Education[] = [];
         if (data.education && typeof data.education !== 'undefined') {
           try {
             if (typeof data.education === 'string') {
-              data.education = JSON.parse(data.education);
+              educationData = JSON.parse(data.education);
+            } else {
+              educationData = data.education as unknown as Education[];
             }
           } catch (e) {
             console.error("Error parsing education data:", e);
-            data.education = [];
           }
         }
 
-        return {
+        const profile: Profile = {
           id: data.id,
-          name: data.name,
-          email: data.email,
-          role: data.role,
-          avatar_url: data.avatar_url,
-          bio: data.bio,
-          company_name: data.company_name,
-          company_description: data.company_description,
-          industry: data.industry,
-          company_size: data.company_size,
-          founded: data.founded,
-          website: data.website,
-          stage: data.stage,
-          project_needs: data.project_needs,
-          skills: data.skills,
-          education: data.education as Education[],
-          portfolio_url: data.portfolio_url,
-          resume_url: data.resume_url,
-          github_url: data.github_url,
-          linkedin_url: data.linkedin_url,
-          availability: data.availability,
-          interests: data.interests,
-          experience_level: data.experience_level,
-          preferred_categories: data.preferred_categories,
-          college: data.college,
-          graduation_year: data.graduation_year,
-          major: data.major,
+          name: data.name || '',
+          role: data.role as "student" | "startup",
+          avatar_url: data.avatar_url || '',
+          bio: data.bio || '',
+          company_name: data.company_name || '',
+          company_description: data.company_description || '',
+          industry: data.industry || '',
+          company_size: data.company_size || '',
+          founded: data.founded || '',
+          website: data.website || '',
+          stage: data.stage || '',
+          project_needs: data.project_needs || [],
+          skills: data.skills || [],
+          education: educationData,
+          portfolio_url: data.portfolio_url || '',
+          resume_url: data.resume_url || '',
+          github_url: data.github_url || '',
+          linkedin_url: data.linkedin_url || '',
+          availability: data.availability || '',
+          interests: data.interests || [],
+          experience_level: data.experience_level || '',
+          preferred_categories: data.preferred_categories || [],
+          college: data.college || '',
+          graduation_year: data.graduation_year || '',
+          major: data.major || '',
           created_at: data.created_at,
           updated_at: data.updated_at,
         };
+
+        return profile;
       }
       return null;
     } catch (error: any) {

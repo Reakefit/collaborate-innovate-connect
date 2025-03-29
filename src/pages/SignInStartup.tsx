@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -26,7 +27,6 @@ const SignInStartup = () => {
     
     try {
       setIsLoading(true);
-      // Fix this line - remove the third parameter
       await signIn(email, password);
       navigate('/dashboard');
     } catch (error: any) {
