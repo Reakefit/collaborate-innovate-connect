@@ -1,217 +1,192 @@
-import React, { useState } from 'react';
-import { useRouter } from 'next/router';
-import ProjectDashboard from '@/components/layouts/ProjectDashboard';
-import { useProjects } from '@/context/ProjectContext';
-import { useAuth } from '@/context/AuthContext';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  FolderKanban,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Users,
-  MessageSquare
-} from 'lucide-react';
 
-const ProjectsPage: React.FC = () => {
-  const router = useRouter();
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { useProjects } from "@/context/ProjectContext";
+import DashboardLayout from "@/components/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Search, ArrowRight } from "lucide-react";
+import { ProjectCategory, PaymentModel } from "@/types/database";
+
+const Projects = () => {
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const { projects, loading } = useProjects();
-  const { profile } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<ProjectCategory | "all">("all");
+  const [selectedPaymentModel, setSelectedPaymentModel] = useState<PaymentModel | "all">("all");
 
-  const filteredProjects = projects.filter(project => {
+  const categories: ProjectCategory[] = [
+    "MVP Development",
+    "Market Research",
+    "GTM Strategy",
+    "Design",
+    "Content Creation",
+    "Social Media",
+    "Data Analysis",
+    "Other"
+  ];
+
+  const paymentModels: PaymentModel[] = [
+    "Pro-bono",
+    "Stipend",
+    "Equity",
+    "Certificate"
+  ];
+
+  const filteredProjects = projects?.filter(project => {
     const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  const statusCounts = {
-    all: projects.length,
-    open: projects.filter(p => p.status === 'open').length,
-    in_progress: projects.filter(p => p.status === 'in_progress').length,
-    completed: projects.filter(p => p.status === 'completed').length,
-    cancelled: projects.filter(p => p.status === 'cancelled').length,
-  };
-
-  if (loading) {
-    return (
-      <ProjectDashboard>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-        </div>
-      </ProjectDashboard>
-    );
-  }
+      project.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === "all" || project.category === selectedCategory;
+    const matchesPayment = selectedPaymentModel === "all" || project.payment_model === selectedPaymentModel;
+    return matchesSearch && matchesCategory && matchesPayment;
+  }) || [];
 
   return (
-    <ProjectDashboard>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Manage and track your projects
-            </p>
-          </div>
-          {profile?.role === 'startup' && (
-            <button
-              onClick={() => router.push('/projects/new')}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              New Project
-            </button>
-          )}
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search projects..."
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
+    <DashboardLayout activeTab="projects">
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Projects</h1>
+              <p className="text-muted-foreground">
+                {profile?.role === 'startup' 
+                  ? 'Manage your projects and track progress'
+                  : 'Browse and apply to exciting projects from startups'
+                }
+              </p>
             </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Filter className="h-5 w-5 text-gray-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            >
-              <option value="all">All Status</option>
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Status Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            {Object.entries(statusCounts).map(([status, count]) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`
-                  whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-                  ${statusFilter === status
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }
-                `}
-              >
-                {status.charAt(0).toUpperCase() + status.slice(1)} ({count})
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Projects Grid */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project) => (
-            <div
-              key={project.id}
-              className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200"
-            >
-              <div className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FolderKanban className="h-5 w-5 text-gray-400" />
-                    <h3 className="ml-2 text-lg font-medium text-gray-900">
-                      {project.title}
-                    </h3>
-                  </div>
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      project.status === 'completed'
-                        ? 'bg-green-100 text-green-800'
-                        : project.status === 'in_progress'
-                        ? 'bg-blue-100 text-blue-800'
-                        : project.status === 'cancelled'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    {project.status}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm text-gray-500 line-clamp-2">
-                  {project.description}
-                </p>
-                <div className="mt-4">
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Clock className="h-4 w-4 mr-1" />
-                    <span>
-                      {new Date(project.start_date).toLocaleDateString()} -{' '}
-                      {new Date(project.end_date).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center text-sm text-gray-500">
-                    <Users className="h-4 w-4 mr-1" />
-                    <span>Team Size: {project.team_size}</span>
-                  </div>
-                </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <MessageSquare className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm text-gray-500">
-                      {project.messages?.length || 0} messages
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => router.push(`/projects/${project.id}`)}
-                    className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-                  >
-                    View Details →
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {filteredProjects.length === 0 && (
-          <div className="text-center py-12">
-            <FolderKanban className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No projects found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchQuery || statusFilter !== 'all'
-                ? 'Try adjusting your search or filter criteria'
-                : 'Get started by creating a new project'}
-            </p>
-            {profile?.role === 'startup' && (
-              <div className="mt-6">
-                <button
-                  onClick={() => router.push('/projects/new')}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  New Project
-                </button>
-              </div>
+            {profile?.role === "startup" && (
+              <Button onClick={() => navigate("/create-project")}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Project
+              </Button>
             )}
           </div>
-        )}
+
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex gap-2">
+              <select
+                className="border rounded-md px-3 py-2"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value as ProjectCategory | "all")}
+              >
+                <option value="all">All Categories</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="border rounded-md px-3 py-2"
+                value={selectedPaymentModel}
+                onChange={(e) => setSelectedPaymentModel(e.target.value as PaymentModel | "all")}
+              >
+                <option value="all">All Payment Models</option>
+                {paymentModels.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader>
+                    <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-20 bg-gray-200 rounded mb-4"></div>
+                    <div className="flex justify-between">
+                      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredProjects.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredProjects.map((project) => (
+                <Card
+                  key={project.id}
+                  className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden"
+                  onClick={() => navigate(`/project/${project.id}`)}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="line-clamp-1">{project.title}</CardTitle>
+                        <CardDescription className="line-clamp-1">
+                          {project.category} • {project.payment_model}
+                        </CardDescription>
+                      </div>
+                      <Badge variant={
+                        new Date(project.end_date) > new Date() ? "outline" : "destructive"
+                      }>
+                        {new Date(project.end_date) > new Date() ? "Open" : "Closed"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="line-clamp-2 text-sm text-muted-foreground mb-4">
+                      {project.description}
+                    </p>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <span className="text-xs text-muted-foreground">
+                          Due: {new Date(project.end_date).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <Button variant="ghost" size="sm">
+                        View Details
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="border-none shadow-lg bg-muted/50">
+              <CardContent className="flex flex-col items-center justify-center py-10">
+                <Search className="h-10 w-10 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">No Projects Found</h3>
+                <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+                  {searchQuery || selectedCategory !== "all" || selectedPaymentModel !== "all"
+                    ? "Try adjusting your search or filters to find what you're looking for."
+                    : "No projects are available at the moment. Check back later!"}
+                </p>
+                {profile?.role === "startup" && (
+                  <Button onClick={() => navigate("/create-project")}>
+                    Create Your First Project
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
-    </ProjectDashboard>
+    </DashboardLayout>
   );
 };
 
-export default ProjectsPage; 
+export default Projects;

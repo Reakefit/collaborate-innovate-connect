@@ -1,15 +1,14 @@
 
 import React from 'react';
+import DashboardLayout from "@/components/DashboardLayout";
 import ProjectDashboard from "@/components/layouts/ProjectDashboard";
-// Note: This assumes there's a ProjectDashboard component in that path
-// If there isn't, we need to create it or fix the import path
 
 const DashboardPage = () => {
   return (
-    <div>
+    <DashboardLayout activeTab="dashboard">
       <ProjectDashboard />
-    </div>
-  )
-}
+    </DashboardLayout>
+  );
+};
 
 export default DashboardPage;
