@@ -1,176 +1,116 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
-import { useProjects } from "@/context/ProjectContext";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
+import { useProject } from "@/context/ProjectContext";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Filter, ArrowRight } from "lucide-react";
-import { Project, ProjectCategory, PaymentModel } from "@/context/ProjectContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Project, ProjectCategory, PaymentModel } from "@/types/database";
+import { Search, PlusCircle } from "lucide-react";
 
 const Projects = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const { projects, loading } = useProjects();
+  const { projects, fetchProjects } = useProject();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<ProjectCategory | "all">("all");
-  const [selectedPaymentModel, setSelectedPaymentModel] = useState<PaymentModel | "all">("all");
+  const [categoryFilter, setCategoryFilter] = useState<ProjectCategory | "">("");
+  const [paymentModelFilter, setPaymentModelFilter] = useState<PaymentModel | "">("");
 
-  const categories: ProjectCategory[] = [
-    "MVP Development",
-    "Market Research",
-    "GTM Strategy",
-    "Design",
-    "Content Creation",
-    "Social Media",
-    "Data Analysis",
-    "Other"
-  ];
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
 
-  const paymentModels: PaymentModel[] = [
-    "Pro-bono",
-    "Stipend",
-    "Equity",
-    "Certificate"
-  ];
-
-  const filteredProjects = projects?.filter(project => {
-    const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || project.category === selectedCategory;
-    const matchesPayment = selectedPaymentModel === "all" || project.payment_model === selectedPaymentModel;
-    return matchesSearch && matchesCategory && matchesPayment;
-  }) || [];
-
-  if (loading) {
-    return (
-      <div className="py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const filteredProjects = projects.filter((project) => {
+    const searchMatch = project.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const categoryMatch = categoryFilter ? project.category === categoryFilter : true;
+    const paymentModelMatch = paymentModelFilter ? project.payment_model === paymentModelFilter : true;
+    
+    return searchMatch && categoryMatch && paymentModelMatch;
+  });
 
   return (
-    <div className="py-8">
-      <div className="container mx-auto px-4">
-        <div className="space-y-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">Projects</h1>
-              <p className="text-muted-foreground">
-                Browse and apply to exciting projects from startups
-              </p>
-            </div>
-            {profile?.role === "startup" && (
-              <Button onClick={() => navigate("/projects/new")}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Project
-              </Button>
-            )}
-          </div>
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-6">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">
+            {profile?.role === "startup" ? "Your Projects" : "Available Projects"}
+          </CardTitle>
+          <CardDescription>
+            {profile?.role === "startup"
+              ? "Manage and view your created projects."
+              : "Explore projects posted by startups."}
+          </CardDescription>
+        </CardHeader>
+        {profile?.role === "startup" && (
+          <Button onClick={() => navigate("/create-project")} className="flex items-center gap-2">
+            <PlusCircle className="h-4 w-4" />
+            Create Project
+          </Button>
+        )}
+      </div>
 
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search projects..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex gap-2">
-              <select
-                className="border rounded-md px-3 py-2"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value as ProjectCategory | "all")}
-              >
-                <option value="all">All Categories</option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="border rounded-md px-3 py-2"
-                value={selectedPaymentModel}
-                onChange={(e) => setSelectedPaymentModel(e.target.value as PaymentModel | "all")}
-              >
-                <option value="all">All Payment Models</option>
-                {paymentModels.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card className="col-span-1 md:col-span-3 p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Input
+              type="text"
+              placeholder="Search projects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <Select onValueChange={(value) => setCategoryFilter(value as ProjectCategory | "")}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Filter by category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Categories</SelectItem>
+                <SelectItem value="web_development">Web Development</SelectItem>
+                <SelectItem value="mobile_development">Mobile Development</SelectItem>
+                <SelectItem value="data_science">Data Science</SelectItem>
+                <SelectItem value="machine_learning">Machine Learning</SelectItem>
+                <SelectItem value="ui_ux_design">UI/UX Design</SelectItem>
+                <SelectItem value="devops">DevOps</SelectItem>
+                <SelectItem value="cybersecurity">Cybersecurity</SelectItem>
+                <SelectItem value="blockchain">Blockchain</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select onValueChange={(value) => setPaymentModelFilter(value as PaymentModel | "")}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Filter by payment model" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Payment Models</SelectItem>
+                <SelectItem value="hourly">Hourly</SelectItem>
+                <SelectItem value="fixed">Fixed</SelectItem>
+                <SelectItem value="equity">Equity</SelectItem>
+                <SelectItem value="unpaid">Unpaid</SelectItem>
+                <SelectItem value="stipend">Stipend</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+        </Card>
+      </div>
 
-          {filteredProjects.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredProjects.map((project) => (
-                <Card
-                  key={project.id}
-                  className="hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => navigate(`/project/${project.id}`)}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="line-clamp-1">{project.title}</CardTitle>
-                        <CardDescription className="line-clamp-1">
-                          {project.category} • {project.payment_model}
-                        </CardDescription>
-                      </div>
-                      <Badge variant="outline">
-                        {new Date(project.end_date) > new Date() ? "Open" : "Closed"}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="line-clamp-2 text-sm text-muted-foreground mb-4">
-                      {project.description}
-                    </p>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center">
-                        <span className="text-xs text-muted-foreground">
-                          Due: {new Date(project.end_date).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        View Details
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card className="border-none shadow-lg bg-muted/50">
-              <CardContent className="flex flex-col items-center justify-center py-10">
-                <Search className="h-10 w-10 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No Projects Found</h3>
-                <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-                  {searchQuery || selectedCategory !== "all" || selectedPaymentModel !== "all"
-                    ? "Try adjusting your search or filters to find what you're looking for."
-                    : "No projects are available at the moment. Check back later!"}
-                </p>
-                {profile?.role === "startup" && (
-                  <Button onClick={() => navigate("/projects/new")}>
-                    Create Your First Project
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredProjects.map((project) => (
+          <Card key={project.id} className="bg-white shadow-md rounded-lg overflow-hidden">
+            <CardHeader className="p-4">
+              <CardTitle className="text-lg font-semibold">{project.title}</CardTitle>
+              <CardDescription className="text-gray-500">{project.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <span className="px-2 py-1 rounded-full bg-gray-100">{project.category}</span>
+                <span className="px-2 py-1 rounded-full bg-gray-100">{project.payment_model}</span>
+              </div>
+            </CardContent>
+            <CardFooter className="p-4">
+              <Button onClick={() => navigate(`/projects/${project.id}`)}>View Details</Button>
+            </CardFooter>
+          </Card>
+        ))}
       </div>
     </div>
   );

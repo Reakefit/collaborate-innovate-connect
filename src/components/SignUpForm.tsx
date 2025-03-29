@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useAuth, UserRole } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Loader2 } from "lucide-react";
@@ -44,7 +44,7 @@ const SignUpForm = () => {
   const onSubmit = async (values: SignUpValues) => {
     try {
       setIsSubmitting(true);
-      await signUp(values.email, values.password, values.name, values.role as UserRole);
+      await signUp(values.email, values.password, values.name, values.role);
       navigate("/complete-profile");
     } catch (error: any) {
       console.error("Sign up error:", error);

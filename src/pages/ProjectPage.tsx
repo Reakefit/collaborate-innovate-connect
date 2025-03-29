@@ -1,600 +1,629 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { useProject } from "@/context/ProjectContext";
-import { useAuth } from "@/context/AuthContext";
-import { 
-  Project, Application, ProjectMilestone, ProjectTask, 
-  MilestoneStatus, TaskStatus, ProjectReview, ProjectResource
-} from "@/types/database";
-import { 
-  fetchProjectById, fetchProjectApplications, fetchProjectMilestones, 
-  fetchProjectTasks, fetchProjectReviews 
-} from '@/services/database';
-import { toast } from 'sonner';
-import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
+import { useProject } from "@/context/ProjectContext";
+import { Project, Application, ProjectMilestone, ProjectTask, TaskStatus } from "@/types/database";
+import { MessageSquare, User, Calendar, DollarSign, Users, CheckCircle, Clock, AlertCircle, Send, ArrowLeft, FileText, ExternalLink, ListChecks } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { Calendar as CalendarIcon } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+
+const taskSchema = z.object({
+  milestone_id: z.string().min(1, { message: "Please select a milestone" }),
+  title: z.string().min(3, { message: "Title must be at least 3 characters" }),
+  description: z.string().optional(),
+  due_date: z.date(),
+  assigned_to: z.string().optional(),
+});
+
+type TaskValues = z.infer<typeof taskSchema>;
 
 const ProjectPage = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const { projects, applications, createApplication, updateApplication, createTask, updateTask, deleteTask, createMilestone, updateMilestone, deleteMilestone } = useProject();
-  const [project, setProject] = useState<Project | null>(null);
-  const [projectApplications, setProjectApplications] = useState<Application[]>([]);
-  const [projectMilestones, setProjectMilestones] = useState<ProjectMilestone[]>([]);
-  const [projectTasks, setProjectTasks] = useState<ProjectTask[]>([]);
-  const [newMilestoneTitle, setNewMilestoneTitle] = useState('');
-  const [newMilestoneDescription, setNewMilestoneDescription] = useState('');
-  const [newMilestoneDueDate, setNewMilestoneDueDate] = React.useState<Date | undefined>(new Date());
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDescription, setNewTaskDescription] = useState('');
-  const [newTaskDueDate, setNewTaskDueDate] = React.useState<Date | undefined>(new Date());
-  const [selectedMilestone, setSelectedMilestone] = useState<string | null>(null);
-  const [projectReviews, setProjectReviews] = useState<ProjectReview[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { projects, teams, applications, fetchProject, createMilestone, createTask, updateTaskStatus } = useProject();
+  const [showNewTaskModal, setShowNewTaskModal] = useState(false);
+  const [showNewMilestoneModal, setShowNewMilestoneModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [project, setProject] = useState<Project | undefined>(undefined);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const taskForm = useForm<TaskValues>({
+    resolver: zodResolver(taskSchema),
+    defaultValues: {
+      milestone_id: "",
+      title: "",
+      description: "",
+      due_date: new Date(),
+      assigned_to: user?.id,
+    },
+  });
+
+  const milestoneForm = useForm<ProjectMilestone>({
+    defaultValues: {
+      project_id: id || "",
+      title: "",
+      description: "",
+      due_date: new Date().toISOString(),
+      status: "not_started",
+    },
+  });
 
   useEffect(() => {
-    if (id) {
-      loadProjectDetails(id);
-    }
-  }, [id]);
-
-  const loadProjectDetails = async (projectId: string) => {
-    setLoading(true);
-    try {
-      const project = await fetchProjectById(projectId);
-      const applications = await fetchProjectApplications(projectId);
-      const milestones = await fetchProjectMilestones(projectId);
-      const tasks = await fetchProjectTasks(projectId);
-      const reviews = await fetchProjectReviews(projectId);
-      
-      setProject(project);
-      setProjectApplications(applications);
-      setProjectMilestones(milestones);
-      setProjectTasks(tasks);
-      setProjectReviews(reviews);
-    } catch (error: any) {
-      setError(error.message || 'Failed to load project details');
-      toast.error(error.message || 'Failed to load project details');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleApply = async () => {
-    if (!project || !user || !profile) return;
-
-    // Check if the user is already applied
-    const alreadyApplied = project.applications?.some(app => app.user_id === user.id);
-    if (alreadyApplied) {
-      toast.error("You have already applied for this project.");
-      return;
-    }
-
-    // Check if the user is the project creator
-    if (project.created_by === user.id) {
-      toast.error("You cannot apply for your own project.");
-      return;
-    }
-
-    // Check if the user is a startup
-    if (profile.role === 'startup') {
-      toast.error("Startups cannot apply for projects.");
-      return;
-    }
-
-    // Submit the application
-    try {
-      const coverLetter = prompt("Why do you want to join this project? (Write a short cover letter):");
-      if (!coverLetter) return;
-
-      const newApplication = await createApplication({
-        project_id: project.id,
-        team_id: '00000000-0000-0000-0000-000000000000',
-        cover_letter: coverLetter,
-        user_id: user.id,
-        status: 'pending'
-      });
-
-      if (newApplication) {
-        toast.success("Application submitted successfully!");
-        loadProjectDetails(project.id);
-      } else {
-        toast.error("Failed to submit application.");
+    const loadProject = async () => {
+      if (id) {
+        try {
+          const fetchedProject = await fetchProject(id);
+          setProject(fetchedProject);
+          setIsLoading(false);
+        } catch (err: any) {
+          setError(err.message || "Failed to load project");
+          setIsLoading(false);
+        }
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit application.");
-    }
+    };
+
+    loadProject();
+  }, [id, fetchProject, refreshKey]);
+
+  const refreshProjectData = () => {
+    setRefreshKey(prevKey => prevKey + 1);
   };
 
-  const handleAcceptApplication = async (applicationId: string) => {
-    try {
-      await updateApplication(applicationId, 'accepted');
-      toast.success("Application accepted successfully!");
-      loadProjectDetails(project?.id || '');
-    } catch (error: any) {
-      toast.error(error.message || "Failed to accept application.");
-    }
-  };
-
-  const handleRejectApplication = async (applicationId: string) => {
-    try {
-      await updateApplication(applicationId, 'rejected');
-      toast.success("Application rejected successfully!");
-      loadProjectDetails(project?.id || '');
-    } catch (error: any) {
-      toast.error(error.message || "Failed to reject application.");
-    }
-  };
-
-  const handleCreateMilestone = async () => {
-    if (!project || !newMilestoneTitle || !newMilestoneDescription || !newMilestoneDueDate) return;
-
-    try {
-      const newMilestone = await createMilestone({
-        project_id: project.id,
-        title: newMilestoneTitle,
-        description: newMilestoneDescription,
-        due_date: newMilestoneDueDate.toISOString(),
-        status: 'not_started'
-      });
-
-      if (newMilestone) {
-        toast.success("Milestone created successfully!");
-        setNewMilestoneTitle('');
-        setNewMilestoneDescription('');
-        setNewMilestoneDueDate(new Date());
-        loadProjectDetails(project.id);
-      } else {
-        toast.error("Failed to create milestone.");
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create milestone.");
-    }
-  };
-
-  const handleUpdateMilestoneStatus = async (milestoneId: string, status: MilestoneStatus) => {
-    try {
-      await updateMilestone(milestoneId, { status: status });
-      toast.success("Milestone status updated successfully!");
-      loadProjectDetails(project?.id || '');
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update milestone status.");
-    }
-  };
-
-  const handleDeleteMilestone = async (milestoneId: string) => {
-    try {
-      await deleteMilestone(milestoneId);
-      toast.success("Milestone deleted successfully!");
-      loadProjectDetails(project?.id || '');
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete milestone.");
-    }
-  };
-
-  const handleCreateTask = async () => {
-    if (!project || !selectedMilestone || !newTaskTitle || !newTaskDescription || !newTaskDueDate) return;
-
-    try {
-      const newTask = await createTask({
-        project_id: project.id,
-        milestone_id: selectedMilestone,
-        title: newTaskTitle,
-        description: newTaskDescription,
-        due_date: newTaskDueDate.toISOString(),
-        status: 'not_started',
-        assigned_to: user?.id
-      });
-
-      if (newTask) {
-        toast.success("Task created successfully!");
-        setNewTaskTitle('');
-        setNewTaskDescription('');
-        setNewTaskDueDate(new Date());
-        loadProjectDetails(project.id);
-      } else {
-        toast.error("Failed to create task.");
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create task.");
-    }
-  };
-
-  const handleUpdateTaskStatus = async (taskId: string, status: TaskStatus) => {
-    try {
-      await updateTask(taskId, { status: status });
-      toast.success("Task status updated successfully!");
-      loadProjectDetails(project?.id || '');
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update task status.");
-    }
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    try {
-      await deleteTask(taskId);
-      toast.success("Task deleted successfully!");
-      loadProjectDetails(project?.id || '');
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete task.");
-    }
-  };
-
-  if (loading) {
-    return <div className="container mx-auto py-8">Loading project details...</div>;
+  if (isLoading) {
+    return (
+      <div className="py-8">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  if (error || !project) {
-    return <div className="container mx-auto py-8">Error: {error || 'Project not found'}</div>;
+  if (!project) {
+    return (
+      <div className="py-8">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+            <AlertCircle className="h-12 w-12 text-muted-foreground" />
+            <h2 className="text-xl font-semibold">Project Not Found</h2>
+            <p className="text-muted-foreground">The project you're looking for doesn't exist.</p>
+            <Button onClick={() => navigate("/projects")}>Back to Projects</Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  const isProjectOwner = user?.id === project.created_by;
-  const hasApplied = projectApplications.some(app => app.user_id === user?.id);
-  const isApplicationPending = projectApplications.some(app => app.user_id === user?.id && app.status === 'pending');
+  // Create new task form submit handler
+  const handleTaskSubmit = async (data: z.infer<typeof taskSchema>) => {
+    try {
+      const taskData = {
+        project_id: project!.id,
+        milestone_id: data.milestone_id,
+        title: data.title,
+        description: data.description,
+        due_date: data.due_date,
+        status: "not_started" as TaskStatus,
+        assigned_to: data.assigned_to,
+        created_by: user!.id
+      };
+
+      await createTask(taskData);
+      toast.success("Task created successfully");
+      setShowNewTaskModal(false);
+      taskForm.reset();
+      refreshProjectData();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create task");
+    }
+  };
+
+  // Create new milestone form submit handler
+  const handleMilestoneSubmit = async (values: ProjectMilestone) => {
+    try {
+      await createMilestone({
+        ...values,
+        project_id: project.id,
+      });
+      toast.success("Milestone created successfully");
+      setShowNewMilestoneModal(false);
+      milestoneForm.reset();
+      refreshProjectData();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create milestone");
+    }
+  };
+
+  // Update task status handler
+  const handleTaskStatusChange = async (taskId: string, status: TaskStatus) => {
+    try {
+      await updateTaskStatus(taskId, status);
+      toast.success(`Task status updated to ${status}`);
+      refreshProjectData();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update task status");
+    }
+  };
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">{project.title}</h1>
-          <p className="text-gray-500">{project.description}</p>
-        </div>
-        <div>
-          {profile?.role === 'student' && !isProjectOwner && !hasApplied && (
-            <Button onClick={handleApply}>Apply Now</Button>
-          )}
-          {profile?.role === 'student' && !isProjectOwner && hasApplied && isApplicationPending && (
-            <Button disabled>Application Pending</Button>
-          )}
-          <Badge variant={project.status === 'in_progress' ? 'secondary' : 
-        project.status === 'completed' ? 'outline' : 
-        project.status === 'cancelled' ? 'destructive' : 'default'}>
-  {project.status === 'open' ? 'Open' : 
-   project.status === 'in_progress' ? 'In Progress' : 
-   project.status === 'completed' ? 'Completed' : 'Cancelled'}
-</Badge>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Project Details */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Project Details</CardTitle>
-            <CardDescription>Information about the project</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <p>{project.category}</p>
+    <div className="py-8">
+      <div className="container mx-auto px-4">
+        <Button variant="ghost" onClick={() => navigate("/projects")} className="mb-4">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Projects
+        </Button>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold mb-4">{project.title}</h1>
+              <p className="text-lg text-muted-foreground">
+                {project.description}
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label>Payment Model</Label>
-              <p>{project.payment_model}</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Stipend Amount</Label>
-              <p>{project.stipend_amount}</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Required Skills</Label>
-              <p>{project.required_skills.join(', ')}</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Team Size</Label>
-              <p>{project.team_size}</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Start Date</Label>
-              <p>{new Date(project.start_date).toLocaleDateString()}</p>
-            </div>
-            <div className="space-y-2">
-              <Label>End Date</Label>
-              <p>{new Date(project.end_date).toLocaleDateString()}</p>
-            </div>
-            {project.deliverables && project.deliverables.length > 0 && (
-  <div className="space-y-4">
-    <h3 className="text-lg font-semibold">Deliverables</h3>
-    <ul className="list-disc pl-5 space-y-1">
-      {project.deliverables.map((deliverable, index) => (
-        <li key={index}>{deliverable}</li>
-      ))}
-    </ul>
-  </div>
-)}
-          </CardContent>
-        </Card>
-
-        {/* Applications */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Applications</CardTitle>
-            <CardDescription>List of applications for this project</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[400px] pr-4">
-              {projectApplications.length === 0 ? (
-                <p className="text-sm text-gray-500">No applications yet.</p>
-              ) : (
-                <div className="space-y-4">
-                  {projectApplications.map(application => (
-                    <Card key={application.id}>
-                      <CardHeader className="flex items-center space-x-4">
-                        <Avatar>
-                          <AvatarImage src="https://github.com/shadcn.png" />
-                          <AvatarFallback>SC</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <CardTitle>{application.user_id}</CardTitle>
-                          <CardDescription>
-                            Applied on {new Date(application.created_at).toLocaleDateString()}
-                          </CardDescription>
-                        </div>
-                        {isProjectOwner && application.status === 'pending' && (
-                          <div className="space-x-2">
-                            <Button variant="secondary" size="sm" onClick={() => handleAcceptApplication(application.id)}>
-                              Accept
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleRejectApplication(application.id)}>
-                              Reject
-                            </Button>
-                          </div>
-                        )}
-                        <Badge>{application.status}</Badge>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm">{application.cover_letter}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+            <div className="space-x-2">
+              {project.resources && project.resources.length > 0 && (
+                <Button variant="outline">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Resources
+                </Button>
               )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
+              {user && profile?.role === "startup" && (
+                <Button onClick={() => setShowNewMilestoneModal(true)}>
+                  Add Milestone
+                </Button>
+              )}
+            </div>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        {/* Milestones */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Milestones</CardTitle>
-            <CardDescription>Manage project milestones</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[400px] pr-4">
-              {projectMilestones.length === 0 ? (
-                <p className="text-sm text-gray-500">No milestones yet.</p>
-              ) : (
-                <div className="space-y-4">
-                  {projectMilestones.map(milestone => (
-                    <Card key={milestone.id}>
-                      <CardHeader className="flex items-center justify-between">
-                        <CardTitle>{milestone.title}</CardTitle>
+          <Tabs defaultValue="overview" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              {user && profile?.role === "startup" && (
+                <TabsTrigger value="applications">Applications</TabsTrigger>
+              )}
+            </TabsList>
+            <TabsContent value="overview" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-semibold mb-4">Project Details</h2>
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-medium">Category</h3>
+                        <p className="text-muted-foreground">{project.category}</p>
+                      </div>
+                      {project.deliverables && project.deliverables.length > 0 && (
                         <div>
-                          <Button variant="outline" size="sm" onClick={() => handleDeleteMilestone(milestone.id)}>
-                            Delete
-                          </Button>
+                          <h3 className="font-medium">Deliverables</h3>
+                          <ul className="list-disc list-inside text-muted-foreground">
+                            {project.deliverables.map((deliverable, index) => (
+                              <li key={index}>{deliverable}</li>
+                            ))}
+                          </ul>
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm">{milestone.description}</p>
-                        <p className="text-sm">Due Date: {new Date(milestone.due_date).toLocaleDateString()}</p>
-                        <div className="flex space-x-2">
-                          <Button variant="secondary" size="sm" onClick={() => handleUpdateMilestoneStatus(milestone.id, 'not_started' as MilestoneStatus)}>
-                            Not Started
-                          </Button>
-                          <Button variant="secondary" size="sm" onClick={() => handleUpdateMilestoneStatus(milestone.id, 'in_progress' as MilestoneStatus)}>
-                            In Progress
-                          </Button>
-                          <Button variant="secondary" size="sm" onClick={() => handleUpdateMilestoneStatus(milestone.id, 'completed' as MilestoneStatus)}>
-                            Completed
-                          </Button>
-                          <Button variant="secondary" size="sm" onClick={() => handleUpdateMilestoneStatus(milestone.id, 'delayed' as MilestoneStatus)}>
-                            Delayed
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-          {isProjectOwner && (
-            <CardFooter className="flex flex-col space-y-4">
-              <CardTitle>Create New Milestone</CardTitle>
-              <Input
-                type="text"
-                placeholder="Milestone Title"
-                value={newMilestoneTitle}
-                onChange={e => setNewMilestoneTitle(e.target.value)}
-              />
-              <Textarea
-                placeholder="Milestone Description"
-                value={newMilestoneDescription}
-                onChange={e => setNewMilestoneDescription(e.target.value)}
-              />
-              <div className="space-y-2">
-                <Label>Due Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-[240px] pl-3 text-left font-normal",
-                        !newMilestoneDueDate && "text-muted-foreground"
                       )}
-                    >
-                      {newMilestoneDueDate ? format(newMilestoneDueDate, "PPP") : (
-                        <span>Pick a date</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={newMilestoneDueDate}
-                      onSelect={setNewMilestoneDueDate}
-                      disabled={(date) =>
-                        date < new Date()
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <Button onClick={handleCreateMilestone}>Create Milestone</Button>
-            </CardFooter>
-          )}
-        </Card>
-
-        {/* Tasks */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Tasks</CardTitle>
-            <CardDescription>Manage project tasks</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[400px] pr-4">
-              {projectTasks.length === 0 ? (
-                <p className="text-sm text-gray-500">No tasks yet.</p>
-              ) : (
-                <div className="space-y-4">
-                  {projectTasks.map(task => (
-                    <Card key={task.id}>
-                      <CardHeader className="flex items-center justify-between">
-                        <CardTitle>{task.title}</CardTitle>
+                      {project.start_date && project.end_date && (
                         <div>
-                          <Button variant="outline" size="sm" onClick={() => handleDeleteTask(task.id)}>
-                            Delete
-                          </Button>
+                          <h3 className="font-medium">Timeline</h3>
+                          <p className="text-muted-foreground">
+                            {new Date(project.start_date).toLocaleDateString()} - {new Date(project.end_date).toLocaleDateString()}
+                          </p>
+                      </div>
+                      )}
+                      {project.payment_model && (
+                        <div>
+                          <h3 className="font-medium">Payment Model</h3>
+                          <p className="text-muted-foreground">
+                            {project.payment_model}
+                            {project.payment_model === "Stipend" && project.stipend_amount && ` (${project.stipend_amount})`}
+                          </p>
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm">{task.description}</p>
-                        <p className="text-sm">Due Date: {new Date(task.due_date || '').toLocaleDateString()}</p>
-                        <div className="flex space-x-2">
-                          <Button variant="secondary" size="sm" onClick={() => handleUpdateTaskStatus(task.id, 'not_started' as TaskStatus)}>
-                            Not Started
-                          </Button>
-                          <Button variant="secondary" size="sm" onClick={() => handleUpdateTaskStatus(task.id, 'in_progress' as TaskStatus)}>
-                            In Progress
-                          </Button>
-                          <Button variant="secondary" size="sm" onClick={() => handleUpdateTaskStatus(task.id, 'completed' as TaskStatus)}>
-                            Completed
-                          </Button>
-                          <Button variant="secondary" size="sm" onClick={() => handleUpdateTaskStatus(task.id, 'blocked' as TaskStatus)}>
-                            Blocked
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      )}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-          {isProjectOwner && (
-            <CardFooter className="flex flex-col space-y-4">
-              <CardTitle>Create New Task</CardTitle>
-              <Input
-                type="text"
-                placeholder="Task Title"
-                value={newTaskTitle}
-                onChange={e => setNewTaskTitle(e.target.value)}
-              />
-              <Textarea
-                placeholder="Task Description"
-                value={newTaskDescription}
-                onChange={e => setNewTaskDescription(e.target.value)}
-              />
-              <div className="space-y-2">
-                <Label>Due Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-[240px] pl-3 text-left font-normal",
-                        !newTaskDueDate && "text-muted-foreground"
-                      )}
-                    >
-                      {newTaskDueDate ? format(newTaskDueDate, "PPP") : (
-                        <span>Pick a date</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={newTaskDueDate}
-                      onSelect={setNewTaskDueDate}
-                      disabled={(date) =>
-                        date < new Date()
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <Input
-                type="text"
-                placeholder="Milestone ID"
-                value={selectedMilestone || ''}
-                onChange={e => setSelectedMilestone(e.target.value)}
-              />
-              <Button onClick={handleCreateTask}>Create Task</Button>
-            </CardFooter>
-          )}
-        </Card>
-      </div>
-      
-      <div className="mt-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Project Reviews</CardTitle>
-            <CardDescription>Feedback and reviews for this project</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[300px] pr-4">
-              {projectReviews.length === 0 ? (
-                <p className="text-sm text-gray-500">No reviews yet.</p>
-              ) : (
-                <div className="space-y-4">
-                  {projectReviews.map(review => (
-                    <Card key={review.id}>
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-semibold mb-4">Team</h2>
+                    <Card className="border-none shadow-lg">
                       <CardHeader>
-                        <CardTitle>Rating: {review.rating}/5</CardTitle>
-                        <CardDescription>
-                          Reviewed by {review.reviewer_id} on {new Date(review.created_at).toLocaleDateString()}
-                        </CardDescription>
+                        <CardTitle>Team Members</CardTitle>
+                        <CardDescription>Project collaborators</CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm">{review.comment}</p>
+                        {applications.map((application) => (
+                          <div key={application.id} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div>
+                              <h3 className="font-medium">{application.team?.name}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {application.team?.members?.length} members
+                              </p>
+                            </div>
+                          </div>
+                        ))}
                       </CardContent>
                     </Card>
-                  ))}
+                  </div>
                 </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
+              </div>
+            </TabsContent>
+            <TabsContent value="tasks">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-semibold">Tasks</h2>
+                  <Button onClick={() => setShowNewTaskModal(true)}>
+                    Add Task
+                  </Button>
+                </div>
+                {project.milestones && project.milestones.length > 0 ? (
+                  project.milestones.map((milestone) => (
+                    <Card key={milestone.id} className="border-none shadow-lg">
+                      <CardHeader>
+                        <CardTitle>{milestone.title}</CardTitle>
+                        <CardDescription>{milestone.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {milestone.tasks && milestone.tasks.length > 0 ? (
+                          <div className="space-y-2">
+                            {milestone.tasks.map((task) => (
+                              <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg">
+                                <div>
+                                  <h3 className="font-medium">{task.title}</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    Due Date: {new Date(task.due_date!).toLocaleDateString()}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Assigned to: {task.assigned_to}
+                                  </p>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  {task.status === 'completed' ? (
+                                    <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-200">
+                                      Completed
+                                    </Badge>
+                                  ) : task.status === 'blocked' ? (
+                                    <Badge variant="destructive">Blocked</Badge>
+                                  ) : task.status === 'in_progress' ? (
+                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+                                      In Progress
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="secondary" className="bg-gray-100 text-gray-800 hover:bg-gray-200">
+                                      Not Started
+                                    </Badge>
+                                  )}
+                                  <Select
+                                    value={task.status}
+                                    onValueChange={(value) => handleTaskStatusChange(task.id, value as TaskStatus)}
+                                  >
+                                    <SelectTrigger className="w-[180px]">
+                                      <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="not_started">Not Started</SelectItem>
+                                      <SelectItem value="in_progress">In Progress</SelectItem>
+                                      <SelectItem value="completed">Completed</SelectItem>
+                                      <SelectItem value="blocked">Blocked</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground">No tasks for this milestone</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">No milestones yet</p>
+                )}
+              </div>
+            </TabsContent>
+            {user && profile?.role === "startup" && (
+              <TabsContent value="applications">
+                <div className="space-y-4">
+                  <h2 className="text-2xl font-semibold">Applications</h2>
+                  {applications && applications.length > 0 ? (
+                    applications.map((application) => (
+                      <Card key={application.id} className="border-none shadow-lg">
+                        <CardHeader>
+                          <CardTitle>{application.team?.name}</CardTitle>
+                          <CardDescription>
+                            {application.team?.members?.length} members
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div>
+                              <h3 className="font-medium mb-2">Team Members</h3>
+                              <div className="space-y-2">
+                                {application.team?.members?.map((member) => (
+                                  <div key={member.id} className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm">{member.user?.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <h3 className="font-medium mb-2">Cover Letter</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {application.cover_letter}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                        <CardFooter>
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <Badge variant={application.status === 'accepted' ? 'default' : application.status === 'rejected' ? 'destructive' : 'secondary'}>
+                                {application.status}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button variant="outline" size="sm">
+                                Reject
+                              </Button>
+                              <Button size="sm">Accept</Button>
+                            </div>
+                          </div>
+                        </CardFooter>
+                      </Card>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground">No applications yet</p>
+                  )}
+                </div>
+              </TabsContent>
+            )}
+          </Tabs>
+        </div>
       </div>
+
+      {/* New Task Modal */}
+      <Dialog open={showNewTaskModal} onOpenChange={setShowNewTaskModal}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Create New Task</DialogTitle>
+            <DialogDescription>
+              Add a new task to this project.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...taskForm}>
+            <form onSubmit={taskForm.handleSubmit(handleTaskSubmit)} className="space-y-4">
+              <FormField
+                control={taskForm.control}
+                name="milestone_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Select Milestone</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a milestone" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {project.milestones && project.milestones.map((milestone) => (
+                          <SelectItem key={milestone.id} value={milestone.id}>
+                            {milestone.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={taskForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Task title" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={taskForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Task description"
+                        className="min-h-[100px] resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={taskForm.control}
+                name="due_date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Due Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-[240px] pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start" side="bottom">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date()
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={taskForm.control}
+                name="assigned_to"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assign to</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Assign to" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit" className="bg-primary hover:bg-primary/90">
+                  Create Task
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Milestone Modal */}
+      <Dialog open={showNewMilestoneModal} onOpenChange={setShowNewMilestoneModal}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Create New Milestone</DialogTitle>
+            <DialogDescription>
+              Add a new milestone to this project.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...milestoneForm}>
+            <form onSubmit={milestoneForm.handleSubmit(handleMilestoneSubmit)} className="space-y-4">
+              <FormField
+                control={milestoneForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Milestone title" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={milestoneForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Milestone description"
+                        className="min-h-[100px] resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={milestoneForm.control}
+                name="due_date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Due Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-[240px] pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(new Date(field.value), "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start" side="bottom">
+                        <Calendar
+                          mode="single"
+                          selected={field.value ? new Date(field.value) : undefined}
+                          onSelect={(date) => field.onChange(date?.toISOString())}
+                          disabled={(date) =>
+                            date < new Date()
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit" className="bg-primary hover:bg-primary/90">
+                  Create Milestone
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

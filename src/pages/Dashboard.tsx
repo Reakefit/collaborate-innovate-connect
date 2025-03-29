@@ -3,13 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useProjects } from "@/context/ProjectContext";
+import { useProject } from "@/context/ProjectContext";
 import { Briefcase, Clock, CheckCircle, Users, ArrowRight, AlertCircle, Plus, Search, FileText, MessageSquare, Calendar } from "lucide-react";
-import { Project, Application, Team } from "@/context/ProjectContext";
+import { Project, Application, Team } from "@/types/database";
 
 const Dashboard = () => {
   const { user, profile } = useAuth();
-  const { projects, teams, applications, loading } = useProjects();
+  const { projects, teams, applications, loading } = useProject();
   const navigate = useNavigate();
   
   const [userProjects, setUserProjects] = useState<Project[]>([]);

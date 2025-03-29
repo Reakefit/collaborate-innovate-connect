@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { useProjects, Project, Application, Milestone } from "@/context/ProjectContext";
+import { useProject } from "@/context/ProjectContext";
+import { Project, Application, ProjectMilestone } from "@/types/database";
 import { MessageSquare, User, Calendar, DollarSign, Users, CheckCircle, Clock, AlertCircle, Send, ArrowLeft, FileText, ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +38,7 @@ const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const { projects, teams, applications, applyToProject, updateApplicationStatus } = useProjects();
+  const { projects, teams, applications, applyToProject, updateApplicationStatus } = useProject();
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

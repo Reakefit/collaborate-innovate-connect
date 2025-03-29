@@ -1,6 +1,7 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Session, User } from '@supabase/supabase-js';
+import { Session, User, Provider } from '@supabase/supabase-js';
 import { Profile, Education } from '@/types/database';
 import { toast } from 'sonner';
 
@@ -12,12 +13,14 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, data: any) => Promise<void>;
+  signUp: (email: string, password: string, name: string, role: 'student' | 'startup') => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<Profile>) => Promise<void>;
+  signInWithProvider: (provider: Provider) => Promise<void>;
 }
 
-export type { Profile, Education };
+export type UserRole = 'student' | 'startup';
+export { type Profile, type Education };
 
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -81,8 +84,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Map database fields to our Profile type
       const mappedProfile: Profile = {
         id: data.id,
+        email: data.email,
         name: data.name,
         role: data.role as 'student' | 'startup',
+        createdAt: data.created_at ? new Date(data.created_at) : undefined,
         avatarUrl: data.avatar_url,
         companyName: data.company_name,
         companyDescription: data.company_description,
@@ -92,17 +97,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         website: data.website,
         stage: data.stage,
         projectNeeds: data.project_needs,
-        skills: data.skills,
-        education: data.education,
+        skills: data.skills as string[] | undefined,
+        education: data.education as Education[] | undefined,
         portfolio: data.portfolio_url,
         resume: data.resume_url,
         github: data.github_url,
         linkedin: data.linkedin_url,
         bio: data.bio,
-        availability: data.availability as "full_time" | "part_time" | "internship" | "contract",
-        interests: data.interests,
-        experienceLevel: data.experience_level as "beginner" | "intermediate" | "advanced" | "expert",
-        preferredCategories: data.preferred_categories,
+        availability: data.availability as "full_time" | "part_time" | "internship" | "contract" | undefined,
+        interests: data.interests as string[] | undefined,
+        experienceLevel: data.experience_level as "beginner" | "intermediate" | "advanced" | "expert" | undefined,
+        preferredCategories: data.preferred_categories as string[] | undefined,
         college: data.college,
         graduationYear: data.graduation_year,
         major: data.major
@@ -144,8 +149,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Sign in with provider
+  const signInWithProvider = async (provider: Provider) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin + '/dashboard'
+        }
+      });
+
+      if (error) throw error;
+
+      // No need to set session or user here as the auth state change listener
+      // will handle that after the OAuth redirect
+      
+    } catch (error: any) {
+      setError(error.message);
+      toast.error(error.message || `Error signing in with ${provider}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Sign up
-  const signUp = async (email: string, password: string, userData: any) => {
+  const signUp = async (email: string, password: string, name: string, role: 'student' | 'startup') => {
     try {
       setLoading(true);
       setError(null);
@@ -156,8 +187,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password,
         options: {
           data: {
-            name: userData.name,
-            role: userData.role
+            name,
+            role
           }
         }
       });
@@ -272,7 +303,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signIn,
         signUp,
         signOut,
-        updateProfile
+        updateProfile,
+        signInWithProvider
       }}
     >
       {children}

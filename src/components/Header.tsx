@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
-import { Menu, User, Briefcase, GraduationCap, LogOut, LucideIcon } from "lucide-react";
+import { Menu, User, Briefcase, GraduationCap, LogOut, LucideIcon, Plus, FileText } from "lucide-react";
 
 interface NavItem {
   label: string;
@@ -55,16 +55,16 @@ const Header = () => {
   const studentNavItems: NavItem[] = [
     { label: "Dashboard", href: "/dashboard", icon: GraduationCap },
     { label: "Projects", href: "/projects", icon: Briefcase },
-    { label: "Teams", href: "/teams", icon: User },
-    { label: "Messages", href: "/messages", icon: Menu },
+    { label: "My Teams", href: "/teams", icon: User },
+    { label: "Messages", href: "/messages", icon: MessageSquare },
   ];
 
   // Startup navigation items
   const startupNavItems: NavItem[] = [
     { label: "Dashboard", href: "/dashboard", icon: Briefcase },
     { label: "My Projects", href: "/projects", icon: Briefcase },
-    { label: "Create Project", href: "/create-project", icon: Briefcase },
-    { label: "Messages", href: "/messages", icon: Menu },
+    { label: "Create Project", href: "/create-project", icon: Plus },
+    { label: "Applications", href: "/applications", icon: FileText },
   ];
 
   const getNavItems = (): NavItem[] => {

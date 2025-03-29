@@ -42,7 +42,7 @@ const SignUpStudent = () => {
     try {
       setLoading(true);
       
-      // First, register the user with Supabase auth
+      // Register the user with Supabase auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
