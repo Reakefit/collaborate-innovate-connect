@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,8 @@ const Projects = () => {
   const { user, profile } = useAuth();
   const { projects, fetchProjects } = useProject();
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<ProjectCategory | "">("");
-  const [paymentModelFilter, setPaymentModelFilter] = useState<PaymentModel | "">("");
+  const [categoryFilter, setCategoryFilter] = useState<ProjectCategory | "all" | "">("");
+  const [paymentModelFilter, setPaymentModelFilter] = useState<PaymentModel | "all" | "">("");
 
   useEffect(() => {
     fetchProjects();
@@ -23,8 +24,8 @@ const Projects = () => {
 
   const filteredProjects = projects.filter((project) => {
     const searchMatch = project.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const categoryMatch = categoryFilter ? project.category === categoryFilter : true;
-    const paymentModelMatch = paymentModelFilter ? project.payment_model === paymentModelFilter : true;
+    const categoryMatch = !categoryFilter || categoryFilter === "all" || project.category === categoryFilter;
+    const paymentModelMatch = !paymentModelFilter || paymentModelFilter === "all" || project.payment_model === paymentModelFilter;
     
     return searchMatch && categoryMatch && paymentModelMatch;
   });
@@ -64,7 +65,7 @@ const Projects = () => {
                 <SelectValue placeholder="Filter by category" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
+                <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="web_development">Web Development</SelectItem>
                 <SelectItem value="mobile_development">Mobile Development</SelectItem>
                 <SelectItem value="data_science">Data Science</SelectItem>
@@ -81,7 +82,7 @@ const Projects = () => {
                 <SelectValue placeholder="Filter by payment model" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Payment Models</SelectItem>
+                <SelectItem value="all">All Payment Models</SelectItem>
                 <SelectItem value="hourly">Hourly</SelectItem>
                 <SelectItem value="fixed">Fixed</SelectItem>
                 <SelectItem value="equity">Equity</SelectItem>
