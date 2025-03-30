@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
@@ -1002,3 +1003,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     <ProjectContext.Provider value={value}>
       {children}
     </ProjectContext.Provider>
+  );
+};
+
+export default ProjectProvider;
