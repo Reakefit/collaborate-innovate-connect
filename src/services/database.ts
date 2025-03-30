@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { 
   Project, Application, ProjectMilestone, ProjectTask, 
@@ -159,13 +158,11 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
     let assignedToName = 'Unassigned';
     
     // Proper null checking
-    if (task.assigned_to_profile !== null && task.assigned_to_profile !== undefined) {
-      if (typeof task.assigned_to_profile === 'object') {
-        const profileObj = task.assigned_to_profile as Record<string, any> | null;
-        
-        if (profileObj && 'name' in profileObj && profileObj.name !== null && profileObj.name !== undefined) {
-          assignedToName = profileObj.name as string;
-        }
+    if (task.assigned_to_profile && typeof task.assigned_to_profile === 'object') {
+      const profileObj = task.assigned_to_profile as Record<string, any>;
+      
+      if (profileObj && 'name' in profileObj && profileObj.name) {
+        assignedToName = profileObj.name as string;
       }
     }
 

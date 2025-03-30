@@ -1,8 +1,10 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
-import { Project, Application, Team, TeamTask, TeamMember, ProjectMilestone, MilestoneStatus, TaskStatus } from '@/types/database';
+import { 
+  Project, Application, Team, TeamTask, TeamMember, ProjectMilestone, 
+  MilestoneStatus, TaskStatus, ProjectTask, ApplicationStatus
+} from '@/types/database';
 import { toast } from 'sonner';
 
 interface ProjectContextType {
@@ -21,7 +23,7 @@ interface ProjectContextType {
   updateProject: (projectId: string, projectData: Partial<Project>) => Promise<boolean>;
   deleteProject: (projectId: string) => Promise<boolean>;
   submitApplication: (projectId: string, message: string) => Promise<boolean>;
-  updateApplication: (applicationId: string, status: 'pending' | 'accepted' | 'rejected') => Promise<boolean>;
+  updateApplication: (applicationId: string, status: ApplicationStatus) => Promise<boolean>;
   createTeam: (teamData: Partial<Team>) => Promise<string | null>;
   updateTeam: (teamId: string, teamData: Partial<Team>) => Promise<boolean>;
   deleteTeam: (teamId: string) => Promise<boolean>;
@@ -107,8 +109,16 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (error) throw error;
       
-      // Make sure to cast the data to the Project type to avoid type errors
-      setProjects(data as Project[] || []);
+      // Cast data to match our interface (handle number vs string type discrepancies)
+      const formattedProjects = data?.map(project => ({
+        ...project,
+        stipend_amount: project.stipend_amount?.toString() || null,
+        equity_percentage: project.equity_percentage?.toString() || null,
+        hourly_rate: project.hourly_rate?.toString() || null,
+        fixed_amount: project.fixed_amount?.toString() || null,
+      })) as Project[];
+      
+      setProjects(formattedProjects || []);
     } catch (error: any) {
       console.error('Error fetching projects:', error.message);
       setError(error.message);
@@ -135,7 +145,16 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (error) throw error;
       
-      return data as Project;
+      // Cast data to match our interface (handle number vs string type discrepancies)
+      const formattedProject = {
+        ...data,
+        stipend_amount: data.stipend_amount?.toString() || null,
+        equity_percentage: data.equity_percentage?.toString() || null,
+        hourly_rate: data.hourly_rate?.toString() || null,
+        fixed_amount: data.fixed_amount?.toString() || null,
+      } as Project;
+      
+      return formattedProject;
     } catch (error: any) {
       console.error('Error fetching project:', error.message);
       setError(error.message);
@@ -229,21 +248,46 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!user) return null;
     
     try {
+      // Make sure required fields have values
+      if (!projectData.category || !projectData.description || !projectData.title || 
+          !projectData.start_date || !projectData.end_date || !projectData.payment_model) {
+        toast.error('Missing required project information');
+        return null;
+      }
+      
+      // Convert string number fields to actual numbers for database
+      const dataToInsert = {
+        ...projectData,
+        created_by: user.id,
+        stipend_amount: projectData.stipend_amount ? Number(projectData.stipend_amount) : null,
+        equity_percentage: projectData.equity_percentage ? Number(projectData.equity_percentage) : null,
+        hourly_rate: projectData.hourly_rate ? Number(projectData.hourly_rate) : null,
+        fixed_amount: projectData.fixed_amount ? Number(projectData.fixed_amount) : null,
+        created_at: new Date().toISOString(),
+      };
+      
+      // Remove updated_at and any other fields not in schema
+      const { updated_at, ...cleanData } = dataToInsert as any;
+      
       const { data, error } = await supabase
         .from('projects')
-        .insert({
-          ...projectData,
-          created_by: user.id,
-          created_at: new Date().toISOString(),
-          // Don't include updated_at here since it's not in the Supabase schema
-        })
+        .insert(cleanData)
         .select();
 
       if (error) throw error;
       
       if (data && data.length > 0) {
+        // Format the project before adding to state
+        const newProject = {
+          ...data[0],
+          stipend_amount: data[0].stipend_amount?.toString() || null,
+          equity_percentage: data[0].equity_percentage?.toString() || null,
+          hourly_rate: data[0].hourly_rate?.toString() || null,
+          fixed_amount: data[0].fixed_amount?.toString() || null,
+        } as Project;
+        
         // Add the new project to the state
-        setProjects(prev => [data[0] as Project, ...prev]);
+        setProjects(prev => [newProject, ...prev]);
         toast.success('Project created successfully!');
         return data[0].id;
       }
@@ -332,7 +376,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
           cover_letter: message, // Changed from message to cover_letter
           status: 'pending',
           created_at: new Date().toISOString(),
-          // No updated_at here
+          // Providing an empty value for required field
+          team_id: '' // We'll update this as needed
         })
         .select();
 
@@ -396,7 +441,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Update an application status
   const updateApplication = async (
     applicationId: string, 
-    status: 'pending' | 'accepted' | 'rejected'
+    status: ApplicationStatus
   ): Promise<boolean> => {
     if (!user) return false;
     
@@ -427,7 +472,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   // Update an application status from ProjectDetail
-  const updateApplicationStatus = async (applicationId: string, status: 'pending' | 'accepted' | 'rejected'): Promise<boolean> => {
+  const updateApplicationStatus = async (applicationId: string, status: ApplicationStatus): Promise<boolean> => {
     return updateApplication(applicationId, status);
   };
 
