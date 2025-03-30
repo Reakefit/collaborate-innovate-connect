@@ -22,12 +22,21 @@ export const fetchProjectMessages = async (projectId: string): Promise<ProjectMe
   }
 
   return (data || []).map(msg => {
-    // Handle msg.sender carefully with null checking
-    const senderName = msg.sender && 
-                      typeof msg.sender === 'object' && 
-                      'name' in msg.sender && 
-                      msg.sender.name !== null ? 
-                      msg.sender.name : 'Unknown User';
+    // Create a default sender object with "Unknown User" as the name
+    const defaultSender = { name: 'Unknown User' };
+    
+    // Check if msg.sender exists and is a valid object
+    let senderName = defaultSender.name;
+    
+    if (msg.sender && typeof msg.sender === 'object') {
+      // Now we know msg.sender is an object, not null
+      const senderObj = msg.sender as Record<string, any>;
+      
+      // Check if it has a name property and the name is not null
+      if ('name' in senderObj && senderObj.name !== null) {
+        senderName = senderObj.name as string;
+      }
+    }
     
     return {
       ...msg,
@@ -53,18 +62,30 @@ export const fetchTeamMessages = async (teamId: string): Promise<TeamMessage[]> 
   }
 
   return (data || []).map(msg => {
-    // Safely access the sender properties with null checks
-    const senderName = msg.sender && 
-                      typeof msg.sender === 'object' && 
-                      'name' in msg.sender && 
-                      msg.sender.name !== null ? 
-                      msg.sender.name : 'Unknown User';
+    // Create default values
+    const defaultSender = { 
+      name: 'Unknown User',
+      avatar_url: ''
+    };
     
-    const senderAvatar = msg.sender && 
-                        typeof msg.sender === 'object' && 
-                        'avatar_url' in msg.sender && 
-                        msg.sender.avatar_url !== null ? 
-                        msg.sender.avatar_url : '';
+    // Check if msg.sender exists and is a valid object
+    let senderName = defaultSender.name;
+    let senderAvatar = defaultSender.avatar_url;
+    
+    if (msg.sender && typeof msg.sender === 'object') {
+      // Now we know msg.sender is an object, not null
+      const senderObj = msg.sender as Record<string, any>;
+      
+      // Check if it has a name property and the name is not null
+      if ('name' in senderObj && senderObj.name !== null) {
+        senderName = senderObj.name as string;
+      }
+      
+      // Check if it has an avatar_url property and the avatar_url is not null
+      if ('avatar_url' in senderObj && senderObj.avatar_url !== null) {
+        senderAvatar = senderObj.avatar_url as string;
+      }
+    }
     
     return {
       ...msg,
@@ -134,18 +155,20 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
   }
 
   return (data || []).map(task => {
-    // Completely rewritten null check for assigned_to_profile to be more thorough
+    // Default value
     let assignedToName = 'Unassigned';
     
-    if (task.assigned_to_profile !== null && 
-        task.assigned_to_profile !== undefined) {
-        
-      if (typeof task.assigned_to_profile === 'object' && 
-          task.assigned_to_profile !== null &&
-          'name' in task.assigned_to_profile &&
-          task.assigned_to_profile.name !== null && 
-          task.assigned_to_profile.name !== undefined) {
-            
+    // First check if task.assigned_to_profile exists
+    if (task.assigned_to_profile !== null && task.assigned_to_profile !== undefined) {
+      // Now check if it's an object and has a name property
+      if (
+        typeof task.assigned_to_profile === 'object' && 
+        task.assigned_to_profile !== null &&
+        'name' in task.assigned_to_profile && 
+        task.assigned_to_profile.name !== null && 
+        task.assigned_to_profile.name !== undefined
+      ) {
+        // It's safe to access name now
         assignedToName = task.assigned_to_profile.name;
       }
     }

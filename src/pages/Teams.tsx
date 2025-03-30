@@ -1,262 +1,246 @@
-
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useAuthorization } from '@/context/AuthorizationContext';
 import { useProject } from '@/context/ProjectContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner";
-import { Team } from '@/types/database';
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { PlusCircle, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
-const inviteSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
+const teamSchema = z.object({
+  name: z.string().min(2, {
+    message: "Team name must be at least 2 characters.",
+  }),
+  description: z.string().optional(),
+  skills: z.array(z.string()).optional(),
+  portfolio_url: z.string().optional(),
 });
 
-const newTeamSchema = z.object({
-  name: z.string().min(2, { message: "Team name must be at least 2 characters" }),
-  description: z.string().min(10, { message: "Description must be at least 10 characters" }),
-});
+export default function TeamsPage() {
+  // This is a wrapper component that enforces role-based access control
+  return (
+    <ProtectedRoute requiredRole="student" requiredPermission="create_team" requireVerification={true}>
+      <TeamsContent />
+    </ProtectedRoute>
+  );
+}
 
-const Teams = () => {
-  const { user, profile } = useAuth();
-  const { teams, loading, fetchTeams, createTeam, deleteTeam, 
-    addTeamMember, removeTeamMember } = useProject();
-  const [showNewTeamModal, setShowNewTeamModal] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
-  const [inviteEmail, setInviteEmail] = useState("");
+// This is the actual content that will only be shown to authorized users
+function TeamsContent() {
+  const { user } = useAuth();
+  const { teams, createTeam, deleteTeam } = useProject();
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    fetchTeams();
-  }, [fetchTeams]);
-
-  const handleInviteMember = async () => {
-    try {
-      if (!selectedTeam) return;
-      
-      // Pass the correct parameters
-      await addTeamMember(selectedTeam.id, inviteEmail);
-      
-      setInviteEmail("");
-      setShowInviteModal(false);
-      toast.success("Invitation sent successfully!");
-    } catch (error: any) {
-      toast.error(error.message || "Error sending invitation");
-    }
-  };
-
-  const handleRemoveMember = async (teamId: string, memberId: string) => {
-    try {
-      await removeTeamMember(teamId, memberId);
-      toast.success("Member removed successfully!");
-    } catch (error: any) {
-      toast.error(error.message || "Error removing member");
-    }
-  };
-
-  const newTeamForm = useForm<z.infer<typeof newTeamSchema>>({
-    resolver: zodResolver(newTeamSchema),
+  const form = useForm<z.infer<typeof teamSchema>>({
+    resolver: zodResolver(teamSchema),
     defaultValues: {
       name: "",
       description: "",
+      skills: [],
+      portfolio_url: "",
     },
   });
 
-  const inviteForm = useForm<z.infer<typeof inviteSchema>>({
-    resolver: zodResolver(inviteSchema),
-    defaultValues: {
-      email: "",
-    },
-  });
-
-  const handleCreateTeam = async (values: z.infer<typeof newTeamSchema>) => {
+  const onSubmit = async (values: z.infer<typeof teamSchema>) => {
     try {
-      await createTeam({
-        name: values.name,
-        description: values.description,
-        lead_id: user?.id || '',
-        skills: [],
-      });
-      setShowNewTeamModal(false);
+      await createTeam({ ...values, lead_id: user.id });
       toast.success("Team created successfully!");
-      newTeamForm.reset();
+      setOpen(false);
     } catch (error: any) {
-      toast.error(error.message || "Error creating team");
+      toast.error(error.message || "Failed to create team");
     }
   };
-
-  const handleDeleteTeam = async (teamId: string) => {
-    try {
-      await deleteTeam(teamId);
-      toast.success("Team deleted successfully!");
-    } catch (error: any) {
-      toast.error(error.message || "Error deleting team");
-    }
-  };
-
-  // Check if user is a team lead
-  const isTeamLead = (team: Team) => {
-    return team.lead_id === user?.id;
-  };
-
-  if (loading) {
-    return <div className="text-center py-4">Loading teams...</div>;
-  }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-6">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Your Teams</CardTitle>
-          <CardDescription>Manage and collaborate with your teams.</CardDescription>
-        </CardHeader>
-        <Button onClick={() => setShowNewTeamModal(true)}>Create New Team</Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {teams.map((team) => (
-          <Card key={team.id} className="bg-white shadow-md rounded-lg overflow-hidden">
-            <CardHeader className="p-4">
-              <CardTitle className="text-lg font-semibold">{team.name}</CardTitle>
-              <CardDescription className="text-gray-500">{team.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="p-4">
-              <h3 className="text-md font-semibold mb-2">Members:</h3>
-              {team.members && team.members.length > 0 ? (
-                <ul>
-                  {team.members.map((member) => (
-                    <li key={member.id} className="flex items-center justify-between py-2 border-b">
-                      <span>{member.user?.name || member.name} ({member.role})</span>
-                      {(isTeamLead(team) && member.user_id !== user?.id) && (
-                        <Button variant="outline" size="sm" onClick={() => handleRemoveMember(team.id, member.id)}>
-                          Remove
-                        </Button>
+    <div className="container max-w-4xl mx-auto py-8">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">My Teams</h1>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Team
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80">
+            <Card>
+              <CardHeader>
+                <CardTitle>Create a new team</CardTitle>
+                <CardDescription>
+                  Teams help you collaborate on projects.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Team Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Team Awesome" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500">No members yet.</p>
-              )}
-            </CardContent>
-            <CardFooter className="p-4 flex justify-between">
-              {isTeamLead(team) ? (
-                <>
-                  <Button onClick={() => {
-                    setSelectedTeam(team);
-                    setShowInviteModal(true);
-                  }}>
-                    Invite Member
-                  </Button>
-                  <Button variant="destructive" onClick={() => handleDeleteTeam(team.id)}>Delete Team</Button>
-                </>
-              ) : (
-                <Button variant="secondary" onClick={() => 
-                  toast.info("You can't perform actions on teams you don't lead.")
-                }>
-                  View Team
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
-        ))}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="A team of talented individuals"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" className="w-full">
+                      Create Team
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </PopoverContent>
+        </Popover>
       </div>
-
-      {/* New Team Modal */}
-      <Dialog open={showNewTeamModal} onOpenChange={setShowNewTeamModal}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Create New Team</DialogTitle>
-            <DialogDescription>
-              Create a new team to collaborate on projects.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...newTeamForm}>
-            <form onSubmit={newTeamForm.handleSubmit(handleCreateTeam)} className="space-y-4">
-              <FormField
-                control={newTeamForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Team Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter team name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={newTeamForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter team description" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="submit">Create Team</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Invite Member Modal */}
-      <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Invite Member</DialogTitle>
-            <DialogDescription>
-              Invite a new member to {selectedTeam?.name}.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...inviteForm}>
-            <form onSubmit={inviteForm.handleSubmit((data) => {
-              setInviteEmail(data.email);
-              handleInviteMember();
-            })} className="space-y-4">
-              <FormField
-                control={inviteForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="submit">Invite</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+      {teams.length === 0 ? (
+        <Card className="border-none shadow-lg bg-muted/50">
+          <CardContent className="flex flex-col items-center justify-center py-10">
+            <h3 className="text-lg font-medium mb-2">No Teams Yet</h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+              Create your first team to start collaborating on projects!
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {teams.map((team) => (
+              <TableRow key={team.id}>
+                <TableCell className="font-medium">{team.name}</TableCell>
+                <TableCell>{team.description}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => navigate(`/teams/${team.id}`)}
+                    >
+                      View
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently
+                            delete your team and remove all data.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={async () => {
+                              try {
+                                await deleteTeam(team.id);
+                                toast.success("Team deleted successfully!");
+                              } catch (error: any) {
+                                toast.error(
+                                  error.message || "Failed to delete team"
+                                );
+                              }
+                            }}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
     </div>
   );
-};
-
-export default Teams;
+}

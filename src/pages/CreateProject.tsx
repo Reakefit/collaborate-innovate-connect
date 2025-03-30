@@ -1,466 +1,296 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useAuthorization } from '@/context/AuthorizationContext';
 import { useProject } from '@/context/ProjectContext';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus, Trash } from "lucide-react";
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { Badge } from "@/components/ui/badge";
-import { ProjectCategory, PaymentModel } from "@/types/database";
-import { toast } from 'sonner';
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { toast } from "sonner";
 
-const CreateProject = () => {
-  const navigate = useNavigate();
+export default function CreateProjectPage() {
+  // This is a wrapper component that enforces role-based access control
+  return (
+    <ProtectedRoute requiredRole="startup" requiredPermission="create_project">
+      <CreateProjectContent />
+    </ProtectedRoute>
+  );
+}
+
+// This is the actual content that will only be shown to authorized users
+function CreateProjectContent() {
   const { user } = useAuth();
   const { createProject } = useProject();
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Project state
+  const navigate = useNavigate();
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<ProjectCategory>('web_development');
+  const [category, setCategory] = useState('');
   const [deliverables, setDeliverables] = useState<string[]>([]);
-  const [newDeliverable, setNewDeliverable] = useState('');
   const [requiredSkills, setRequiredSkills] = useState<string[]>([]);
-  const [newSkill, setNewSkill] = useState('');
-  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [paymentModel, setPaymentModel] = useState<PaymentModel>('unpaid');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [paymentModel, setPaymentModel] = useState('');
   const [stipendAmount, setStipendAmount] = useState('');
+  const [equityPercentage, setEquityPercentage] = useState('');
   const [hourlyRate, setHourlyRate] = useState('');
   const [fixedAmount, setFixedAmount] = useState('');
-  const [equityPercentage, setEquityPercentage] = useState('');
-  const [teamSize, setTeamSize] = useState(1);
+  const [teamSize, setTeamSize] = useState<number | undefined>(undefined);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleDeliverableAdd = () => {
-    if (newDeliverable.trim() !== '') {
-      setDeliverables([...deliverables, newDeliverable.trim()]);
-      setNewDeliverable('');
-    }
-  };
+  const categories = [
+    "web_development",
+    "mobile_development",
+    "data_science",
+    "machine_learning",
+    "ui_ux_design",
+    "devops",
+    "cybersecurity",
+    "blockchain",
+    "other",
+  ];
 
-  const handleDeliverableRemove = (index: number) => {
-    setDeliverables(deliverables.filter((_, i) => i !== index));
-  };
-
-  const handleSkillAdd = () => {
-    if (newSkill.trim() !== '') {
-      setRequiredSkills([...requiredSkills, newSkill.trim()]);
-      setNewSkill('');
-    }
-  };
-
-  const handleSkillRemove = (index: number) => {
-    setRequiredSkills(requiredSkills.filter((_, i) => i !== index));
-  };
-
-  const validateForm = () => {
-    if (!title) {
-      toast.error('Please enter a project title');
-      return false;
-    }
-    if (!description) {
-      toast.error('Please enter a project description');
-      return false;
-    }
-    if (!startDate) {
-      toast.error('Please select a start date');
-      return false;
-    }
-    if (!endDate) {
-      toast.error('Please select an end date');
-      return false;
-    }
-    if (startDate && endDate && startDate > endDate) {
-      toast.error('End date must be after start date');
-      return false;
-    }
-    if (paymentModel === 'stipend' && !stipendAmount) {
-      toast.error('Please enter a stipend amount');
-      return false;
-    }
-    if (paymentModel === 'hourly' && !hourlyRate) {
-      toast.error('Please enter an hourly rate');
-      return false;
-    }
-    if (paymentModel === 'fixed' && !fixedAmount) {
-      toast.error('Please enter a fixed amount');
-      return false;
-    }
-    if (paymentModel === 'equity' && !equityPercentage) {
-      toast.error('Please enter an equity percentage');
-      return false;
-    }
-    return true;
-  };
+  const paymentModels = ["hourly", "fixed", "equity", "unpaid", "stipend"];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm() || !user) return;
-    
+    setIsSubmitting(true);
+
     try {
-      setIsLoading(true);
-      
       const projectData = {
         title,
         description,
         category,
         deliverables,
         required_skills: requiredSkills,
-        start_date: startDate?.toISOString() || new Date().toISOString(),
-        end_date: endDate?.toISOString() || new Date().toISOString(),
+        start_date: startDate,
+        end_date: endDate,
         payment_model: paymentModel,
-        stipend_amount: paymentModel === 'stipend' ? stipendAmount : undefined,
-        hourly_rate: paymentModel === 'hourly' ? hourlyRate : undefined,
-        fixed_amount: paymentModel === 'fixed' ? fixedAmount : undefined,
-        equity_percentage: paymentModel === 'equity' ? equityPercentage : undefined,
-        status: 'open',
+        stipend_amount: stipendAmount,
+        equity_percentage: equityPercentage,
+        hourly_rate: hourlyRate,
+        fixed_amount: fixedAmount,
         created_by: user.id,
-        team_size: teamSize
+        team_size: teamSize,
       };
-      
-      const newProject = await createProject(projectData);
-      toast.success('Project created successfully');
-      navigate(`/project/${newProject.id}`);
+
+      await createProject(projectData);
+      toast.success("Project created successfully!");
+      navigate("/projects");
     } catch (error: any) {
-      toast.error(error.message || 'Error creating project');
+      console.error("Error creating project:", error);
+      toast.error(error.message || "Failed to create project");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Create a New Project</h1>
-        
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-8">
-            {/* Basic Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
-                <CardDescription>
-                  Provide the basic details about your project
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Project Title</Label>
-                  <Input
-                    id="title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Enter a concise title for your project"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="description">Project Description</Label>
-                  <Textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe your project in detail"
-                    className="min-h-32"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="category">Project Category</Label>
-                  <Select value={category} onValueChange={(value) => setCategory(value as ProjectCategory)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="web_development">Web Development</SelectItem>
-                      <SelectItem value="mobile_development">Mobile Development</SelectItem>
-                      <SelectItem value="data_science">Data Science</SelectItem>
-                      <SelectItem value="machine_learning">Machine Learning</SelectItem>
-                      <SelectItem value="ui_ux_design">UI/UX Design</SelectItem>
-                      <SelectItem value="devops">DevOps</SelectItem>
-                      <SelectItem value="cybersecurity">Cybersecurity</SelectItem>
-                      <SelectItem value="blockchain">Blockchain</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="teamSize">Team Size</Label>
-                  <Select value={teamSize.toString()} onValueChange={(value) => setTeamSize(parseInt(value))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select team size" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 Student</SelectItem>
-                      <SelectItem value="2">2 Students</SelectItem>
-                      <SelectItem value="3">3 Students</SelectItem>
-                      <SelectItem value="4">4 Students</SelectItem>
-                      <SelectItem value="5">5+ Students</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* Deliverables */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Deliverables</CardTitle>
-                <CardDescription>
-                  What are the expected outputs of this project?
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Input
-                    value={newDeliverable}
-                    onChange={(e) => setNewDeliverable(e.target.value)}
-                    placeholder="Add a deliverable"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleDeliverableAdd();
-                      }
-                    }}
-                  />
-                  <Button type="button" onClick={handleDeliverableAdd}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                {deliverables.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {deliverables.map((deliverable, index) => (
-                      <Badge key={index} variant="secondary" className="p-2 flex items-center gap-2">
-                        {deliverable}
-                        <button
-                          type="button"
-                          onClick={() => handleDeliverableRemove(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No deliverables added yet.</p>
-                )}
-              </CardContent>
-            </Card>
-            
-            {/* Required Skills */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Required Skills</CardTitle>
-                <CardDescription>
-                  What skills are needed for this project?
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Input
-                    value={newSkill}
-                    onChange={(e) => setNewSkill(e.target.value)}
-                    placeholder="Add a required skill"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleSkillAdd();
-                      }
-                    }}
-                  />
-                  <Button type="button" onClick={handleSkillAdd}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                {requiredSkills.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {requiredSkills.map((skill, index) => (
-                      <Badge key={index} variant="outline" className="p-2 flex items-center gap-2">
-                        {skill}
-                        <button
-                          type="button"
-                          onClick={() => handleSkillRemove(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No skills added yet.</p>
-                )}
-              </CardContent>
-            </Card>
-            
-            {/* Timeline */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Timeline</CardTitle>
-                <CardDescription>
-                  When will this project start and end?
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Start Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {startDate ? format(startDate, 'PPP') : <span>Pick a date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={startDate}
-                          onSelect={setStartDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>End Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {endDate ? format(endDate, 'PPP') : <span>Pick a date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={endDate}
-                          onSelect={setEndDate}
-                          initialFocus
-                          disabled={(date) => {
-                            return startDate ? date < startDate : false;
-                          }}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* Payment Model */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment Model</CardTitle>
-                <CardDescription>
-                  How will students be compensated for this project?
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="paymentModel">Payment Type</Label>
-                  <Select value={paymentModel} onValueChange={(value) => setPaymentModel(value as PaymentModel)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unpaid">Unpaid (Experience Only)</SelectItem>
-                      <SelectItem value="stipend">Stipend</SelectItem>
-                      <SelectItem value="hourly">Hourly Rate</SelectItem>
-                      <SelectItem value="fixed">Fixed Amount</SelectItem>
-                      <SelectItem value="equity">Equity</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {paymentModel === 'stipend' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="stipendAmount">Stipend Amount ($)</Label>
-                    <Input
-                      id="stipendAmount"
-                      type="text"
-                      value={stipendAmount}
-                      onChange={(e) => setStipendAmount(e.target.value)}
-                      placeholder="e.g. 500"
-                    />
-                  </div>
-                )}
-                
-                {paymentModel === 'hourly' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="hourlyRate">Hourly Rate ($/hour)</Label>
-                    <Input
-                      id="hourlyRate"
-                      type="text"
-                      value={hourlyRate}
-                      onChange={(e) => setHourlyRate(e.target.value)}
-                      placeholder="e.g. 15"
-                    />
-                  </div>
-                )}
-                
-                {paymentModel === 'fixed' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="fixedAmount">Fixed Amount ($)</Label>
-                    <Input
-                      id="fixedAmount"
-                      type="text"
-                      value={fixedAmount}
-                      onChange={(e) => setFixedAmount(e.target.value)}
-                      placeholder="e.g. 1000"
-                    />
-                  </div>
-                )}
-                
-                {paymentModel === 'equity' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="equityPercentage">Equity Percentage (%)</Label>
-                    <Input
-                      id="equityPercentage"
-                      type="text"
-                      value={equityPercentage}
-                      onChange={(e) => setEquityPercentage(e.target.value)}
-                      placeholder="e.g. 0.5"
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            
-            <div className="flex justify-end space-x-4">
-              <Button variant="outline" type="button" onClick={() => navigate(-1)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Creating...' : 'Create Project'}
-              </Button>
+    <div className="container max-w-3xl mx-auto py-8">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Create a New Project</CardTitle>
+          <CardDescription>
+            Fill in the details below to post your project.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="title">Title</Label>
+              <Input
+                type="text"
+                id="title"
+                placeholder="Project Title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+              />
             </div>
-          </div>
-        </form>
-      </div>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Project Description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="category">Category</Label>
+              <Select onValueChange={setCategory} defaultValue={category}>
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat.replace(/_/g, " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="deliverables">Deliverables</Label>
+              <Input
+                type="text"
+                id="deliverables"
+                placeholder="Enter deliverables separated by commas"
+                value={deliverables.join(",")}
+                onChange={(e) =>
+                  setDeliverables(
+                    e.target.value.split(",").map((item) => item.trim())
+                  )
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="requiredSkills">Required Skills</Label>
+              <MultiSelect
+                options={[
+                  { value: "javascript", label: "JavaScript" },
+                  { value: "react", label: "React" },
+                  { value: "node_js", label: "Node.js" },
+                  { value: "python", label: "Python" },
+                  { value: "typescript", label: "TypeScript" },
+                  { value: "java", label: "Java" },
+                  { value: "c++", label: "C++" },
+                  { value: "swift", label: "Swift" },
+                  { value: "kotlin", label: "Kotlin" },
+                  { value: "sql", label: "SQL" },
+                  { value: "mongodb", label: "MongoDB" },
+                  { value: "aws", label: "AWS" },
+                  { value: "docker", label: "Docker" },
+                  { value: "kubernetes", label: "Kubernetes" },
+                  { value: "git", label: "Git" },
+                ]}
+                value={requiredSkills}
+                onChange={setRequiredSkills}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="startDate">Start Date</Label>
+                <Input
+                  type="date"
+                  id="startDate"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="endDate">End Date</Label>
+                <Input
+                  type="date"
+                  id="endDate"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="paymentModel">Payment Model</Label>
+              <Select onValueChange={setPaymentModel} defaultValue={paymentModel}>
+                <SelectTrigger id="paymentModel">
+                  <SelectValue placeholder="Select a payment model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {paymentModels.map((model) => (
+                    <SelectItem key={model} value={model}>
+                      {model.replace(/_/g, " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {paymentModel === "stipend" && (
+                <div>
+                  <Label htmlFor="stipendAmount">Stipend Amount</Label>
+                  <Input
+                    type="number"
+                    id="stipendAmount"
+                    placeholder="Enter stipend amount"
+                    value={stipendAmount}
+                    onChange={(e) => setStipendAmount(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {paymentModel === "equity" && (
+                <div>
+                  <Label htmlFor="equityPercentage">Equity Percentage</Label>
+                  <Input
+                    type="number"
+                    id="equityPercentage"
+                    placeholder="Enter equity percentage"
+                    value={equityPercentage}
+                    onChange={(e) => setEquityPercentage(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {paymentModel === "hourly" && (
+                <div>
+                  <Label htmlFor="hourlyRate">Hourly Rate</Label>
+                  <Input
+                    type="number"
+                    id="hourlyRate"
+                    placeholder="Enter hourly rate"
+                    value={hourlyRate}
+                    onChange={(e) => setHourlyRate(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {paymentModel === "fixed" && (
+                <div>
+                  <Label htmlFor="fixedAmount">Fixed Amount</Label>
+                  <Input
+                    type="number"
+                    id="fixedAmount"
+                    placeholder="Enter fixed amount"
+                    value={fixedAmount}
+                    onChange={(e) => setFixedAmount(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="teamSize">Team Size</Label>
+              <Input
+                type="number"
+                id="teamSize"
+                placeholder="Enter team size"
+                value={teamSize !== undefined ? teamSize : ""}
+                onChange={(e) => setTeamSize(Number(e.target.value))}
+              />
+            </div>
+
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? "Creating Project..." : "Create Project"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
-};
-
-export default CreateProject;
+}
