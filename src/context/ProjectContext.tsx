@@ -112,15 +112,19 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (error) throw error;
       
       // Cast data to match our interface (handle number vs string type discrepancies)
-      const formattedProjects = data?.map(project => ({
-        ...project,
-        stipend_amount: project.stipend_amount?.toString() || null,
-        equity_percentage: project.equity_percentage?.toString() || null,
-        hourly_rate: project.hourly_rate?.toString() || null,
-        fixed_amount: project.fixed_amount?.toString() || null,
-      })) as Project[];
+      const formattedProjects = data?.map(project => {
+        // Create a new object with our expected Project shape, including optional fields
+        return {
+          ...project,
+          stipend_amount: project.stipend_amount?.toString() || null,
+          // Add potentially missing properties with null values
+          equity_percentage: project.equity_percentage?.toString() || null,
+          hourly_rate: project.hourly_rate?.toString() || null,
+          fixed_amount: project.fixed_amount?.toString() || null,
+        } as Project;
+      }) || [];
       
-      setProjects(formattedProjects || []);
+      setProjects(formattedProjects);
     } catch (error: any) {
       console.error('Error fetching projects:', error.message);
       setError(error.message);
@@ -151,6 +155,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       const formattedProject = {
         ...data,
         stipend_amount: data.stipend_amount?.toString() || null,
+        // Add potentially missing properties with null values
         equity_percentage: data.equity_percentage?.toString() || null,
         hourly_rate: data.hourly_rate?.toString() || null,
         fixed_amount: data.fixed_amount?.toString() || null,
@@ -306,6 +311,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         const newProject = {
           ...data[0],
           stipend_amount: data[0].stipend_amount?.toString() || null,
+          // Add potentially missing properties with null values
           equity_percentage: data[0].equity_percentage?.toString() || null,
           hourly_rate: data[0].hourly_rate?.toString() || null,
           fixed_amount: data[0].fixed_amount?.toString() || null,
