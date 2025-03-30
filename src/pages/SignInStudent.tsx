@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
@@ -7,14 +7,27 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Mail, Lock } from "lucide-react";
+import { toast } from 'sonner';
 
 const SignInStudent = () => {
-  const { signIn } = useAuth();
+  const { signIn, user, profile } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // If already logged in, redirect to dashboard
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
+  // Store student as preferred role
+  useEffect(() => {
+    localStorage.setItem('preferredRole', 'student');
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +40,13 @@ const SignInStudent = () => {
     try {
       setIsLoading(true);
       await signIn(email, password);
+      
+      // Check if the user is a student
+      if (profile && profile.role !== 'student') {
+        toast.error('This account is not registered as a student. Please use the appropriate login page.');
+        return;
+      }
+      
       navigate('/dashboard');
     } catch (error: any) {
       setError(error.message || 'Failed to sign in');

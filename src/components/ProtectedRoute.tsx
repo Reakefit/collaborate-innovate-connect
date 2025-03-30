@@ -28,7 +28,15 @@ export default function ProtectedRoute({
 
     // Check authentication
     if (!user) {
-      navigate('/signin');
+      // Redirect to appropriate sign-in page based on remembered role
+      const rememberedRole = localStorage.getItem('preferredRole');
+      if (rememberedRole === 'startup') {
+        navigate('/signin/startup');
+      } else if (rememberedRole === 'student') {
+        navigate('/signin/student');
+      } else {
+        navigate('/signin');
+      }
       return;
     }
 
@@ -71,8 +79,14 @@ export default function ProtectedRoute({
     );
   }
 
-  // If no user, redirect to login
+  // If no user, redirect to appropriate login
   if (!user) {
+    const rememberedRole = localStorage.getItem('preferredRole');
+    if (rememberedRole === 'startup') {
+      return <Navigate to="/signin/startup" replace />;
+    } else if (rememberedRole === 'student') {
+      return <Navigate to="/signin/student" replace />;
+    }
     return <Navigate to="/signin" replace />;
   }
 
