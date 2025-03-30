@@ -158,7 +158,7 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
     // Default value
     let assignedToName = 'Unassigned';
     
-    // First check if task.assigned_to_profile exists
+    // First check if task.assigned_to_profile exists and is not null
     if (task.assigned_to_profile !== null && task.assigned_to_profile !== undefined) {
       // Now check if it's an object and has a name property
       if (
