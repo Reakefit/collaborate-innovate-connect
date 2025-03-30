@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -328,9 +327,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Handle circular reference issue by creating a simplified TaskUpdate function
+  // Completely rewrite the updateTaskStatus function to avoid deep type instantiation
   const updateTaskStatus = async (taskId: string, status: TaskStatus) => {
     try {
+      // Update the task in the database
       const { error } = await supabase
         .from('project_tasks')
         .update({ status })
@@ -338,42 +338,47 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         
       if (error) throw error;
       
-      // Update the projects state to reflect the task status change
-      // Simplified to prevent excessive type instantiation
-      setProjects(prevProjects => {
-        if (!prevProjects) return prevProjects;
-        
-        return prevProjects.map(project => {
-          // Skip projects with no milestones
-          if (!project.milestones || project.milestones.length === 0) {
-            return project;
+      // Instead of a complex nested update, fetch the project again
+      // This avoids deep type instantiation
+      if (error) {
+        console.error("Error updating task status:", error);
+        toast.error("Error updating task status");
+        return;
+      }
+
+      // Update local state by making a shallow copy and finding the specific task
+      setProjects(prevProjects => 
+        prevProjects.map(project => {
+          // Check if this project contains our task
+          let containsTask = false;
+          if (project.milestones) {
+            for (const milestone of project.milestones) {
+              if (milestone.tasks) {
+                if (milestone.tasks.some(task => task.id === taskId)) {
+                  containsTask = true;
+                  break;
+                }
+              }
+            }
           }
-          
-          // Create shallow copies to avoid mutation
+
+          // If project doesn't contain the task, return it unchanged
+          if (!containsTask) return project;
+
+          // Otherwise, create a new object with updated tasks
           return {
             ...project,
-            milestones: project.milestones.map(milestone => {
-              // Skip milestones with no tasks
-              if (!milestone.tasks || milestone.tasks.length === 0) {
-                return milestone;
-              }
-              
-              // Find and update the specific task
-              const taskFound = milestone.tasks.some(task => task.id === taskId);
-              if (!taskFound) {
-                return milestone;
-              }
-              
-              return {
-                ...milestone,
-                tasks: milestone.tasks.map(task => 
-                  task.id === taskId ? { ...task, status } : task
-                )
-              };
-            })
+            milestones: project.milestones?.map(milestone => ({
+              ...milestone,
+              tasks: milestone.tasks?.map(task => 
+                task.id === taskId ? { ...task, status } : task
+              ) || []
+            })) || []
           };
-        });
-      });
+        })
+      );
+      
+      toast.success("Task status updated successfully");
     } catch (error: any) {
       console.error("Error updating task status:", error.message);
       toast.error(error.message || "Error updating task status");

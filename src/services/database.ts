@@ -23,7 +23,9 @@ export const fetchProjectMessages = async (projectId: string): Promise<ProjectMe
 
   return (data || []).map(msg => ({
     ...msg,
-    sender: msg.sender ? { name: msg.sender.name || 'Unknown User' } : { name: 'Unknown User' }
+    sender: msg.sender && typeof msg.sender === 'object' ? 
+      { name: msg.sender.name || 'Unknown User' } : 
+      { name: 'Unknown User' }
   }));
 };
 
@@ -44,12 +46,17 @@ export const fetchTeamMessages = async (teamId: string): Promise<TeamMessage[]> 
   }
 
   return (data || []).map(msg => {
-    // Handle potential error cases in the join with null checks
-    const senderName = msg.sender && typeof msg.sender === 'object' && msg.sender.name ? 
-      msg.sender.name : 'Unknown User';
+    // Safely access the sender properties with null checks
+    const sender = msg.sender || null;
+    const senderName = sender && 
+                      typeof sender === 'object' && 
+                      sender.name !== undefined ? 
+                      sender.name : 'Unknown User';
     
-    const senderAvatar = msg.sender && typeof msg.sender === 'object' && msg.sender.avatar_url ? 
-      msg.sender.avatar_url : '';
+    const senderAvatar = sender && 
+                        typeof sender === 'object' && 
+                        sender.avatar_url !== undefined ? 
+                        sender.avatar_url : '';
     
     return {
       ...msg,
@@ -119,14 +126,17 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
   }
 
   return (data || []).map(task => {
-    // Handle potential null in assigned_to_profile with proper null checks
+    // Safely handle null checks for assigned_to_profile
     const assignedToProfile = task.assigned_to_profile || null;
-    const assignedToName = assignedToProfile && 
-                          typeof assignedToProfile === 'object' && 
-                          assignedToProfile.name !== null && 
-                          assignedToProfile.name !== undefined ? 
-                          assignedToProfile.name : 
-                          'Unassigned';
+    let assignedToName = 'Unassigned';
+    
+    if (assignedToProfile !== null && 
+        typeof assignedToProfile === 'object' && 
+        'name' in assignedToProfile && 
+        assignedToProfile.name !== null && 
+        assignedToProfile.name !== undefined) {
+      assignedToName = assignedToProfile.name;
+    }
 
     return {
       id: task.id,
