@@ -111,18 +111,27 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (error) throw error;
       
-      // Cast data to match our interface (handle number vs string type discrepancies)
-      const formattedProjects = data?.map(project => {
-        // Create a new object with our expected Project shape, including optional fields
-        return {
-          ...project,
-          stipend_amount: project.stipend_amount?.toString() || null,
-          // Add potentially missing properties with null values
-          equity_percentage: project.equity_percentage?.toString() || null,
-          hourly_rate: project.hourly_rate?.toString() || null,
-          fixed_amount: project.fixed_amount?.toString() || null,
-        } as Project;
-      }) || [];
+      // Create properly typed project objects
+      const formattedProjects: Project[] = (data || []).map(project => ({
+        id: project.id,
+        title: project.title,
+        description: project.description,
+        created_by: project.created_by,
+        category: project.category,
+        required_skills: project.required_skills || [],
+        start_date: project.start_date,
+        end_date: project.end_date,
+        team_size: project.team_size,
+        payment_model: project.payment_model,
+        stipend_amount: project.stipend_amount?.toString() || null,
+        equity_percentage: project.equity_percentage?.toString() || null,
+        hourly_rate: project.hourly_rate?.toString() || null,
+        fixed_amount: project.fixed_amount?.toString() || null,
+        deliverables: project.deliverables || [],
+        created_at: project.created_at,
+        selected_team: project.selected_team || null,
+        status: project.status || 'open'
+      }));
       
       setProjects(formattedProjects);
     } catch (error: any) {
@@ -151,15 +160,28 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (error) throw error;
       
-      // Cast data to match our interface (handle number vs string type discrepancies)
-      const formattedProject = {
-        ...data,
+      // Create a properly typed project object
+      const formattedProject: Project = {
+        id: data.id,
+        title: data.title,
+        description: data.description,
+        created_by: data.created_by,
+        category: data.category,
+        required_skills: data.required_skills || [],
+        start_date: data.start_date,
+        end_date: data.end_date,
+        team_size: data.team_size,
+        payment_model: data.payment_model,
         stipend_amount: data.stipend_amount?.toString() || null,
-        // Add potentially missing properties with null values
         equity_percentage: data.equity_percentage?.toString() || null,
         hourly_rate: data.hourly_rate?.toString() || null,
         fixed_amount: data.fixed_amount?.toString() || null,
-      } as Project;
+        deliverables: data.deliverables || [],
+        created_at: data.created_at,
+        selected_team: data.selected_team || null,
+        status: data.status || 'open',
+        milestones: data.milestones
+      };
       
       return formattedProject;
     } catch (error: any) {
@@ -307,15 +329,27 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (error) throw error;
       
       if (data && data.length > 0) {
-        // Format the project before adding to state
-        const newProject = {
-          ...data[0],
+        // Create a properly typed project object
+        const newProject: Project = {
+          id: data[0].id,
+          title: data[0].title,
+          description: data[0].description,
+          created_by: data[0].created_by,
+          category: data[0].category,
+          required_skills: data[0].required_skills || [],
+          start_date: data[0].start_date,
+          end_date: data[0].end_date,
+          team_size: data[0].team_size,
+          payment_model: data[0].payment_model,
           stipend_amount: data[0].stipend_amount?.toString() || null,
-          // Add potentially missing properties with null values
           equity_percentage: data[0].equity_percentage?.toString() || null,
           hourly_rate: data[0].hourly_rate?.toString() || null,
           fixed_amount: data[0].fixed_amount?.toString() || null,
-        } as Project;
+          deliverables: data[0].deliverables || [],
+          created_at: data[0].created_at,
+          selected_team: data[0].selected_team || null,
+          status: data[0].status || 'open'
+        };
         
         // Add the new project to the state
         setProjects(prev => [newProject, ...prev]);
