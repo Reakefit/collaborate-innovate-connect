@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -28,6 +29,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
   Project,
@@ -248,7 +250,7 @@ const TeamPage = () => {
           </Button>
         </div>
 
-        {team.tasks && team.tasks.length > 0 ? (
+        {team?.tasks && team.tasks.length > 0 ? (
           <div className="space-y-4">
             {team.tasks.map((task) => (
               <div

@@ -891,6 +891,77 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  // Implementation for applyToProject function
+  const applyToProject = async (projectId: string, teamId: string, coverLetter: string): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      // Check if user already applied to this project with this team
+      const existingApplication = applications.find(
+        app => app.project_id === projectId && app.team_id === teamId
+      );
+      
+      if (existingApplication) {
+        toast.error('This team has already applied to this project');
+        return false;
+      }
+      
+      const { data, error } = await supabase
+        .from('applications')
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          team_id: teamId,
+          cover_letter: coverLetter,
+          status: 'pending' as ApplicationStatus,
+          created_at: new Date().toISOString(),
+        })
+        .select();
+
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Add the new application to the state
+        setApplications(prev => [data[0] as Application, ...prev]);
+        toast.success('Application submitted successfully!');
+        return true;
+      }
+      return false;
+    } catch (error: any) {
+      toast.error(`Error submitting application: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Implementation for updateApplicationStatus function
+  const updateApplicationStatus = async (applicationId: string, status: ApplicationStatus): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      const { error } = await supabase
+        .from('applications')
+        .update({
+          status,
+        })
+        .eq('id', applicationId);
+
+      if (error) throw error;
+      
+      // Update the application in the state
+      setApplications(prev => 
+        prev.map(app => 
+          app.id === applicationId ? { ...app, status } : app
+        )
+      );
+      
+      toast.success(`Application ${status} successfully!`);
+      return true;
+    } catch (error: any) {
+      toast.error(`Error updating application: ${error.message}`);
+      return false;
+    }
+  };
+
   const value = {
     projects,
     applications,
@@ -919,7 +990,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     updateTeamTask,
     deleteTeamTask,
     updateTaskStatus,
-    // Add the missing methods to the context value
+    // Add the implemented functions to the context value
     applyToProject,
     updateApplicationStatus,
     fetchProject,
@@ -930,6 +1001,4 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   return (
     <ProjectContext.Provider value={value}>
       {children}
-    </ProjectContext.Provider>
-  );
-};
+    </ProjectContext.

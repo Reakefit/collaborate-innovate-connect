@@ -137,7 +137,7 @@ export const fetchTeamById = async (teamId: string): Promise<Team | null> => {
   return null;
 };
 
-// Function to fetch team tasks
+// Update fetchTeams to include tasks
 export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
   const { data, error } = await supabase
     .from('team_tasks')

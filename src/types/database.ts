@@ -1,4 +1,3 @@
-
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export interface Database {
@@ -228,6 +227,7 @@ export type Team = {
   created_at: string;
   updated_at: string;
   members?: TeamMember[];
+  tasks?: TeamTask[]; // Add tasks to the Team type
 };
 
 export type TeamMember = {
