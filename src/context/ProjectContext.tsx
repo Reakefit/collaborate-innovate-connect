@@ -1001,4 +1001,4 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   return (
     <ProjectContext.Provider value={value}>
       {children}
-    </ProjectContext.
+    </ProjectContext.Provider>
