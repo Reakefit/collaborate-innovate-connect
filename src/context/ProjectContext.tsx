@@ -1,7 +1,8 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
-import { Project, Application, Team, TeamTask, TeamMember } from '@/types/database';
+import { Project, Application, Team, TeamTask, TeamMember, ProjectMilestone, MilestoneStatus, TaskStatus } from '@/types/database';
 import { toast } from 'sonner';
 
 interface ProjectContextType {
@@ -32,6 +33,12 @@ interface ProjectContextType {
   updateTeamTask: (taskId: string, taskData: Partial<TeamTask>) => Promise<boolean>;
   deleteTeamTask: (taskId: string) => Promise<boolean>;
   updateTaskStatus: (taskId: string, status: string) => Promise<boolean>;
+  // Add missing methods needed by ProjectDetail and ProjectPage
+  applyToProject: (projectId: string, teamId: string, coverLetter: string) => Promise<boolean>;
+  updateApplicationStatus: (applicationId: string, status: ApplicationStatus) => Promise<boolean>;
+  fetchProject: (projectId: string) => Promise<Project | null>;
+  addTask: (projectId: string, milestoneId: string, taskData: Partial<ProjectTask>) => Promise<string | null>;
+  addMilestone: (projectId: string, milestoneData: Partial<ProjectMilestone>) => Promise<string | null>;
 }
 
 const ProjectContext = createContext<ProjectContextType>({
@@ -62,6 +69,12 @@ const ProjectContext = createContext<ProjectContextType>({
   updateTeamTask: async () => false,
   deleteTeamTask: async () => false,
   updateTaskStatus: async () => false,
+  // Add implementations for missing methods
+  applyToProject: async () => false,
+  updateApplicationStatus: async () => false,
+  fetchProject: async () => null,
+  addTask: async () => null,
+  addMilestone: async () => null,
 });
 
 export const useProject = () => useContext(ProjectContext);
@@ -93,10 +106,40 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProjects(data || []);
+      
+      // Make sure to cast the data to the Project type to avoid type errors
+      setProjects(data as Project[] || []);
     } catch (error: any) {
       console.error('Error fetching projects:', error.message);
       setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch a single project by ID
+  const fetchProject = async (projectId: string): Promise<Project | null> => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          milestones:project_milestones(
+            *,
+            tasks:project_tasks(*)
+          )
+        `)
+        .eq('id', projectId)
+        .single();
+
+      if (error) throw error;
+      
+      return data as Project;
+    } catch (error: any) {
+      console.error('Error fetching project:', error.message);
+      setError(error.message);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -115,7 +158,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setApplications(data || []);
+      setApplications(data as Application[] || []);
     } catch (error: any) {
       console.error('Error fetching applications:', error.message);
       setError(error.message);
@@ -142,10 +185,14 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (error) throw error;
 
       // Process the teams to ensure members is always an array
+      // and add the name property from user to each member
       const processedTeams = (data || []).map(team => ({
         ...team,
-        members: team.members || [],
-      }));
+        members: (team.members || []).map(member => ({
+          ...member,
+          name: member.user?.name || 'Unknown User'
+        })),
+      })) as Team[];
 
       setTeams(processedTeams);
     } catch (error: any) {
@@ -188,7 +235,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
           ...projectData,
           created_by: user.id,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          // Don't include updated_at here since it's not in the Supabase schema
         })
         .select();
 
@@ -196,7 +243,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       
       if (data && data.length > 0) {
         // Add the new project to the state
-        setProjects(prev => [data[0], ...prev]);
+        setProjects(prev => [data[0] as Project, ...prev]);
         toast.success('Project created successfully!');
         return data[0].id;
       }
@@ -212,12 +259,12 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!user) return false;
     
     try {
+      // Remove updated_at from the projectData since it's not in the Supabase schema
+      const { updated_at, ...dataToUpdate } = projectData as any;
+      
       const { error } = await supabase
         .from('projects')
-        .update({
-          ...projectData,
-          updated_at: new Date().toISOString(),
-        })
+        .update(dataToUpdate)
         .eq('id', projectId)
         .eq('created_by', user.id); // Ensure user owns the project
 
@@ -226,7 +273,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Update the project in the state
       setProjects(prev => 
         prev.map(project => 
-          project.id === projectId ? { ...project, ...projectData, updated_at: new Date().toISOString() } : project
+          project.id === projectId ? { ...project, ...projectData } : project
         )
       );
       
@@ -282,10 +329,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         .insert({
           project_id: projectId,
           user_id: user.id,
-          message,
+          cover_letter: message, // Changed from message to cover_letter
           status: 'pending',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          // No updated_at here
         })
         .select();
 
@@ -293,7 +340,49 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       
       if (data && data.length > 0) {
         // Add the new application to the state
-        setApplications(prev => [data[0], ...prev]);
+        setApplications(prev => [data[0] as Application, ...prev]);
+        toast.success('Application submitted successfully!');
+        return true;
+      }
+      return false;
+    } catch (error: any) {
+      toast.error(`Error submitting application: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Apply to a project with a team (missing method)
+  const applyToProject = async (projectId: string, teamId: string, coverLetter: string): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      // Check if team already applied to this project
+      const existingApplication = applications.find(
+        app => app.project_id === projectId && app.team_id === teamId
+      );
+      
+      if (existingApplication) {
+        toast.error('This team has already applied to this project');
+        return false;
+      }
+      
+      const { data, error } = await supabase
+        .from('applications')
+        .insert({
+          project_id: projectId,
+          team_id: teamId,
+          user_id: user.id,
+          cover_letter: coverLetter,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        })
+        .select();
+
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Add the new application to the state
+        setApplications(prev => [data[0] as Application, ...prev]);
         toast.success('Application submitted successfully!');
         return true;
       }
@@ -316,7 +405,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         .from('applications')
         .update({
           status,
-          updated_at: new Date().toISOString(),
+          // No updated_at here
         })
         .eq('id', applicationId);
 
@@ -325,7 +414,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Update the application in the state
       setApplications(prev => 
         prev.map(app => 
-          app.id === applicationId ? { ...app, status, updated_at: new Date().toISOString() } : app
+          app.id === applicationId ? { ...app, status } : app
         )
       );
       
@@ -337,18 +426,33 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  // Update an application status from ProjectDetail
+  const updateApplicationStatus = async (applicationId: string, status: 'pending' | 'accepted' | 'rejected'): Promise<boolean> => {
+    return updateApplication(applicationId, status);
+  };
+
   // Create a new team
   const createTeam = async (teamData: Partial<Team>): Promise<string | null> => {
     if (!user) return null;
     
     try {
+      // Ensure name is provided as it's required
+      if (!teamData.name) {
+        toast.error('Team name is required');
+        return null;
+      }
+      
       const { data, error } = await supabase
         .from('teams')
         .insert({
-          ...teamData,
+          name: teamData.name,
+          description: teamData.description || '',
           lead_id: user.id,
+          skills: teamData.skills || [],
+          portfolio_url: teamData.portfolio_url,
+          achievements: teamData.achievements,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          // No updated_at here
         })
         .select();
 
@@ -386,12 +490,12 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!user) return false;
     
     try {
+      // Remove updated_at from the teamData since it's not expected by Supabase
+      const { updated_at, members, ...dataToUpdate } = teamData as any;
+      
       const { error } = await supabase
         .from('teams')
-        .update({
-          ...teamData,
-          updated_at: new Date().toISOString(),
-        })
+        .update(dataToUpdate)
         .eq('id', teamId)
         .eq('lead_id', user.id); // Ensure user is the team leader
 
@@ -400,7 +504,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Update the team in the state
       setTeams(prev => 
         prev.map(team => 
-          team.id === teamId ? { ...team, ...teamData, updated_at: new Date().toISOString() } : team
+          team.id === teamId ? { ...team, ...teamData } : team
         )
       );
       
@@ -586,14 +690,24 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!user) return null;
     
     try {
+      // Make sure title and status are provided as they are required
+      if (!taskData.title || !taskData.status) {
+        toast.error('Task title and status are required');
+        return null;
+      }
+      
       const { data, error } = await supabase
         .from('team_tasks')
         .insert({
-          ...taskData,
           team_id: teamId,
+          title: taskData.title,
+          description: taskData.description,
+          status: taskData.status,
+          due_date: taskData.due_date,
+          assigned_to: taskData.assigned_to,
           created_by: user.id,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          // No updated_at here
         })
         .select();
 
@@ -613,17 +727,93 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  // Add a project task (missing method)
+  const addTask = async (projectId: string, milestoneId: string, taskData: Partial<ProjectTask>): Promise<string | null> => {
+    if (!user) return null;
+    
+    try {
+      // Make sure title is provided as it is required
+      if (!taskData.title) {
+        toast.error('Task title is required');
+        return null;
+      }
+      
+      const { data, error } = await supabase
+        .from('project_tasks')
+        .insert({
+          project_id: projectId,
+          milestone_id: milestoneId,
+          title: taskData.title,
+          description: taskData.description || '',
+          status: taskData.status || 'todo',
+          due_date: taskData.due_date,
+          assigned_to: taskData.assigned_to,
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+          completed: false,
+        })
+        .select();
+
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        toast.success('Task created successfully!');
+        return data[0].id;
+      }
+      return null;
+    } catch (error: any) {
+      toast.error(`Error creating task: ${error.message}`);
+      return null;
+    }
+  };
+
+  // Add a project milestone (missing method)
+  const addMilestone = async (projectId: string, milestoneData: Partial<ProjectMilestone>): Promise<string | null> => {
+    if (!user) return null;
+    
+    try {
+      // Make sure title is provided as it is required
+      if (!milestoneData.title) {
+        toast.error('Milestone title is required');
+        return null;
+      }
+      
+      const { data, error } = await supabase
+        .from('project_milestones')
+        .insert({
+          project_id: projectId,
+          title: milestoneData.title,
+          description: milestoneData.description || '',
+          status: milestoneData.status || 'not_started',
+          due_date: milestoneData.due_date,
+          created_at: new Date().toISOString(),
+        })
+        .select();
+
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        toast.success('Milestone created successfully!');
+        return data[0].id;
+      }
+      return null;
+    } catch (error: any) {
+      toast.error(`Error creating milestone: ${error.message}`);
+      return null;
+    }
+  };
+
   // Update an existing team task
   const updateTeamTask = async (taskId: string, taskData: Partial<TeamTask>): Promise<boolean> => {
     if (!user) return false;
     
     try {
+      // Remove updated_at and created_at from the taskData since these are managed by the trigger
+      const { updated_at, created_at, ...dataToUpdate } = taskData as any;
+      
       const { error } = await supabase
         .from('team_tasks')
-        .update({
-          ...taskData,
-          updated_at: new Date().toISOString(),
-        })
+        .update(dataToUpdate)
         .eq('id', taskId);
 
       if (error) throw error;
@@ -714,6 +904,12 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     updateTeamTask,
     deleteTeamTask,
     updateTaskStatus,
+    // Add the missing methods to the context value
+    applyToProject,
+    updateApplicationStatus,
+    fetchProject,
+    addTask,
+    addMilestone,
   };
 
   return (

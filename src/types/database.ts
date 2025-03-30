@@ -61,7 +61,7 @@ export interface Project {
   start_date: string;
   end_date: string;
   payment_model: PaymentModel | string;
-  stipend_amount?: string;
+  stipend_amount?: string;  // Updated: changed from number to string
   equity_percentage?: string;
   hourly_rate?: string;
   fixed_amount?: string;
@@ -142,7 +142,7 @@ export interface TeamMember {
   role: TeamRole | string;
   status: TeamMemberStatus | string;
   joined_at?: string;
-  name: string;
+  name: string; // This field is required based on the error message
   user?: {
     name: string;
   };
@@ -155,7 +155,7 @@ export interface Application {
   project_id: string;
   team_id: string;
   user_id: string;
-  cover_letter: string;
+  cover_letter: string; // Changed from message to cover_letter based on error
   status: ApplicationStatus | string;
   created_at: string;
   updated_at: string;

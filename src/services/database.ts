@@ -158,19 +158,12 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
     // Default value
     let assignedToName = 'Unassigned';
     
-    // First check if task.assigned_to_profile exists and is not null
+    // Proper null checking
     if (task.assigned_to_profile !== null && task.assigned_to_profile !== undefined) {
-      // Now check if it's an object and has a name property
-      if (
-        typeof task.assigned_to_profile === 'object' && 
-        task.assigned_to_profile !== null
-      ) {
-        // It's safe to access properties now
-        const profileObj = task.assigned_to_profile as Record<string, any>;
+      if (typeof task.assigned_to_profile === 'object') {
+        const profileObj = task.assigned_to_profile as Record<string, any> | null;
         
-        if ('name' in profileObj && 
-            profileObj.name !== null && 
-            profileObj.name !== undefined) {
+        if (profileObj && 'name' in profileObj && profileObj.name !== null && profileObj.name !== undefined) {
           assignedToName = profileObj.name as string;
         }
       }
