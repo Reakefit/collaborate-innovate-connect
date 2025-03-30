@@ -1,3 +1,4 @@
+
 // Update Profile interface to include all necessary fields
 export interface Profile {
   id: string;
@@ -15,7 +16,7 @@ export interface Profile {
   company_description?: string;
   industry?: string;
   company_size?: string;
-  founded?: string;
+  founded?: string;  // Changed from number to string
   website?: string;
   stage?: string;
   project_needs?: string[];
