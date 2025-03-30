@@ -23,7 +23,7 @@ export const fetchProjectMessages = async (projectId: string): Promise<ProjectMe
 
   return (data || []).map(msg => ({
     ...msg,
-    sender: msg.sender || { name: 'Unknown User' }
+    sender: msg.sender ? { name: msg.sender.name || 'Unknown User' } : { name: 'Unknown User' }
   }));
 };
 

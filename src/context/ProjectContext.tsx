@@ -80,9 +80,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           resources: [],
           applications: [],
           stipend_amount: project.stipend_amount ? String(project.stipend_amount) : undefined,
-          hourly_rate: String(project.hourly_rate || ''),
-          fixed_amount: String(project.fixed_amount || ''),
-          equity_percentage: String(project.equity_percentage || ''),
+          hourly_rate: project.hourly_rate ? String(project.hourly_rate) : '',
+          fixed_amount: project.fixed_amount ? String(project.fixed_amount) : '',
+          equity_percentage: project.equity_percentage ? String(project.equity_percentage) : '',
           updated_at: project.updated_at || project.created_at,
           status: project.status as ProjectStatus,
           payment_model: project.payment_model as any,
@@ -208,9 +208,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           resources: [],
           applications: [],
           stipend_amount: data.stipend_amount ? String(data.stipend_amount) : undefined,
-          hourly_rate: String(data.hourly_rate || ''),
-          fixed_amount: String(data.fixed_amount || ''),
-          equity_percentage: String(data.equity_percentage || ''),
+          hourly_rate: data.hourly_rate ? String(data.hourly_rate) : '',
+          fixed_amount: data.fixed_amount ? String(data.fixed_amount) : '',
+          equity_percentage: data.equity_percentage ? String(data.equity_percentage) : '',
           updated_at: data.updated_at || data.created_at,
           status: data.status as ProjectStatus,
           payment_model: data.payment_model as any,
@@ -255,7 +255,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             tasks: milestone.tasks?.map((task: any) => ({
               ...task,
               status: task.status as TaskStatus,
-              completed: Boolean(task.completed !== undefined ? task.completed : false),
+              completed: task.completed !== undefined ? Boolean(task.completed) : false,
             })) || [],
           };
         }) || [];
@@ -269,9 +269,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           required_skills: data.required_skills || [],
           deliverables: data.deliverables || [],
           stipend_amount: data.stipend_amount ? String(data.stipend_amount) : undefined,
-          hourly_rate: String(data.hourly_rate || ''),
-          fixed_amount: String(data.fixed_amount || ''),
-          equity_percentage: String(data.equity_percentage || ''),
+          hourly_rate: data.hourly_rate ? String(data.hourly_rate) : '',
+          fixed_amount: data.fixed_amount ? String(data.fixed_amount) : '',
+          equity_percentage: data.equity_percentage ? String(data.equity_percentage) : '',
           updated_at: data.updated_at || data.created_at,
           status: data.status as ProjectStatus,
           payment_model: data.payment_model as any,
@@ -389,7 +389,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const newTask: ProjectTask = {
           ...data,
           status: data.status as TaskStatus,
-          completed: Boolean(data.completed),
+          completed: Boolean(data.completed || false),
         };
         
         // Optimistically update the tasks in the local state

@@ -1,4 +1,3 @@
-
 // Update Profile interface to include all necessary fields
 export interface Profile {
   id: string;
