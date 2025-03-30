@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import { 
   Project, Application, ProjectMilestone, ProjectTask, 
@@ -121,8 +122,9 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
     // Handle potential null in assigned_to_profile with proper null checks
     const assignedToProfile = task.assigned_to_profile || null;
     const assignedToName = assignedToProfile && 
-                          typeof assignedToProfile === 'object' ? 
-                          assignedToProfile.name || 'Unassigned' : 
+                          typeof assignedToProfile === 'object' && 
+                          assignedToProfile.name ? 
+                          assignedToProfile.name : 
                           'Unassigned';
 
     return {

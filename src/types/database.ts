@@ -68,7 +68,7 @@ export interface Project {
   status: ProjectStatus | string;
   created_by: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
   selected_team?: string;
   team_size?: number;
   milestones?: ProjectMilestone[];

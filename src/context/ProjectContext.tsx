@@ -339,20 +339,28 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       // Update the projects state to reflect the task status change
       setProjects(prevProjects => {
-        // Create a deep copy to avoid mutation
+        if (!prevProjects) return prevProjects;
         return prevProjects.map(project => {
-          // Check if this project contains the task
-          const updatedMilestones = project.milestones?.map(milestone => {
+          if (!project.milestones || project.milestones.length === 0) {
+            return project;
+          }
+          
+          // Create new milestones array
+          const updatedMilestones = project.milestones.map(milestone => {
+            if (!milestone.tasks || milestone.tasks.length === 0) {
+              return milestone;
+            }
+            
             // Check if this milestone contains the task
-            const updatedTasks = milestone.tasks?.map(task => 
+            const updatedTasks = milestone.tasks.map(task => 
               task.id === taskId ? { ...task, status } : task
-            ) || [];
+            );
             
             return {
               ...milestone,
               tasks: updatedTasks
             };
-          }) || [];
+          });
           
           return {
             ...project,
