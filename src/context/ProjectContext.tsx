@@ -336,49 +336,20 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .update({ status })
         .eq('id', taskId);
         
-      if (error) throw error;
-      
-      // Instead of a complex nested update, fetch the project again
-      // This avoids deep type instantiation
       if (error) {
         console.error("Error updating task status:", error);
         toast.error("Error updating task status");
         return;
       }
 
-      // Update local state by making a shallow copy and finding the specific task
-      setProjects(prevProjects => 
-        prevProjects.map(project => {
-          // Check if this project contains our task
-          let containsTask = false;
-          if (project.milestones) {
-            for (const milestone of project.milestones) {
-              if (milestone.tasks) {
-                if (milestone.tasks.some(task => task.id === taskId)) {
-                  containsTask = true;
-                  break;
-                }
-              }
-            }
-          }
-
-          // If project doesn't contain the task, return it unchanged
-          if (!containsTask) return project;
-
-          // Otherwise, create a new object with updated tasks
-          return {
-            ...project,
-            milestones: project.milestones?.map(milestone => ({
-              ...milestone,
-              tasks: milestone.tasks?.map(task => 
-                task.id === taskId ? { ...task, status } : task
-              ) || []
-            })) || []
-          };
-        })
-      );
-      
+      // This is a completely refactored approach that avoids deep type instantiation
+      // Instead of modifying the nested state directly, we'll refetch the data
       toast.success("Task status updated successfully");
+      
+      // Refresh projects data instead of doing complex state updates
+      // This is simpler and avoids TypeScript excessive type instantiation errors
+      fetchProjects();
+      
     } catch (error: any) {
       console.error("Error updating task status:", error.message);
       toast.error(error.message || "Error updating task status");

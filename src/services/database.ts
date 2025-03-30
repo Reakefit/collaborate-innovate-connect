@@ -21,12 +21,19 @@ export const fetchProjectMessages = async (projectId: string): Promise<ProjectMe
     return [];
   }
 
-  return (data || []).map(msg => ({
-    ...msg,
-    sender: msg.sender && typeof msg.sender === 'object' ? 
-      { name: msg.sender.name || 'Unknown User' } : 
-      { name: 'Unknown User' }
-  }));
+  return (data || []).map(msg => {
+    // Handle msg.sender carefully with null checking
+    const senderName = msg.sender && 
+                      typeof msg.sender === 'object' && 
+                      'name' in msg.sender && 
+                      msg.sender.name !== null ? 
+                      msg.sender.name : 'Unknown User';
+    
+    return {
+      ...msg,
+      sender: { name: senderName }
+    };
+  });
 };
 
 // Function to fetch team messages
@@ -47,16 +54,17 @@ export const fetchTeamMessages = async (teamId: string): Promise<TeamMessage[]> 
 
   return (data || []).map(msg => {
     // Safely access the sender properties with null checks
-    const sender = msg.sender || null;
-    const senderName = sender && 
-                      typeof sender === 'object' && 
-                      sender.name !== undefined ? 
-                      sender.name : 'Unknown User';
+    const senderName = msg.sender && 
+                      typeof msg.sender === 'object' && 
+                      'name' in msg.sender && 
+                      msg.sender.name !== null ? 
+                      msg.sender.name : 'Unknown User';
     
-    const senderAvatar = sender && 
-                        typeof sender === 'object' && 
-                        sender.avatar_url !== undefined ? 
-                        sender.avatar_url : '';
+    const senderAvatar = msg.sender && 
+                        typeof msg.sender === 'object' && 
+                        'avatar_url' in msg.sender && 
+                        msg.sender.avatar_url !== null ? 
+                        msg.sender.avatar_url : '';
     
     return {
       ...msg,
@@ -126,16 +134,20 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
   }
 
   return (data || []).map(task => {
-    // Safely handle null checks for assigned_to_profile
-    const assignedToProfile = task.assigned_to_profile || null;
+    // Completely rewritten null check for assigned_to_profile to be more thorough
     let assignedToName = 'Unassigned';
     
-    if (assignedToProfile !== null && 
-        typeof assignedToProfile === 'object' && 
-        'name' in assignedToProfile && 
-        assignedToProfile.name !== null && 
-        assignedToProfile.name !== undefined) {
-      assignedToName = assignedToProfile.name;
+    if (task.assigned_to_profile !== null && 
+        task.assigned_to_profile !== undefined) {
+        
+      if (typeof task.assigned_to_profile === 'object' && 
+          task.assigned_to_profile !== null &&
+          'name' in task.assigned_to_profile &&
+          task.assigned_to_profile.name !== null && 
+          task.assigned_to_profile.name !== undefined) {
+            
+        assignedToName = task.assigned_to_profile.name;
+      }
     }
 
     return {
