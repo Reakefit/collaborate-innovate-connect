@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, Loader2 } from "lucide-react";
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -32,6 +32,7 @@ const SignInStartup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     
     if (!email || !password) {
       setError('Please fill in all fields');
@@ -51,13 +52,14 @@ const SignInStartup = () => {
       navigate('/dashboard');
     } catch (error: any) {
       setError(error.message || 'Failed to sign in');
+      toast.error('Login failed: ' + (error.message || 'Invalid credentials'));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gradient-to-br from-muted/30 to-muted/10">
+    <div className="flex justify-center items-center h-screen bg-gradient-to-b from-blue-50 to-white">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl text-center">Sign In as Startup</CardTitle>
@@ -95,11 +97,19 @@ const SignInStartup = () => {
             </div>
             {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
             <Button className="w-full mt-4" type="submit" disabled={isLoading}>
-              {isLoading ? "Signing In..." : "Sign In"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing In...
+                </>
+              ) : "Sign In"}
             </Button>
           </form>
           <div className="text-sm text-muted-foreground text-center">
-            Don't have an account? <Link to="/signup/startup" className="text-primary hover:underline">Sign up</Link>
+            Don't have an account? <Link to="/signup/startup" className="text-primary underline">Sign up</Link>
+          </div>
+          <div className="text-sm text-muted-foreground text-center">
+            <Link to="/forgot-password" className="text-primary underline">Forgot password?</Link>
           </div>
         </CardContent>
       </Card>

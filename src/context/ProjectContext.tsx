@@ -1,11 +1,10 @@
-
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { 
   Project, Application, Team, TeamTask, TeamMember, ProjectMilestone, 
   MilestoneStatus, TaskStatus, ProjectTask, ApplicationStatus, TeamTaskStatus,
-  ProjectCategory, PaymentModel, ProjectStatus, Json
+  ProjectCategory, PaymentModel, ProjectStatus
 } from '@/types/database';
 import { toast } from 'sonner';
 import { fetchApplicationsWithTeams } from '@/services/database';
@@ -38,7 +37,6 @@ interface ProjectContextType {
   deleteTeamTask: (teamId: string, taskId: string) => Promise<boolean>;
   fetchApplications: (projectId: string) => Promise<Application[]>;
   updateApplicationStatus: (applicationId: string, status: string) => Promise<boolean>;
-  // Adding missing methods needed by ProjectPage
   addTask: (projectId: string, milestoneId: string, taskData: any) => Promise<boolean>;
   updateTaskStatus: (taskId: string, status: TaskStatus) => Promise<boolean>;
   addMilestone: (projectId: string, milestoneData: any) => Promise<boolean>;
@@ -85,6 +83,62 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
+  // Define joinTeam before it's used in createTeam
+  const joinTeam = useCallback(async (teamId: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!user) {
+        throw new Error('You must be logged in to join a team');
+      }
+      
+      const { error } = await supabase
+        .from('team_members')
+        .insert({
+          team_id: teamId,
+          user_id: user.id,
+          role: 'member',
+          status: 'active'
+        });
+      
+      if (error) throw error;
+      
+      // Update the team in the state with proper typing
+      setTeams(prevTeams =>
+        prevTeams.map(team =>
+          team.id === teamId
+            ? { 
+                ...team, 
+                members: [
+                  ...(team.members || []), 
+                  { 
+                    id: '', // Temporary ID that will be replaced when refetching
+                    user_id: user.id, 
+                    team_id: teamId,
+                    role: 'member', 
+                    status: 'active',
+                    joined_at: new Date().toISOString(),
+                    name: '' // Temporary name that will be replaced when refetching
+                  } as TeamMember
+                ] 
+              }
+            : team
+        )
+      );
+      
+      toast.success('Joined team successfully!');
+      return true;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error joining team:', error);
+      toast.error('Failed to join team.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   const fetchProjects = useCallback(async () => {
     try {
       setLoading(true);
@@ -102,16 +156,16 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         title: project.title,
         description: project.description,
         created_by: project.created_by,
-        category: project.category as ProjectCategory,
+        category: (project.category || 'other') as ProjectCategory,
         required_skills: project.required_skills || [],
         start_date: project.start_date,
         end_date: project.end_date,
         team_size: project.team_size,
-        payment_model: project.payment_model as PaymentModel,
+        payment_model: (project.payment_model || 'unpaid') as PaymentModel,
         stipend_amount: project.stipend_amount ? String(project.stipend_amount) : null,
-        equity_percentage: project.equity_percentage ? String(project.equity_percentage) : null,
-        hourly_rate: project.hourly_rate ? String(project.hourly_rate) : null,
-        fixed_amount: project.fixed_amount ? String(project.fixed_amount) : null,
+        equity_percentage: project.equity_percentage ? String(project.equity_percentage || '0') : null,
+        hourly_rate: project.hourly_rate ? String(project.hourly_rate || '0') : null,
+        fixed_amount: project.fixed_amount ? String(project.fixed_amount || '0') : null,
         deliverables: project.deliverables || [],
         created_at: project.created_at,
         selected_team: project.selected_team || null,
@@ -150,26 +204,26 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         title: data.title,
         description: data.description,
         created_by: data.created_by,
-        category: data.category as ProjectCategory,
+        category: (data.category || 'other') as ProjectCategory,
         required_skills: data.required_skills || [],
         start_date: data.start_date,
         end_date: data.end_date,
         team_size: data.team_size,
-        payment_model: data.payment_model as PaymentModel,
+        payment_model: (data.payment_model || 'unpaid') as PaymentModel,
         stipend_amount: data.stipend_amount ? String(data.stipend_amount) : null,
-        equity_percentage: data.equity_percentage ? String(data.equity_percentage) : null,
-        hourly_rate: data.hourly_rate ? String(data.hourly_rate) : null,
-        fixed_amount: data.fixed_amount ? String(data.fixed_amount) : null,
+        equity_percentage: data.equity_percentage ? String(data.equity_percentage || '0') : null,
+        hourly_rate: data.hourly_rate ? String(data.hourly_rate || '0') : null,
+        fixed_amount: data.fixed_amount ? String(data.fixed_amount || '0') : null,
         deliverables: data.deliverables || [],
         created_at: data.created_at,
         selected_team: data.selected_team || null,
         status: (data.status || 'open') as ProjectStatus,
         milestones: Array.isArray(data.milestones) ? data.milestones.map((milestone: any) => ({
           ...milestone,
-          status: milestone.status as MilestoneStatus,
+          status: (milestone.status || 'pending') as MilestoneStatus,
           tasks: Array.isArray(milestone.tasks) ? milestone.tasks.map((task: any) => ({
             ...task,
-            status: task.status as TaskStatus
+            status: (task.status || 'todo') as TaskStatus
           })) : []
         })) : []
       };
@@ -223,15 +277,15 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         title: data.title,
         description: data.description,
         created_by: data.created_by,
-        category: data.category as ProjectCategory,
+        category: (data.category || 'other') as ProjectCategory,
         required_skills: data.required_skills || [],
         start_date: data.start_date,
         end_date: data.end_date,
         team_size: data.team_size,
-        payment_model: data.payment_model as PaymentModel,
+        payment_model: (data.payment_model || 'unpaid') as PaymentModel,
         stipend_amount: data.stipend_amount ? String(data.stipend_amount) : null,
-        equity_percentage: data.equity_percentage ? String(data.equity_percentage) : null,
-        hourly_rate: data.hourly_rate ? String(data.hourly_rate) : null,
+        equity_percentage: data.equity_percentage ? String(data.equity_percentage || '0') : null,
+        hourly_rate: data.hourly_rate ? String(data.hourly_rate || '0') : null,
         fixed_amount: data.fixed_amount ? String(data.fixed_amount) : null,
         deliverables: data.deliverables || [],
         created_at: data.created_at,
@@ -393,62 +447,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       setError(error.message);
       console.error('Error applying to project:', error);
       toast.error('Failed to submit application.');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  // Define joinTeam function before it's used in createTeam
-  const joinTeam = useCallback(async (teamId: string): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      if (!user) {
-        throw new Error('You must be logged in to join a team');
-      }
-      
-      const { error } = await supabase
-        .from('team_members')
-        .insert({
-          team_id: teamId,
-          user_id: user.id,
-          role: 'member',
-          status: 'active'
-        });
-      
-      if (error) throw error;
-      
-      // Update the team in the state with proper typing
-      setTeams(prevTeams =>
-        prevTeams.map(team =>
-          team.id === teamId
-            ? { 
-                ...team, 
-                members: [
-                  ...(team.members || []), 
-                  { 
-                    id: '', // Temporary ID that will be replaced when refetching
-                    user_id: user.id, 
-                    team_id: teamId,
-                    role: 'member', 
-                    status: 'active',
-                    joined_at: new Date().toISOString(),
-                    name: '' // Temporary name that will be replaced when refetching
-                  } as TeamMember
-                ] 
-              }
-            : team
-        )
-      );
-      
-      toast.success('Joined team successfully!');
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error joining team:', error);
-      toast.error('Failed to join team.');
       return false;
     } finally {
       setLoading(false);
@@ -932,87 +930,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   }, []);
 
-  // Add the missing methods needed by ProjectPage component
-  const addTask = useCallback(async (projectId: string, milestoneId: string, taskData: any): Promise<boolean> => {
-    try {
-      setLoading(true);
-      
-      if (!user) {
-        throw new Error('You must be logged in to add a task');
-      }
-      
-      const { error } = await supabase
-        .from('project_tasks')
-        .insert({
-          project_id: projectId,
-          milestone_id: milestoneId,
-          title: taskData.title,
-          description: taskData.description,
-          status: taskData.status || 'todo',
-          due_date: taskData.due_date || null,
-          assigned_to: taskData.assigned_to || null,
-          created_by: user.id
-        });
-      
-      if (error) throw error;
-      
-      return true;
-    } catch (error: any) {
-      console.error('Error adding task:', error);
-      toast.error('Failed to add task');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  const updateTaskStatus = useCallback(async (taskId: string, status: TaskStatus): Promise<boolean> => {
-    try {
-      setLoading(true);
-      
-      const { error } = await supabase
-        .from('project_tasks')
-        .update({ status })
-        .eq('id', taskId);
-      
-      if (error) throw error;
-      
-      return true;
-    } catch (error: any) {
-      console.error('Error updating task status:', error);
-      toast.error('Failed to update task status');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const addMilestone = useCallback(async (projectId: string, milestoneData: any): Promise<boolean> => {
-    try {
-      setLoading(true);
-      
-      const { error } = await supabase
-        .from('project_milestones')
-        .insert({
-          project_id: projectId,
-          title: milestoneData.title,
-          description: milestoneData.description,
-          due_date: milestoneData.due_date,
-          status: milestoneData.status
-        });
-      
-      if (error) throw error;
-      
-      return true;
-    } catch (error: any) {
-      console.error('Error adding milestone:', error);
-      toast.error('Failed to add milestone');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   const value = {
     projects,
     applications,
@@ -1041,17 +958,14 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
     deleteTeamTask,
     fetchApplications,
     updateApplicationStatus,
-    // Add the missing methods
+    // Implement the missing methods
     addTask,
     updateTaskStatus,
     addMilestone,
   };
 
-  return (
-    <ProjectContext.Provider value={value}>
-      {children}
-    </ProjectContext.Provider>
-  );
-};
-
-export const useProject = () => useContext(ProjectContext);
+  // Implementing the missing methods
+  function addTask(projectId: string, milestoneId: string, taskData: any): Promise<boolean> {
+    return new Promise<boolean>(async (resolve) => {
+      try {
+        setLoading(true);

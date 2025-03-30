@@ -11,13 +11,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { Loader2 } from 'lucide-react';
 
-// Form schema
+// Enhanced form schema with more required fields
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
   email: z.string().email({ message: 'Please enter a valid email address' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
-  confirmPassword: z.string()
+  confirmPassword: z.string(),
+  college: z.string().min(2, { message: 'College name is required' }),
+  major: z.string().min(2, { message: 'Major/Field of study is required' }),
+  graduationYear: z.string().min(4, { message: 'Graduation year is required' }),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword']
@@ -34,7 +38,10 @@ const SignUpStudent = () => {
       name: '',
       email: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      college: '',
+      major: '',
+      graduationYear: '',
     }
   });
 
@@ -49,7 +56,10 @@ const SignUpStudent = () => {
         options: {
           data: {
             name: data.name,
-            role: 'student'
+            role: 'student',
+            college: data.college,
+            major: data.major,
+            graduation_year: data.graduationYear
           }
         }
       });
@@ -59,7 +69,7 @@ const SignUpStudent = () => {
       if (authData.user) {
         // User created successfully
         toast.success('Account created successfully! Please check your email to verify your account.');
-        navigate('/signin');
+        navigate('/signin/student');
       }
     } catch (error: any) {
       toast.error(error.message || 'Error creating account');
@@ -81,7 +91,7 @@ const SignUpStudent = () => {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">Full Name</Label>
               <Input
                 id="name"
                 type="text"
@@ -102,6 +112,42 @@ const SignUpStudent = () => {
               />
               {errors.email && (
                 <p className="text-sm text-red-500">{errors.email.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="college">College/University</Label>
+              <Input
+                id="college"
+                type="text"
+                placeholder="Stanford University"
+                {...register('college')}
+              />
+              {errors.college && (
+                <p className="text-sm text-red-500">{errors.college.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="major">Major/Field of Study</Label>
+              <Input
+                id="major"
+                type="text"
+                placeholder="Computer Science"
+                {...register('major')}
+              />
+              {errors.major && (
+                <p className="text-sm text-red-500">{errors.major.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="graduationYear">Expected Graduation Year</Label>
+              <Input
+                id="graduationYear"
+                type="text"
+                placeholder="2025"
+                {...register('graduationYear')}
+              />
+              {errors.graduationYear && (
+                <p className="text-sm text-red-500">{errors.graduationYear.message}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -127,20 +173,25 @@ const SignUpStudent = () => {
               )}
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Account...
+                </>
+              ) : 'Create Account'}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col">
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{' '}
-            <Link to="/signin" className="text-primary underline">
+            <Link to="/signin/student" className="text-primary underline">
               Sign in
             </Link>
           </p>
           <p className="text-center text-sm text-muted-foreground mt-1">
             Are you a startup?{' '}
-            <Link to="/signup-startup" className="text-primary underline">
+            <Link to="/signup/startup" className="text-primary underline">
               Create startup account
             </Link>
           </p>

@@ -1,187 +1,272 @@
 
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/context/AuthContext";
-import { useProject } from "@/context/ProjectContext";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Project, ProjectCategory, PaymentModel } from "@/types/database";
-import { Search, PlusCircle, Clock, Users, Tag } from "lucide-react";
-import DashboardLayout from "@/components/DashboardLayout";
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import DashboardLayout from '@/components/DashboardLayout';
+import { useProject } from '@/context/ProjectContext';
+import { useAuth } from '@/context/AuthContext';
+import { useAuthorization } from '@/context/AuthorizationContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PlusCircle, Search, Briefcase, Clock, CalendarIcon, Users, Tag } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Project } from '@/types/database';
+import { format } from 'date-fns';
 
 const Projects = () => {
-  const navigate = useNavigate();
+  const { projects, loading, fetchProjects } = useProject();
   const { user, profile } = useAuth();
-  const { projects, fetchProjects, getUserProjects } = useProject();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<ProjectCategory | "all" | "">("");
-  const [paymentModelFilter, setPaymentModelFilter] = useState<PaymentModel | "all" | "">("");
+  const { userRole } = useAuthorization();
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+  const [activeTab, setActiveTab] = useState(userRole === 'startup' ? 'my-projects' : 'all-projects');
 
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
 
   useEffect(() => {
-    // Different filtering logic based on user role
-    let projectsToFilter = projects;
+    // Filter projects based on user role and search term
+    let filtered = [...projects];
     
-    // If user is a startup, only show their projects
-    if (profile?.role === 'startup') {
-      projectsToFilter = getUserProjects();
+    // Apply role-based filters
+    if (userRole === 'startup' && activeTab === 'my-projects') {
+      // Show only projects created by the logged-in startup
+      filtered = filtered.filter(project => project.created_by === user?.id);
     }
     
-    const filtered = projectsToFilter.filter((project) => {
-      const searchMatch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          project.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const categoryMatch = !categoryFilter || categoryFilter === "all" || project.category === categoryFilter;
-      const paymentModelMatch = !paymentModelFilter || paymentModelFilter === "all" || project.payment_model === paymentModelFilter;
-      
-      return searchMatch && categoryMatch && paymentModelMatch;
-    });
+    // Apply search filter if there's a search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(project => 
+        project.title.toLowerCase().includes(term) || 
+        project.description.toLowerCase().includes(term) ||
+        (project.required_skills && project.required_skills.some(skill => 
+          skill.toLowerCase().includes(term)
+        ))
+      );
+    }
     
     setFilteredProjects(filtered);
-  }, [projects, searchQuery, categoryFilter, paymentModelFilter, profile, getUserProjects]);
+  }, [projects, searchTerm, userRole, user, activeTab]);
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'MMM d, yyyy');
+    } catch (error) {
+      return 'No date';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open':
+        return 'bg-green-100 text-green-800';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'completed':
+        return 'bg-purple-100 text-purple-800';
+      case 'closed':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   return (
     <DashboardLayout activeTab="projects">
-      <div className="container mx-auto py-8">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold">
-              {profile?.role === "startup" ? "Your Projects" : "Available Projects"}
-            </h1>
-            <p className="text-muted-foreground">
-              {profile?.role === "startup"
-                ? "Manage and view your created projects."
-                : "Explore projects posted by startups."}
-            </p>
-          </div>
-          {profile?.role === "startup" && (
-            <Button onClick={() => navigate("/create-project")} className="flex items-center gap-2">
-              <PlusCircle className="h-4 w-4" />
-              Create Project
-            </Button>
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {userRole === 'startup' ? 'My Projects' : 'Find Projects'}
+          </h1>
+          <p className="text-muted-foreground">
+            {userRole === 'startup' 
+              ? 'Manage your projects and track applications'
+              : 'Discover project opportunities and apply to work with startups'}
+          </p>
+        </div>
+        {userRole === 'startup' && (
+          <Button onClick={() => navigate('/create-project')}>
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Create Project
+          </Button>
+        )}
+      </div>
+
+      <div className="mb-6">
+        <div className="flex items-center space-x-2">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search projects by title, description, or skills..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1"
+          />
+        </div>
+      </div>
+
+      {userRole === 'startup' ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="my-projects">My Projects</TabsTrigger>
+            <TabsTrigger value="all-projects">All Projects</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="my-projects" className="space-y-4">
+            {filteredProjects.length === 0 ? (
+              <div className="text-center py-10">
+                <Briefcase className="h-12 w-12 mx-auto text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-medium">No projects found</h3>
+                <p className="mt-1 text-muted-foreground">
+                  You haven't created any projects yet. Create your first project to get started.
+                </p>
+                <Button onClick={() => navigate('/create-project')} className="mt-4">
+                  Create Project
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredProjects.map(project => (
+                  <ProjectCard 
+                    key={project.id} 
+                    project={project} 
+                    userRole={userRole}
+                    onClick={() => navigate(`/project/${project.id}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="all-projects">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredProjects.length === 0 ? (
+                <div className="col-span-3 text-center py-10">
+                  <Search className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <h3 className="mt-4 text-lg font-medium">No projects found</h3>
+                  <p className="mt-1 text-muted-foreground">
+                    Try adjusting your search to find what you're looking for.
+                  </p>
+                </div>
+              ) : (
+                filteredProjects.map(project => (
+                  <ProjectCard 
+                    key={project.id} 
+                    project={project} 
+                    userRole={userRole}
+                    onClick={() => navigate(`/project/${project.id}`)}
+                  />
+                ))
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        // Student view - always shows all available projects
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredProjects.length === 0 ? (
+            <div className="col-span-3 text-center py-10">
+              <Search className="h-12 w-12 mx-auto text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-medium">No projects found</h3>
+              <p className="mt-1 text-muted-foreground">
+                Try adjusting your search to find what you're looking for.
+              </p>
+            </div>
+          ) : (
+            filteredProjects.map(project => (
+              <ProjectCard 
+                key={project.id} 
+                project={project}
+                userRole={userRole}
+                onClick={() => navigate(`/project/${project.id}`)}
+              />
+            ))
           )}
         </div>
+      )}
+    </DashboardLayout>
+  );
+};
 
-        <div className="mb-6 bg-card rounded-lg shadow p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Input
-                type="text"
-                placeholder="Search projects..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full"
-                prefix={<Search className="h-4 w-4 text-muted-foreground" />}
-              />
-            </div>
-            <div>
-              <Select onValueChange={(value) => setCategoryFilter(value as ProjectCategory | "all" | "")}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filter by category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="web_development">Web Development</SelectItem>
-                  <SelectItem value="mobile_app">Mobile Development</SelectItem>
-                  <SelectItem value="data_science">Data Science</SelectItem>
-                  <SelectItem value="machine_learning">Machine Learning</SelectItem>
-                  <SelectItem value="blockchain">Blockchain</SelectItem>
-                  <SelectItem value="design">UI/UX Design</SelectItem>
-                  <SelectItem value="marketing">Marketing</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Select onValueChange={(value) => setPaymentModelFilter(value as PaymentModel | "all" | "")}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filter by payment model" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Payment Models</SelectItem>
-                  <SelectItem value="hourly">Hourly</SelectItem>
-                  <SelectItem value="fixed">Fixed</SelectItem>
-                  <SelectItem value="equity">Equity</SelectItem>
-                  <SelectItem value="unpaid">Unpaid</SelectItem>
-                  <SelectItem value="stipend">Stipend</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+interface ProjectCardProps {
+  project: Project;
+  userRole: string | null;
+  onClick: () => void;
+}
+
+const ProjectCard: React.FC<ProjectCardProps> = ({ project, userRole, onClick }) => {
+  return (
+    <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <CardTitle className="line-clamp-1">{project.title}</CardTitle>
+          <Badge className={getStatusColor(project.status)}>
+            {project.status.replace('_', ' ')}
+          </Badge>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.length > 0 ? (
-            filteredProjects.map((project) => (
-              <Card key={project.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-semibold line-clamp-1">{project.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">{project.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="pb-2">
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <span className="px-2 py-1 rounded-full text-xs bg-primary/10 text-primary flex items-center">
-                      <Tag className="h-3 w-3 mr-1" />
-                      {project.category.replace(/_/g, ' ')}
-                    </span>
-                    <span className="px-2 py-1 rounded-full text-xs bg-muted flex items-center">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {new Date(project.end_date).toLocaleDateString()}
-                    </span>
-                    <span className="px-2 py-1 rounded-full text-xs bg-muted flex items-center">
-                      <Users className="h-3 w-3 mr-1" />
-                      {project.team_size}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Payment: {project.payment_model.replace(/_/g, ' ')}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      project.status === 'open' ? 'bg-green-100 text-green-800' : 
-                      project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {project.status.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                </CardContent>
-                <CardFooter className="pt-2">
-                  <Button 
-                    onClick={() => navigate(`/project/${project.id}`)} 
-                    className="w-full"
-                  >
-                    {profile?.role === "startup" ? "Manage Project" : "View Details"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))
-          ) : (
-            <div className="col-span-full flex flex-col items-center justify-center py-12 px-4 text-center">
-              <div className="bg-muted/40 rounded-full p-4 mb-4">
-                <Search className="h-10 w-10 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium mb-2">No projects found</h3>
-              <p className="text-muted-foreground mb-6 max-w-md">
-                {profile?.role === "startup"
-                  ? "You haven't created any projects that match your filters."
-                  : "No projects match your current search criteria. Try adjusting your filters."}
-              </p>
-              {profile?.role === "startup" && (
-                <Button onClick={() => navigate("/create-project")}>
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Create New Project
-                </Button>
+        <CardDescription className="line-clamp-2">
+          {project.description}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pb-2">
+        <div className="space-y-2">
+          <div className="flex items-center text-sm text-muted-foreground">
+            <CalendarIcon className="h-4 w-4 mr-2" />
+            <span>{formatDate(project.start_date)} - {formatDate(project.end_date)}</span>
+          </div>
+          <div className="flex items-center text-sm text-muted-foreground">
+            <Users className="h-4 w-4 mr-2" />
+            <span>Team Size: {project.team_size}</span>
+          </div>
+          {project.required_skills && project.required_skills.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {project.required_skills.slice(0, 3).map((skill, index) => (
+                <Badge key={index} variant="outline" className="bg-muted/50">
+                  {skill}
+                </Badge>
+              ))}
+              {project.required_skills.length > 3 && (
+                <Badge variant="outline" className="bg-muted/50">
+                  +{project.required_skills.length - 3} more
+                </Badge>
               )}
             </div>
           )}
         </div>
-      </div>
-    </DashboardLayout>
+      </CardContent>
+      <CardFooter>
+        <Button variant="outline" className="w-full" onClick={onClick}>
+          {userRole === 'startup' && project.created_by === project.created_by ? 'Manage Project' : 'View Details'}
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };
+
+function getStatusColor(status: string): string {
+  switch (status) {
+    case 'open':
+      return 'bg-green-100 text-green-800';
+    case 'in_progress':
+      return 'bg-blue-100 text-blue-800';
+    case 'completed':
+      return 'bg-purple-100 text-purple-800';
+    case 'closed':
+      return 'bg-gray-100 text-gray-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+}
+
+function formatDate(dateString: string): string {
+  try {
+    return format(new Date(dateString), 'MMM d, yyyy');
+  } catch (error) {
+    return 'No date';
+  }
+}
 
 export default Projects;

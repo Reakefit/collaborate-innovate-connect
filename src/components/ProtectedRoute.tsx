@@ -4,6 +4,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useAuthorization, Permission } from '@/context/AuthorizationContext';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -18,7 +19,7 @@ export default function ProtectedRoute({
   requiredPermission,
   requireVerification = false,
 }: ProtectedRouteProps) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, profile } = useAuth();
   const { userRole, isVerified, hasPermission, isLoading: authzLoading } = useAuthorization();
   const navigate = useNavigate();
 
@@ -40,20 +41,29 @@ export default function ProtectedRoute({
       return;
     }
 
+    // Check if profile is complete
+    if (profile && !profile.name) {
+      navigate('/complete-profile');
+      return;
+    }
+
     // Check verification if required
     if (requireVerification && !isVerified) {
+      toast.warning('You need to verify your college affiliation first');
       navigate('/verify-college');
       return;
     }
 
     // Check role if specified
     if (requiredRole && userRole !== requiredRole) {
+      toast.error(`This page is only accessible to ${requiredRole}s`);
       navigate('/dashboard');
       return;
     }
 
     // Check permission if specified
     if (requiredPermission && !hasPermission(requiredPermission)) {
+      toast.error('You do not have permission to access this page');
       navigate('/dashboard');
       return;
     }
@@ -66,8 +76,9 @@ export default function ProtectedRoute({
     requireVerification, 
     hasPermission, 
     authLoading, 
-    authzLoading, 
-    navigate
+    authzLoading,
+    navigate,
+    profile
   ]);
 
   // Show loading state while checking auth/authz
@@ -88,6 +99,11 @@ export default function ProtectedRoute({
       return <Navigate to="/signin/student" replace />;
     }
     return <Navigate to="/signin" replace />;
+  }
+
+  // If profile is not complete
+  if (profile && !profile.name) {
+    return <Navigate to="/complete-profile" replace />;
   }
 
   // If verification required but not verified
