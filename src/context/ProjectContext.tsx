@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -338,33 +339,38 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (error) throw error;
       
       // Update the projects state to reflect the task status change
+      // Simplified to prevent excessive type instantiation
       setProjects(prevProjects => {
         if (!prevProjects) return prevProjects;
+        
         return prevProjects.map(project => {
+          // Skip projects with no milestones
           if (!project.milestones || project.milestones.length === 0) {
             return project;
           }
           
-          // Create new milestones array
-          const updatedMilestones = project.milestones.map(milestone => {
-            if (!milestone.tasks || milestone.tasks.length === 0) {
-              return milestone;
-            }
-            
-            // Check if this milestone contains the task
-            const updatedTasks = milestone.tasks.map(task => 
-              task.id === taskId ? { ...task, status } : task
-            );
-            
-            return {
-              ...milestone,
-              tasks: updatedTasks
-            };
-          });
-          
+          // Create shallow copies to avoid mutation
           return {
             ...project,
-            milestones: updatedMilestones
+            milestones: project.milestones.map(milestone => {
+              // Skip milestones with no tasks
+              if (!milestone.tasks || milestone.tasks.length === 0) {
+                return milestone;
+              }
+              
+              // Find and update the specific task
+              const taskFound = milestone.tasks.some(task => task.id === taskId);
+              if (!taskFound) {
+                return milestone;
+              }
+              
+              return {
+                ...milestone,
+                tasks: milestone.tasks.map(task => 
+                  task.id === taskId ? { ...task, status } : task
+                )
+              };
+            })
           };
         });
       });

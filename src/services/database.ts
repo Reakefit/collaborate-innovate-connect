@@ -45,11 +45,11 @@ export const fetchTeamMessages = async (teamId: string): Promise<TeamMessage[]> 
 
   return (data || []).map(msg => {
     // Handle potential error cases in the join with null checks
-    const senderName = msg.sender && typeof msg.sender === 'object' ? 
-      (msg.sender.name || 'Unknown User') : 'Unknown User';
+    const senderName = msg.sender && typeof msg.sender === 'object' && msg.sender.name ? 
+      msg.sender.name : 'Unknown User';
     
-    const senderAvatar = msg.sender && typeof msg.sender === 'object' ? 
-      (msg.sender.avatar_url || '') : '';
+    const senderAvatar = msg.sender && typeof msg.sender === 'object' && msg.sender.avatar_url ? 
+      msg.sender.avatar_url : '';
     
     return {
       ...msg,
@@ -123,7 +123,8 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
     const assignedToProfile = task.assigned_to_profile || null;
     const assignedToName = assignedToProfile && 
                           typeof assignedToProfile === 'object' && 
-                          assignedToProfile.name ? 
+                          assignedToProfile.name !== null && 
+                          assignedToProfile.name !== undefined ? 
                           assignedToProfile.name : 
                           'Unassigned';
 
