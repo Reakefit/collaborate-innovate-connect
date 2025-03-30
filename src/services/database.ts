@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import { 
   Project, Application, ProjectMilestone, ProjectTask, 
@@ -40,7 +41,7 @@ export const fetchProjectMessages = async (projectId: string): Promise<ProjectMe
     return {
       ...msg,
       sender: { name: senderName }
-    };
+    } as ProjectMessage;
   });
 };
 
@@ -92,7 +93,7 @@ export const fetchTeamMessages = async (teamId: string): Promise<TeamMessage[]> 
         name: senderName,
         avatar_url: senderAvatar
       }
-    };
+    } as TeamMessage;
   });
 };
 
@@ -131,7 +132,7 @@ export const fetchTeamById = async (teamId: string): Promise<Team | null> => {
       ...team,
       skills: team.skills || [],
       members: typedMembers,
-    };
+    } as Team;
   }
 
   return null;
@@ -178,6 +179,6 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
       created_at: task.created_at,
       updated_at: task.updated_at,
       assigned_to_profile: { name: assignedToName }
-    };
+    } as TeamTask;
   });
 };
