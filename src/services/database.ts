@@ -120,9 +120,10 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
 
   return (data || []).map(task => {
     // Handle potential null in assigned_to_profile with proper null checks
-    const assignedToName = task.assigned_to_profile && 
-                          typeof task.assigned_to_profile === 'object' ? 
-                          task.assigned_to_profile.name || 'Unassigned' : 
+    const assignedToProfile = task.assigned_to_profile || null;
+    const assignedToName = assignedToProfile && 
+                          typeof assignedToProfile === 'object' ? 
+                          assignedToProfile.name || 'Unassigned' : 
                           'Unassigned';
 
     return {

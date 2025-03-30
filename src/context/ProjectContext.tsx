@@ -80,9 +80,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           resources: [],
           applications: [],
           stipend_amount: project.stipend_amount ? String(project.stipend_amount) : undefined,
-          hourly_rate: project.hourly_rate ? String(project.hourly_rate) : undefined,
-          fixed_amount: project.fixed_amount ? String(project.fixed_amount) : undefined,
-          equity_percentage: project.equity_percentage ? String(project.equity_percentage) : undefined,
+          hourly_rate: String(project.hourly_rate || ''),
+          fixed_amount: String(project.fixed_amount || ''),
+          equity_percentage: String(project.equity_percentage || ''),
           updated_at: project.updated_at || project.created_at,
           status: project.status as ProjectStatus,
           payment_model: project.payment_model as any,
@@ -102,10 +102,24 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
 
         if (applicationsData) {
-          const typedApplications: Application[] = applicationsData.map(app => ({
-            ...app,
-            status: app.status as any,
-          }));
+          const typedApplications: Application[] = applicationsData.map(app => {
+            const teamMembers = app.team?.members ? app.team.members.map((member: any) => ({
+              ...member,
+              name: member.user?.name || 'Unknown User',
+              role: member.role as any,
+              status: member.status as any,
+            })) : [];
+            
+            return {
+              ...app,
+              status: app.status as any,
+              team: app.team ? {
+                ...app.team,
+                members: teamMembers,
+              } : undefined,
+            };
+          });
+          
           setApplications(typedApplications);
         } else {
           setApplications([]);
@@ -134,7 +148,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const typedTeams: Team[] = teamsData.map(team => {
           const members = team.members ? team.members.map((member: any) => ({
             ...member,
-            name: member.user?.name || '',
+            name: member.user?.name || 'Unknown User',
             role: member.role as any,
             status: member.status as any,
           })) : [];
@@ -194,9 +208,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           resources: [],
           applications: [],
           stipend_amount: data.stipend_amount ? String(data.stipend_amount) : undefined,
-          hourly_rate: data.hourly_rate ? String(data.hourly_rate) : undefined,
-          fixed_amount: data.fixed_amount ? String(data.fixed_amount) : undefined,
-          equity_percentage: data.equity_percentage ? String(data.equity_percentage) : undefined,
+          hourly_rate: String(data.hourly_rate || ''),
+          fixed_amount: String(data.fixed_amount || ''),
+          equity_percentage: String(data.equity_percentage || ''),
           updated_at: data.updated_at || data.created_at,
           status: data.status as ProjectStatus,
           payment_model: data.payment_model as any,
@@ -241,7 +255,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             tasks: milestone.tasks?.map((task: any) => ({
               ...task,
               status: task.status as TaskStatus,
-              completed: task.completed !== undefined ? Boolean(task.completed) : false,
+              completed: Boolean(task.completed !== undefined ? task.completed : false),
             })) || [],
           };
         }) || [];
@@ -255,9 +269,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           required_skills: data.required_skills || [],
           deliverables: data.deliverables || [],
           stipend_amount: data.stipend_amount ? String(data.stipend_amount) : undefined,
-          hourly_rate: data.hourly_rate ? String(data.hourly_rate) : undefined,
-          fixed_amount: data.fixed_amount ? String(data.fixed_amount) : undefined,
-          equity_percentage: data.equity_percentage ? String(data.equity_percentage) : undefined,
+          hourly_rate: String(data.hourly_rate || ''),
+          fixed_amount: String(data.fixed_amount || ''),
+          equity_percentage: String(data.equity_percentage || ''),
           updated_at: data.updated_at || data.created_at,
           status: data.status as ProjectStatus,
           payment_model: data.payment_model as any,
@@ -297,10 +311,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (error) throw error;
 
       if (data) {
+        const team = teams.find(t => t.id === teamId);
         const newApplication: Application = {
           ...data,
           status: data.status as any,
-          team: teams.find(t => t.id === teamId),
+          team: team,
           project: projects.find(p => p.id === projectId),
         };
         

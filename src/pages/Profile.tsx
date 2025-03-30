@@ -1,696 +1,302 @@
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
-import { useWatch } from 'react-hook-form';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Github, Linkedin, FileText, ExternalLink, Mail, Building, Briefcase, GraduationCap, Calendar } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
+import { Building2, GraduationCap, Clock, Calendar } from "lucide-react";
 import FileUpload from '@/components/FileUpload';
-import type { Profile as ProfileType } from '@/types/database'; 
-
-// Define the form schema based on profile type
-const profileSchema = z.object({
-  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
-  bio: z.string().optional(),
-  avatar_url: z.string().optional(),
-  company_name: z.string().optional(),
-  company_description: z.string().optional(),
-  industry: z.string().optional(),
-  company_size: z.string().optional(),
-  founded: z.string().optional(),
-  website: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
-  stage: z.string().optional(),
-  college: z.string().optional(),
-  major: z.string().optional(),
-  graduation_year: z.string().optional(),
-  github_url: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
-  linkedin_url: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
-  portfolio_url: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
-  resume_url: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
-});
-
-type ProfileFormValues = z.infer<typeof profileSchema>;
-
-// Form watcher component to trigger re-renders when form values change
-const FormWatch = ({ children, control }) => {
-  useWatch({
-    control
-  });
-  return children;
-};
+import { useProject } from '@/context/ProjectContext';
+import { supabase } from '@/lib/supabase';
 
 const Profile = () => {
-  const { user, profile, refreshProfile } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const navigate = useNavigate();
+  const { user, profile, loading, updateProfile } = useAuth();
+  const { teams } = useProject();
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  // Set default values based on profile type
-  const defaultValues: ProfileFormValues = {
-    name: profile?.name || '',
-    bio: profile?.bio || '',
-    avatar_url: profile?.avatar_url || '',
-    company_name: profile?.company_name || '',
-    company_description: profile?.company_description || '',
-    industry: profile?.industry || '',
-    company_size: profile?.company_size || '',
-    founded: profile?.founded ? String(profile.founded) : '',
-    website: profile?.website || '',
-    stage: profile?.stage || '',
-    college: profile?.college || '',
-    major: profile?.major || '',
-    graduation_year: profile?.graduation_year || '',
-    github_url: profile?.github_url || '',
-    linkedin_url: profile?.linkedin_url || '',
-    portfolio_url: profile?.portfolio_url || '',
-    resume_url: profile?.resume_url || '',
-  };
-
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
-    defaultValues,
-  });
-
-  // Update form when profile changes
   useEffect(() => {
-    if (profile) {
-      form.reset({
-        name: profile.name || '',
-        bio: profile.bio || '',
-        avatar_url: profile.avatar_url || '',
-        company_name: profile.company_name || '',
-        company_description: profile.company_description || '',
-        industry: profile.industry || '',
-        company_size: profile.company_size || '',
-        founded: profile.founded ? String(profile.founded) : '',
-        website: profile.website || '',
-        stage: profile.stage || '',
-        college: profile.college || '',
-        major: profile.major || '',
-        graduation_year: profile.graduation_year || '',
-        github_url: profile.github_url || '',
-        linkedin_url: profile.linkedin_url || '',
-        portfolio_url: profile.portfolio_url || '',
-        resume_url: profile.resume_url || '',
-      });
+    if (!loading && !user) {
+      navigate("/sign-in");
     }
-  }, [profile, form]);
+    
+    if (profile) {
+      setAvatarUrl(profile.avatar_url || null);
+    }
+  }, [user, profile, loading, navigate]);
 
-  const onSubmit = async (values: ProfileFormValues) => {
+  const handleAvatarUpload = async (file: File) => {
+    if (!user) return;
+    setUploadingAvatar(true);
+    
     try {
-      if (!user) return;
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
       
-      setIsLoading(true);
-      
-      // Handle file uploads first
-      let avatarUrl = profile?.avatar_url || '';
-      let resumeUrl = profile?.resume_url || '';
-      
-      if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop();
-        const fileName = `${user.id}-avatar-${Date.now()}.${fileExt}`;
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('profiles')
+        .upload(filePath, file);
         
-        const { error: uploadError, data } = await supabase.storage
-          .from('avatars')
-          .upload(fileName, avatarFile, { upsert: true });
-          
-        if (uploadError) {
-          throw uploadError;
-        }
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data } = supabase.storage
+        .from('profiles')
+        .getPublicUrl(filePath);
         
-        const { data: { publicUrl } } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(fileName);
-          
-        avatarUrl = publicUrl;
+      // Update profile with new avatar URL
+      if (data.publicUrl) {
+        await updateProfile({ avatar_url: data.publicUrl });
+        setAvatarUrl(data.publicUrl);
+        toast.success("Avatar updated successfully!");
       }
-      
-      if (resumeFile) {
-        const fileExt = resumeFile.name.split('.').pop();
-        const fileName = `${user.id}-resume-${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('resumes')
-          .upload(fileName, resumeFile, { upsert: true });
-          
-        if (uploadError) {
-          throw uploadError;
-        }
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('resumes')
-          .getPublicUrl(fileName);
-          
-        resumeUrl = publicUrl;
-      }
-      
-      // Update profile
-      const { error } = await supabase.from('profiles').update({
-        name: values.name,
-        bio: values.bio,
-        avatar_url: avatarUrl,
-        company_name: values.company_name,
-        company_description: values.company_description,
-        industry: values.industry,
-        company_size: values.company_size,
-        founded: values.founded ? String(values.founded) : null,
-        website: values.website,
-        stage: values.stage,
-        college: values.college,
-        major: values.major,
-        graduation_year: values.graduation_year,
-        github_url: values.github_url,
-        linkedin_url: values.linkedin_url,
-        portfolio_url: values.portfolio_url,
-        resume_url: resumeUrl,
-        updated_at: new Date().toISOString(),
-      }).eq('id', user.id);
-      
-      if (error) throw error;
-      
-      await refreshProfile();
-      toast.success('Profile updated successfully');
     } catch (error: any) {
-      toast.error(error.message || 'Error updating profile');
+      toast.error(error.message || "Error uploading avatar");
     } finally {
-      setIsLoading(false);
+      setUploadingAvatar(false);
     }
   };
+
+  // User teams
+  const userTeams = teams.filter(team => 
+    team.lead_id === user?.id || team.members?.some(member => member.user_id === user?.id)
+  );
+
+  if (loading || !profile) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  const isStudent = profile.role === "student";
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Your Profile</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Profile Summary Card */}
-          <div className="md:col-span-1">
-            <Card>
-              <CardHeader className="pb-2">
+    <div className="container mx-auto py-8">
+      <div className="space-y-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Profile Card */}
+          <Card className="flex-1">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle>Profile</CardTitle>
+                <Button onClick={() => setShowEditModal(true)}>Edit Profile</Button>
+              </div>
+              <CardDescription>Your personal details and account settings</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col md:flex-row gap-6">
                 <div className="flex flex-col items-center">
-                  <Avatar className="h-24 w-24 mb-4">
-                    <AvatarImage src={profile?.avatar_url || ""} alt="Profile" className="h-24 w-24 rounded-full object-cover" />
-                    <AvatarFallback>{profile?.name?.charAt(0) || "U"}</AvatarFallback>
+                  <Avatar className="h-24 w-24 mb-2">
+                    <AvatarImage src={avatarUrl || ""} />
+                    <AvatarFallback>{profile.name?.charAt(0) || "U"}</AvatarFallback>
                   </Avatar>
-                  <CardTitle className="text-center">{profile?.name}</CardTitle>
-                  <CardDescription className="text-center">
-                    {profile?.role === "startup" ? "Startup" : "Student"}
-                  </CardDescription>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => document.getElementById('avatar-upload')?.click()}
+                    disabled={uploadingAvatar}
+                  >
+                    {uploadingAvatar ? "Uploading..." : "Change Avatar"}
+                  </Button>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleAvatarUpload(file);
+                    }}
+                  />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {profile?.bio && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">{profile.bio}</p>
-                    </div>
-                  )}
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <h3 className="text-xl font-semibold">{profile.name}</h3>
+                    <p className="text-muted-foreground capitalize">{profile.role}</p>
+                  </div>
                   
                   <Separator />
                   
-                  {profile?.role === "startup" ? (
+                  {isStudent ? (
                     <div className="space-y-3">
-                      {profile?.company_name && (
-                        <div className="flex items-center gap-2">
-                          <Building className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{profile.company_name}</span>
-                        </div>
-                      )}
-                      
-                      {profile?.industry && (
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{profile.industry}</span>
-                        </div>
-                      )}
-                      
-                      {profile?.founded && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Founded: {profile.founded}</span>
-                        </div>
-                      )}
-                      
-                      {profile?.website && (
-                        <div className="flex items-center gap-2">
-                          <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                          <a
-                            href={profile.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-500 hover:text-blue-700"
-                          >
-                            Website
-                          </a>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <GraduationCap className="h-4 w-4 opacity-70" />
+                        <span className="text-sm">
+                          {profile.college}, {profile.major}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 opacity-70" />
+                        <span className="text-sm">
+                          Class of {profile.graduation_year}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 opacity-70" />
+                        <span className="text-sm">
+                          {profile.availability || "Availability not specified"}
+                        </span>
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {profile?.college && (
-                        <div className="flex items-center gap-2">
-                          <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{profile.college}</span>
-                        </div>
-                      )}
-                      
-                      {profile?.major && (
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{profile.major}</span>
-                        </div>
-                      )}
-                      
-                      {profile?.skills && profile.skills.length > 0 && (
-                        <div className="space-y-1">
-                          <span className="text-xs font-medium text-muted-foreground">Skills</span>
-                          <div className="flex flex-wrap gap-1">
-                            {profile.skills.map((skill, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="space-y-1">
-                        <span className="text-xs font-medium text-muted-foreground">Links</span>
-                        <div className="flex items-center gap-2">
-                          {profile?.github_url && (
-                            <a
-                              href={profile.github_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-500 hover:text-blue-700"
-                            >
-                              <Github className="h-4 w-4" />
-                            </a>
-                          )}
-                          
-                          {profile?.linkedin_url && (
-                            <a
-                              href={profile.linkedin_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-500 hover:text-blue-700"
-                            >
-                              <Linkedin className="h-4 w-4" />
-                            </a>
-                          )}
-                          
-                          {profile?.portfolio_url && (
-                            <a
-                              href={profile.portfolio_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-500 hover:text-blue-700"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          )}
-                          
-                          {profile?.resume_url && (
-                            <a
-                              href={profile.resume_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-500 hover:text-blue-700"
-                            >
-                              <FileText className="h-4 w-4" />
-                            </a>
-                          )}
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 opacity-70" />
+                        <span className="text-sm">
+                          {profile.company_name || "Company not specified"}
+                        </span>
                       </div>
-                    </div>
-                  )}
-                  
-                  {user?.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{user.email}</span>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 opacity-70" />
+                        <span className="text-sm">
+                          Founded: {profile.founded || "Year not specified"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Industry:</span>
+                        <span className="text-sm">
+                          {profile.industry || "Not specified"}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+              
+              <Separator className="my-6" />
+              
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Bio</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {profile.bio || "No bio provided."}
+                  </p>
+                </div>
+                
+                {isStudent && (
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Skills</h3>
+                    {profile.skills && profile.skills.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {profile.skills.map((skill, index) => (
+                          <div key={index} className="bg-muted px-2 py-1 rounded-md text-xs">
+                            {skill}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No skills listed.</p>
+                    )}
+                  </div>
+                )}
+                
+                {!isStudent && (
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Project Needs</h3>
+                    {profile.project_needs && profile.project_needs.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {profile.project_needs.map((need, index) => (
+                          <div key={index} className="bg-muted px-2 py-1 rounded-md text-xs">
+                            {need}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No project needs listed.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
           
-          {/* Edit Profile Form */}
-          <div className="md:col-span-2">
+          {/* Teams Card */}
+          <div className="w-full lg:w-1/3 space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Edit Profile</CardTitle>
-                <CardDescription>
-                  Update your profile information
-                </CardDescription>
+                <CardTitle>Your Teams</CardTitle>
+                <CardDescription>Teams you lead or are a member of</CardDescription>
               </CardHeader>
               <CardContent>
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="profile">Basic Info</TabsTrigger>
-                    {profile?.role === "startup" ? (
-                      <TabsTrigger value="company">Company Details</TabsTrigger>
-                    ) : (
-                      <TabsTrigger value="education">Education & Skills</TabsTrigger>
-                    )}
-                    <TabsTrigger value="links">Links & Social</TabsTrigger>
-                  </TabsList>
-                  
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)}>
-                      <FormWatch control={form.control}>
-                        <TabsContent value="profile" className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="md:col-span-2">
-                              <FileUpload
-                                label="Profile Picture"
-                                accept="image/*"
-                                onFileSelected={setAvatarFile}
-                                value={profile?.avatar_url}
-                              />
-                            </div>
-                            
-                            <FormField
-                              control={form.control}
-                              name="name"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Name</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Your name" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <div className="md:col-span-2">
-                              <FormField
-                                control={form.control}
-                                name="bio"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Bio</FormLabel>
-                                    <FormControl>
-                                      <Textarea
-                                        placeholder="Tell us about yourself"
-                                        className="resize-none min-h-[100px]"
-                                        {...field}
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                          </div>
-                        </TabsContent>
-                        
-                        {profile?.role === "startup" ? (
-                          <TabsContent value="company" className="space-y-4">
-                            <FormField
-                              control={form.control}
-                              name="company_name"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Company Name</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Your company name" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <FormField
-                              control={form.control}
-                              name="company_description"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Company Description</FormLabel>
-                                  <FormControl>
-                                    <Textarea
-                                      placeholder="Describe your company"
-                                      className="resize-none min-h-[100px]"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <FormField
-                                control={form.control}
-                                name="industry"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Industry</FormLabel>
-                                    <Select
-                                      onValueChange={field.onChange}
-                                      defaultValue={field.value}
-                                    >
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select industry" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem value="technology">Technology</SelectItem>
-                                        <SelectItem value="healthcare">Healthcare</SelectItem>
-                                        <SelectItem value="finance">Finance</SelectItem>
-                                        <SelectItem value="education">Education</SelectItem>
-                                        <SelectItem value="ecommerce">E-commerce</SelectItem>
-                                        <SelectItem value="other">Other</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              
-                              <FormField
-                                control={form.control}
-                                name="company_size"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Company Size</FormLabel>
-                                    <Select
-                                      onValueChange={field.onChange}
-                                      defaultValue={field.value}
-                                    >
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select size" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem value="1-10">1-10 employees</SelectItem>
-                                        <SelectItem value="11-50">11-50 employees</SelectItem>
-                                        <SelectItem value="51-200">51-200 employees</SelectItem>
-                                        <SelectItem value="201-500">201-500 employees</SelectItem>
-                                        <SelectItem value="501+">501+ employees</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              
-                              <FormField
-                                control={form.control}
-                                name="founded"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Founded Year</FormLabel>
-                                    <FormControl>
-                                      <Input type="number" placeholder="e.g. 2020" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              
-                              <FormField
-                                control={form.control}
-                                name="stage"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Company Stage</FormLabel>
-                                    <Select
-                                      onValueChange={field.onChange}
-                                      defaultValue={field.value}
-                                    >
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select stage" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem value="idea">Idea Stage</SelectItem>
-                                        <SelectItem value="mvp">MVP</SelectItem>
-                                        <SelectItem value="pre_seed">Pre-Seed</SelectItem>
-                                        <SelectItem value="seed">Seed</SelectItem>
-                                        <SelectItem value="series_a">Series A</SelectItem>
-                                        <SelectItem value="series_b_plus">Series B+</SelectItem>
-                                        <SelectItem value="profitable">Profitable</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                          </TabsContent>
-                        ) : (
-                          <TabsContent value="education" className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <FormField
-                                control={form.control}
-                                name="college"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>College/University</FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="Your college or university" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              
-                              <FormField
-                                control={form.control}
-                                name="major"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Major/Field of Study</FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="Your major" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              
-                              <FormField
-                                control={form.control}
-                                name="graduation_year"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Graduation Year</FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="e.g. 2024" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                            
-                            <div>
-                              <FileUpload
-                                label="Resume/CV"
-                                accept=".pdf,.doc,.docx"
-                                onFileSelected={setResumeFile}
-                                value={profile?.resume_url}
-                              />
-                              <FormDescription>
-                                Upload your resume or CV (PDF, DOC, or DOCX)
-                              </FormDescription>
-                            </div>
-                          </TabsContent>
-                        )}
-                        
-                        <TabsContent value="links" className="space-y-4">
-                          <FormField
-                            control={form.control}
-                            name="website"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Website</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="https://yourwebsite.com" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField
-                              control={form.control}
-                              name="github_url"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>GitHub</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="https://github.com/yourusername" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <FormField
-                              control={form.control}
-                              name="linkedin_url"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>LinkedIn</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="https://linkedin.com/in/yourusername" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <FormField
-                              control={form.control}
-                              name="portfolio_url"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Portfolio</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="https://yourportfolio.com" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </TabsContent>
-                      </FormWatch>
-                      
-                      <div className="mt-6 flex justify-end">
-                        <Button type="submit" disabled={isLoading}>
-                          {isLoading ? "Saving..." : "Save Changes"}
+                {userTeams.length > 0 ? (
+                  <div className="space-y-4">
+                    {userTeams.map((team) => (
+                      <div 
+                        key={team.id} 
+                        className="flex items-center justify-between py-2 border-b last:border-0"
+                      >
+                        <div>
+                          <h4 className="font-medium">{team.name}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            {team.lead_id === user?.id ? "Team Lead" : "Member"}
+                          </p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => navigate(`/teams`)}
+                        >
+                          View
                         </Button>
                       </div>
-                    </form>
-                  </Form>
-                </Tabs>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground text-sm mb-4">You're not part of any teams yet</p>
+                    <Button onClick={() => navigate("/teams")}>
+                      Browse Teams
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
+      
+      {/* Edit Profile Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>
+              Update your profile information
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Button variant="secondary" onClick={() => navigate("/complete-profile")}>
+              Open Full Profile Editor
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -9,14 +9,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Profile, Education } from '@/types/database';
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 
-const FormWatch = ({ children, control }) => {
+const FormWatch = ({ children, control }: { children: React.ReactNode, control: any }) => {
   useWatch({
     control
   });
@@ -171,6 +171,18 @@ const CompleteProfile = () => {
   useEffect(() => {
     if (profile) {
       if (isStudent) {
+        // Ensure education is properly formatted
+        const formattedEducation = profile.education && Array.isArray(profile.education) 
+          ? profile.education.map((edu: any) => ({
+              institution: edu.institution || "",
+              degree: edu.degree || "",
+              field: edu.field || "",
+              startYear: edu.startYear || new Date().getFullYear() - 4,
+              endYear: edu.endYear || undefined,
+              current: edu.current || false
+            }))
+          : educationDefaultValue;
+            
         form.reset({
           name: profile.name || "",
           college: profile.college || "",
@@ -185,7 +197,7 @@ const CompleteProfile = () => {
           github_url: profile.github_url || "",
           linkedin_url: profile.linkedin_url || "",
           resume_url: profile.resume_url || "",
-          education: profile.education || educationDefaultValue,
+          education: formattedEducation,
         });
       } else {
         form.reset({
@@ -194,7 +206,7 @@ const CompleteProfile = () => {
           company_description: profile.company_description || "",
           industry: profile.industry || "",
           company_size: profile.company_size || "",
-          founded: profile.founded || "",
+          founded: profile.founded ? String(profile.founded) : "",
           website: profile.website || "",
           stage: profile.stage || "",
           project_needs: profile.project_needs || [],
@@ -211,12 +223,35 @@ const CompleteProfile = () => {
         throw new Error("User not authenticated");
       }
 
-      const profileData = {
-        id: user.id,
-        ...values,
-      };
+      // Make sure education is properly formatted for student profiles
+      if (isStudent && 'education' in values) {
+        const formattedEducation = values.education.map(edu => ({
+          institution: edu.institution,
+          degree: edu.degree,
+          field: edu.field,
+          startYear: edu.startYear,
+          endYear: edu.endYear,
+          current: edu.current
+        }));
+        
+        const profileData = {
+          id: user.id,
+          ...values,
+          education: formattedEducation
+        };
 
-      await updateProfile(profileData);
+        await updateProfile(profileData);
+      } else {
+        // For startup profiles
+        const profileData = {
+          id: user.id,
+          ...values,
+          founded: values.founded ? Number(values.founded) : null
+        };
+
+        await updateProfile(profileData);
+      }
+      
       toast.success("Profile updated successfully!");
       navigate("/profile");
     } catch (error: any) {
