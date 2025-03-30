@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -183,7 +182,7 @@ const ProjectDetail = () => {
                     {projectApplications.map((application) => (
                       <Card key={application.id} className="border-none shadow-lg">
                         <CardHeader>
-                          <CardTitle>{application.team?.name}</CardTitle>
+                          <CardTitle>{application.team?.name || "Team"}</CardTitle>
                           <CardDescription>
                             {application.team?.members?.length || 0} members
                           </CardDescription>

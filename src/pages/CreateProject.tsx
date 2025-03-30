@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { toast } from "sonner";
+import { ProjectCategory } from '@/types/database';
 
 export default function CreateProjectPage() {
   // This is a wrapper component that enforces role-based access control
@@ -65,7 +66,7 @@ function CreateProjectContent() {
       const projectData = {
         title,
         description,
-        category,
+        category: category as ProjectCategory,
         deliverables,
         required_skills: requiredSkills,
         start_date: startDate,

@@ -3,9 +3,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { 
   Project, Application, Team, TeamTask, TeamMember, ProjectMilestone, 
-  MilestoneStatus, TaskStatus, ProjectTask, ApplicationStatus
+  MilestoneStatus, TaskStatus, ProjectTask, ApplicationStatus, TeamTaskStatus
 } from '@/types/database';
 import { toast } from 'sonner';
+import { fetchApplicationsWithTeams } from '@/services/database';
 
 interface ProjectContextType {
   projects: Project[];
@@ -34,7 +35,7 @@ interface ProjectContextType {
   createTeamTask: (teamId: string, taskData: Partial<TeamTask>) => Promise<string | null>;
   updateTeamTask: (taskId: string, taskData: Partial<TeamTask>) => Promise<boolean>;
   deleteTeamTask: (taskId: string) => Promise<boolean>;
-  updateTaskStatus: (taskId: string, status: string) => Promise<boolean>;
+  updateTaskStatus: (taskId: string, status: TaskStatus) => Promise<boolean>;
   // Add missing methods needed by ProjectDetail and ProjectPage
   applyToProject: (projectId: string, teamId: string, coverLetter: string) => Promise<boolean>;
   updateApplicationStatus: (applicationId: string, status: ApplicationStatus) => Promise<boolean>;
@@ -170,14 +171,36 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Get projects created by the user
+      const userProjectIds = getUserProjects().map(p => p.id);
+      
+      // Fetch applications for user projects
+      let applications: Application[] = [];
+      
+      if (userProjectIds.length > 0) {
+        for (const projectId of userProjectIds) {
+          const projectApplications = await fetchApplicationsWithTeams(projectId);
+          applications = [...applications, ...projectApplications];
+        }
+      }
+      
+      // Fetch applications submitted by the user
+      const { data: userApplications, error: userAppsError } = await supabase
         .from('applications')
         .select('*')
-        .or(`user_id.eq.${user.id},project_id.in.(${getUserProjects().map(p => p.id).join(',')})`)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setApplications(data as Application[] || []);
+      
+      if (userAppsError) throw userAppsError;
+      
+      if (userApplications) {
+        // Merge and deduplicate applications
+        const allApplications = [...applications, ...(userApplications as Application[])];
+        const uniqueApps = Array.from(new Map(allApplications.map(app => [app.id, app])).values());
+        setApplications(uniqueApps);
+      } else {
+        setApplications(applications);
+      }
     } catch (error: any) {
       console.error('Error fetching applications:', error.message);
       setError(error.message);
@@ -259,15 +282,16 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       const dataToInsert = {
         ...projectData,
         created_by: user.id,
-        stipend_amount: projectData.stipend_amount ? Number(projectData.stipend_amount) : null,
-        equity_percentage: projectData.equity_percentage ? Number(projectData.equity_percentage) : null,
-        hourly_rate: projectData.hourly_rate ? Number(projectData.hourly_rate) : null,
-        fixed_amount: projectData.fixed_amount ? Number(projectData.fixed_amount) : null,
+        stipend_amount: projectData.stipend_amount ? projectData.stipend_amount : null,
+        equity_percentage: projectData.equity_percentage ? projectData.equity_percentage : null,
+        hourly_rate: projectData.hourly_rate ? projectData.hourly_rate : null,
+        fixed_amount: projectData.fixed_amount ? projectData.fixed_amount : null,
         created_at: new Date().toISOString(),
+        status: projectData.status || 'open'
       };
       
-      // Remove updated_at and any other fields not in schema
-      const { updated_at, ...cleanData } = dataToInsert as any;
+      // Remove fields that shouldn't be sent to Supabase
+      const { updated_at, applications, milestones, ...cleanData } = dataToInsert as any;
       
       const { data, error } = await supabase
         .from('projects')
@@ -373,11 +397,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         .insert({
           project_id: projectId,
           user_id: user.id,
-          cover_letter: message, // Changed from message to cover_letter
-          status: 'pending',
+          cover_letter: message,
+          status: 'pending' as ApplicationStatus,
           created_at: new Date().toISOString(),
-          // Providing an empty value for required field
-          team_id: '' // We'll update this as needed
+          team_id: '' // Required field in database
         })
         .select();
 
@@ -396,49 +419,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  // Apply to a project with a team (missing method)
-  const applyToProject = async (projectId: string, teamId: string, coverLetter: string): Promise<boolean> => {
-    if (!user) return false;
-    
-    try {
-      // Check if team already applied to this project
-      const existingApplication = applications.find(
-        app => app.project_id === projectId && app.team_id === teamId
-      );
-      
-      if (existingApplication) {
-        toast.error('This team has already applied to this project');
-        return false;
-      }
-      
-      const { data, error } = await supabase
-        .from('applications')
-        .insert({
-          project_id: projectId,
-          team_id: teamId,
-          user_id: user.id,
-          cover_letter: coverLetter,
-          status: 'pending',
-          created_at: new Date().toISOString(),
-        })
-        .select();
-
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        // Add the new application to the state
-        setApplications(prev => [data[0] as Application, ...prev]);
-        toast.success('Application submitted successfully!');
-        return true;
-      }
-      return false;
-    } catch (error: any) {
-      toast.error(`Error submitting application: ${error.message}`);
-      return false;
-    }
-  };
-
-  // Update an application status
+  // Update an application
   const updateApplication = async (
     applicationId: string, 
     status: ApplicationStatus
@@ -469,11 +450,6 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       toast.error(`Error updating application: ${error.message}`);
       return false;
     }
-  };
-
-  // Update an application status from ProjectDetail
-  const updateApplicationStatus = async (applicationId: string, status: ApplicationStatus): Promise<boolean> => {
-    return updateApplication(applicationId, status);
   };
 
   // Create a new team
@@ -897,21 +873,15 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  // Update a task status
-  const updateTaskStatus = async (taskId: string, status: string): Promise<boolean> => {
+  // Update a task status to handle "review" status
+  const updateTaskStatus = async (taskId: string, status: TaskStatus): Promise<boolean> => {
     try {
       const { error } = await supabase
-        .from('team_tasks')
+        .from('project_tasks')
         .update({ status })
         .eq('id', taskId);
       
       if (error) throw error;
-      
-      // Instead of updating state directly (which caused the deep type issues),
-      // we'll refetch the data to keep state in sync
-      
-      // Refetch the teams
-      await fetchTeams();
       
       toast.success('Task updated successfully!');
       return true;

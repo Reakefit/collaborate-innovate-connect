@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { 
   Project, Application, ProjectMilestone, ProjectTask, 
@@ -180,5 +179,67 @@ export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
       updated_at: task.updated_at,
       assigned_to_profile: { name: assignedToName }
     } as TeamTask;
+  });
+};
+
+// Function to fetch applications with team data
+export const fetchApplicationsWithTeams = async (projectId: string): Promise<Application[]> => {
+  const { data, error } = await supabase
+    .from('applications')
+    .select(`
+      *,
+      team:teams(
+        *,
+        members:team_members(
+          *,
+          user:profiles(name)
+        )
+      )
+    `)
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching applications with teams:', error);
+    return [];
+  }
+
+  // Process the applications to properly format the team and members
+  return (data || []).map(app => {
+    let teamData = null;
+    
+    if (app.team && typeof app.team === 'object') {
+      const team = app.team as any;
+      
+      // Process team members
+      const members = Array.isArray(team.members) ? team.members.map((member: any) => ({
+        id: member.id,
+        team_id: member.team_id,
+        user_id: member.user_id,
+        role: member.role,
+        status: member.status,
+        joined_at: member.joined_at,
+        name: member.user?.name || 'Unknown User',
+        user: member.user,
+      })) : [];
+      
+      teamData = {
+        ...team,
+        skills: team.skills || [],
+        members
+      };
+    }
+    
+    return {
+      id: app.id,
+      project_id: app.project_id,
+      user_id: app.user_id,
+      team_id: app.team_id,
+      status: app.status,
+      cover_letter: app.cover_letter,
+      created_at: app.created_at,
+      updated_at: app.updated_at,
+      team: teamData
+    } as Application;
   });
 };

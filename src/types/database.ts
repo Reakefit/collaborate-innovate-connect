@@ -136,6 +136,19 @@ export type ProjectCategory =
   | 'marketing' 
   | 'other';
 
+export type PaymentModel =
+  | 'hourly'
+  | 'fixed'
+  | 'equity'
+  | 'unpaid'
+  | 'stipend';
+
+export type ProjectStatus =
+  | 'open'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
+
 export type Application = {
   id: string;
   user_id: string;
@@ -145,6 +158,7 @@ export type Application = {
   cover_letter: string;
   created_at: string;
   updated_at: string;
+  team?: Team; // Add the team relation
 };
 
 export type ApplicationStatus = 'pending' | 'accepted' | 'rejected';
@@ -179,7 +193,7 @@ export type ProjectTask = {
   completed?: boolean;
 };
 
-export type TaskStatus = 'todo' | 'in_progress' | 'completed' | 'blocked';
+export type TaskStatus = 'todo' | 'in_progress' | 'completed' | 'blocked' | 'review';
 
 export type ProjectMessage = {
   id: string;
@@ -247,7 +261,7 @@ export type TeamTask = {
   };
 };
 
-export type TeamTaskStatus = 'todo' | 'in_progress' | 'completed' | 'blocked';
+export type TeamTaskStatus = 'todo' | 'in_progress' | 'completed' | 'blocked' | 'done';
 
 export type TeamMessage = {
   id: string;
@@ -260,4 +274,45 @@ export type TeamMessage = {
     name: string;
     avatar_url?: string;
   };
+};
+
+export type Profile = {
+  id: string;
+  name: string;
+  role: "student" | "startup";
+  avatar_url: string;
+  bio: string;
+  company_name: string;
+  company_description: string;
+  industry: string;
+  company_size: string;
+  founded: string;
+  website: string;
+  stage: string;
+  project_needs: string[];
+  skills: string[];
+  education: Education[];
+  portfolio_url: string;
+  resume_url: string;
+  github_url: string;
+  linkedin_url: string;
+  availability: string;
+  interests: string[];
+  experience_level: string;
+  preferred_categories: string[];
+  college: string;
+  graduation_year: string;
+  major: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Education = {
+  id?: string;
+  institution: string;
+  degree: string;
+  field_of_study: string;
+  start_date: string;
+  end_date?: string;
+  is_current?: boolean;
 };
