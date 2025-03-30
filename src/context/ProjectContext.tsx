@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { 
   Project, Application, Team, TeamTask, TeamMember, ProjectMilestone, 
-  MilestoneStatus, TaskStatus, ProjectTask, ApplicationStatus, TeamTaskStatus
+  MilestoneStatus, TaskStatus, ProjectTask, ApplicationStatus, TeamTaskStatus,
+  ProjectCategory, PaymentModel, ProjectStatus
 } from '@/types/database';
 import { toast } from 'sonner';
 import { fetchApplicationsWithTeams } from '@/services/database';
@@ -117,7 +118,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: project.title,
         description: project.description,
         created_by: project.created_by,
-        category: project.category,
+        category: project.category as ProjectCategory,
         required_skills: project.required_skills || [],
         start_date: project.start_date,
         end_date: project.end_date,
@@ -130,7 +131,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         deliverables: project.deliverables || [],
         created_at: project.created_at,
         selected_team: project.selected_team || null,
-        status: project.status || 'open'
+        status: (project.status || 'open') as ProjectStatus
       }));
       
       setProjects(formattedProjects);
@@ -166,7 +167,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: data.title,
         description: data.description,
         created_by: data.created_by,
-        category: data.category,
+        category: data.category as ProjectCategory,
         required_skills: data.required_skills || [],
         start_date: data.start_date,
         end_date: data.end_date,
@@ -179,8 +180,15 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         deliverables: data.deliverables || [],
         created_at: data.created_at,
         selected_team: data.selected_team || null,
-        status: data.status || 'open',
-        milestones: data.milestones
+        status: (data.status || 'open') as ProjectStatus,
+        milestones: Array.isArray(data.milestones) ? data.milestones.map((milestone: any) => ({
+          ...milestone,
+          status: milestone.status as MilestoneStatus,
+          tasks: Array.isArray(milestone.tasks) ? milestone.tasks.map((task: any) => ({
+            ...task,
+            status: task.status as TaskStatus
+          })) : []
+        })) : []
       };
       
       return formattedProject;
@@ -335,7 +343,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
           title: data[0].title,
           description: data[0].description,
           created_by: data[0].created_by,
-          category: data[0].category,
+          category: data[0].category as ProjectCategory,
           required_skills: data[0].required_skills || [],
           start_date: data[0].start_date,
           end_date: data[0].end_date,
@@ -348,7 +356,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
           deliverables: data[0].deliverables || [],
           created_at: data[0].created_at,
           selected_team: data[0].selected_team || null,
-          status: data[0].status || 'open'
+          status: (data[0].status || 'open') as ProjectStatus
         };
         
         // Add the new project to the state
