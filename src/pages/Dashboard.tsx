@@ -4,12 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useAuthorization } from "@/context/AuthorizationContext";
 import { useProject } from "@/context/ProjectContext";
-import { Briefcase, Clock, CheckCircle, Users, ArrowRight, AlertCircle, Plus, Search, FileText, MessageSquare, Calendar } from "lucide-react";
+import { Briefcase, CheckCircle, Users, ArrowRight, AlertCircle, Plus, Search, FileText, MessageSquare, Calendar } from "lucide-react";
 import { Project, Application, Team } from "@/types/database";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const { user, profile } = useAuth();
+  const { userRole } = useAuthorization();
   const { projects, applications, teams, loading, getUserProjects } = useProject();
   const navigate = useNavigate();
   
@@ -19,15 +22,17 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!user) {
-      navigate("/login");
+      navigate("/signin");
       return;
     }
 
-    if (profile?.role === "startup") {
-      setUserProjects(getUserProjects());
+    if (userRole === "startup") {
+      const startupProjects = getUserProjects();
+      setUserProjects(startupProjects);
+      console.log("Startup projects:", startupProjects);
     } else {
       setUserProjects(projects.filter(p => 
-        applications.some(a => a.project_id === p.id && a.status === 'accepted')
+        applications.some(a => a.project_id === p.id && a.status === 'accepted' && a.user_id === user.id)
       ));
     }
 
@@ -36,7 +41,7 @@ const Dashboard = () => {
     setUserTeams(teams.filter(team => 
       team.members?.some(member => member.user_id === user.id)
     ));
-  }, [user, profile, projects, applications, teams, navigate, getUserProjects]);
+  }, [user, userRole, projects, applications, teams, navigate, getUserProjects]);
 
   if (loading) {
     return (
@@ -57,7 +62,7 @@ const Dashboard = () => {
           <div>
             <h1 className="text-4xl font-bold mb-4">Dashboard</h1>
             <p className="text-lg text-muted-foreground">
-              Welcome back, {profile?.name}! Here's what's happening with your projects.
+              Welcome back, {profile?.name}! Here's what's happening with your {userRole === "startup" ? "startup" : "projects"}.
             </p>
           </div>
 
@@ -65,42 +70,67 @@ const Dashboard = () => {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <Card className="border-none shadow-lg">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  {userRole === "startup" ? "Your Projects" : "Active Projects"}
+                </CardTitle>
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{userProjects.length}</div>
                 <p className="text-xs text-muted-foreground">
-                  Projects currently in progress
+                  {userRole === "startup" ? "Projects you've created" : "Projects you're working on"}
                 </p>
               </CardContent>
             </Card>
             
-            <Card className="border-none shadow-lg">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">My Teams</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{userTeams.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  Teams you're part of
-                </p>
-              </CardContent>
-            </Card>
+            {userRole === "student" && (
+              <Card className="border-none shadow-lg">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">My Teams</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{userTeams.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Teams you're part of
+                  </p>
+                </CardContent>
+              </Card>
+            )}
             
-            <Card className="border-none shadow-lg">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Applications</CardTitle>
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{userApplications.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  Applications you've submitted
-                </p>
-              </CardContent>
-            </Card>
+            {userRole === "student" && (
+              <Card className="border-none shadow-lg">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Applications</CardTitle>
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{userApplications.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Applications you've submitted
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            
+            {userRole === "startup" && (
+              <Card className="border-none shadow-lg">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Applications</CardTitle>
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {applications.filter(a => 
+                      userProjects.some(p => p.id === a.project_id)
+                    ).length}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Applications to your projects
+                  </p>
+                </CardContent>
+              </Card>
+            )}
             
             <Card className="border-none shadow-lg">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -120,8 +150,8 @@ const Dashboard = () => {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-4">
-            {profile?.role === "startup" ? (
-              <Button onClick={() => navigate("/projects/new")}>
+            {userRole === "startup" ? (
+              <Button onClick={() => navigate("/create-project")}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create New Project
               </Button>
@@ -131,15 +161,17 @@ const Dashboard = () => {
                 Find Projects
               </Button>
             )}
-            <Button variant="outline" onClick={() => navigate(profile?.role === "startup" ? "/projects" : "/teams")}>
-              {profile?.role === "startup" ? "View My Projects" : "Manage Teams"}
+            <Button variant="outline" onClick={() => navigate(userRole === "startup" ? "/projects" : "/teams")}>
+              {userRole === "startup" ? "View My Projects" : "Manage Teams"}
             </Button>
           </div>
 
           {/* Recent Projects Section */}
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Recent Projects</h2>
+              <h2 className="text-2xl font-bold">
+                {userRole === "startup" ? "Your Projects" : "Recent Projects"}
+              </h2>
               <Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>
                 View all
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -169,59 +201,110 @@ const Dashboard = () => {
                   <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium mb-2">No Projects Yet</h3>
                   <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-                    {profile?.role === "startup" ? 
+                    {userRole === "startup" ? 
                       "You haven't created any projects yet. Create your first project to get started!" :
                       "You haven't applied to any projects yet. Browse available projects to get started!"
                     }
                   </p>
-                  <Button onClick={() => navigate(profile?.role === "startup" ? "/projects/new" : "/projects")}>
-                    {profile?.role === "startup" ? "Create Project" : "Find Projects"}
+                  <Button onClick={() => navigate(userRole === "startup" ? "/create-project" : "/projects")}>
+                    {userRole === "startup" ? "Create Project" : "Find Projects"}
                   </Button>
                 </CardContent>
               </Card>
             )}
           </div>
 
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Applications</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {userApplications.length > 0 ? (
-                  <div className="space-y-4">
-                    {userApplications.slice(0, 5).map((application) => {
-                      // Find project for this application
-                      const project = projects.find(p => p.id === application.project_id);
-                      
-                      return (
-                        <div
-                          key={application.id}
-                          className="flex items-center justify-between p-4 border rounded-lg"
-                        >
-                          <div>
-                            <h3 className="font-medium">{project?.title || "Unknown Project"}</h3>
-                            <p className="text-sm text-muted-foreground">
+          {/* Additional sections for specific roles */}
+          {userRole === "student" && (
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Applications</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {userApplications.length > 0 ? (
+                    <div className="space-y-4">
+                      {userApplications.slice(0, 5).map((application) => {
+                        // Find project for this application
+                        const project = projects.find(p => p.id === application.project_id);
+                        
+                        return (
+                          <div
+                            key={application.id}
+                            className="flex items-center justify-between p-4 border rounded-lg"
+                          >
+                            <div>
+                              <h3 className="font-medium">{project?.title || "Unknown Project"}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {application.status}
+                              </p>
+                            </div>
+                            <div className={`px-2 py-1 rounded-full text-xs ${
+                              application.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                              application.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
                               {application.status}
-                            </p>
+                            </div>
                           </div>
-                          <div className={`px-2 py-1 rounded-full text-xs ${
-                            application.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                            application.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {application.status}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No applications yet</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">No applications yet</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {userRole === "startup" && (
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Applications to Your Projects</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {applications.filter(a => 
+                    userProjects.some(p => p.id === a.project_id)
+                  ).length > 0 ? (
+                    <div className="space-y-4">
+                      {applications
+                        .filter(a => userProjects.some(p => p.id === a.project_id))
+                        .slice(0, 5)
+                        .map((application) => {
+                          // Find project for this application
+                          const project = userProjects.find(p => p.id === application.project_id);
+                          
+                          return (
+                            <div
+                              key={application.id}
+                              className="flex items-center justify-between p-4 border rounded-lg"
+                            >
+                              <div>
+                                <h3 className="font-medium">{project?.title || "Unknown Project"}</h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {application.status}
+                                </p>
+                              </div>
+                              <div className={`px-2 py-1 rounded-full text-xs ${
+                                application.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                                application.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {application.status}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">No applications to your projects yet</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </div>

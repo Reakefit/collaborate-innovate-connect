@@ -27,6 +27,7 @@ import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 import TeamPage from '@/pages/TeamPage';
 import HowItWorks from './pages/HowItWorks';
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -48,16 +49,56 @@ const App = () => (
                   <Route path="/signup" element={<SignUp />} />
                   <Route path="/signup/student" element={<SignUpStudent />} />
                   <Route path="/signup/startup" element={<SignUpStartup />} />
-                  <Route path="/complete-profile" element={<CompleteProfile />} />
-                  <Route path="/verify-college" element={<VerifyCollege />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/projects" element={<Projects />} />
-                  <Route path="/create-project" element={<CreateProject />} />
-                  <Route path="/project/:projectId" element={<ProjectPage />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/teams" element={<Teams />} />
-                  <Route path="/messages" element={<Messages />} />
-                  <Route path="/teams/:teamId" element={<TeamPage />} />
+                  <Route path="/complete-profile" element={
+                    <ProtectedRoute>
+                      <CompleteProfile />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/verify-college" element={
+                    <ProtectedRoute requiredRole="student">
+                      <VerifyCollege />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/projects" element={
+                    <ProtectedRoute>
+                      <Projects />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/create-project" element={
+                    <ProtectedRoute requiredRole="startup" requiredPermission="create_project">
+                      <CreateProject />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/project/:projectId" element={
+                    <ProtectedRoute>
+                      <ProjectPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/teams" element={
+                    <ProtectedRoute>
+                      <Teams />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/messages" element={
+                    <ProtectedRoute>
+                      <Messages />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/teams/:teamId" element={
+                    <ProtectedRoute>
+                      <TeamPage />
+                    </ProtectedRoute>
+                  } />
                   <Route path="/how-it-works" element={<HowItWorks />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>

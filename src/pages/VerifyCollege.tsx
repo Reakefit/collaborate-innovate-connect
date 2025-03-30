@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useAuthorization } from '@/context/AuthorizationContext';
 import CollegeVerification from '@/components/CollegeVerification';
+import { toast } from 'sonner';
 
 export default function VerifyCollege() {
   const { user, profile } = useAuth();
@@ -24,10 +25,12 @@ export default function VerifyCollege() {
     }
 
     // Redirect if user is not a student
-    if (profile?.role !== 'student') {
+    if (userRole !== 'student') {
+      toast.error('Only students need college verification');
       navigate('/dashboard');
+      return;
     }
-  }, [user, profile, isVerified, userRole, navigate]);
+  }, [user, isVerified, userRole, navigate]);
 
   return (
     <div className="container max-w-4xl mx-auto py-8">

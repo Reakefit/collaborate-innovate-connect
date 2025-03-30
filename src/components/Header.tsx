@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
+import { useAuthorization } from "@/context/AuthorizationContext";
 import { Menu, User, Briefcase, GraduationCap, LogOut, LucideIcon, Plus, FileText, MessageSquare } from "lucide-react";
 
 interface NavItem {
@@ -26,6 +27,7 @@ interface NavItem {
 
 const Header = () => {
   const { user, profile, signOut } = useAuth();
+  const { userRole } = useAuthorization();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -67,9 +69,15 @@ const Header = () => {
     { label: "Applications", href: "/applications", icon: FileText },
   ];
 
+  // Get the appropriate navigation items based on user role
   const getNavItems = (): NavItem[] => {
     if (!user) return publicNavItems;
-    return profile?.role === "startup" ? startupNavItems : studentNavItems;
+    
+    if (userRole === 'startup') {
+      return startupNavItems;
+    }
+    
+    return studentNavItems;
   };
 
   return (

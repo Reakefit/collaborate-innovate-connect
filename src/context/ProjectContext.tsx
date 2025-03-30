@@ -1,10 +1,7 @@
-import { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { useAuth } from './AuthContext';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
-import { 
-  Project, ProjectMilestone, ProjectTask, Application, 
-  MilestoneStatus, TaskStatus, ProjectStatus, Team, TeamMember 
-} from '@/types/database';
+import { useAuth } from './AuthContext';
+import { Project, Application, Team, TeamTask, TeamMember } from '@/types/database';
 import { toast } from 'sonner';
 
 interface ProjectContextType {
@@ -12,20 +9,29 @@ interface ProjectContextType {
   applications: Application[];
   teams: Team[];
   loading: boolean;
+  error: string | null;
   fetchProjects: () => Promise<void>;
+  fetchApplications: () => Promise<void>;
   fetchTeams: () => Promise<void>;
-  createProject: (projectData: any) => Promise<Project>;
-  fetchProject: (projectId: string) => Promise<Project | null>;
-  applyToProject: (projectId: string, teamId: string, coverLetter: string) => Promise<void>;
-  updateTaskStatus: (taskId: string, status: TaskStatus) => Promise<void>;
-  addTask: (projectId: string, milestoneId: string, taskData: any) => Promise<void>;
-  addMilestone: (projectId: string, milestoneData: any) => Promise<void>;
-  createTeam: (teamData: any) => Promise<Team>;
-  deleteTeam: (teamId: string) => Promise<void>;
-  addTeamMember: (teamId: string, email: string) => Promise<void>;
-  removeTeamMember: (teamId: string, memberId: string) => Promise<void>;
-  updateApplicationStatus: (applicationId: string, status: string) => Promise<void>;
   getUserProjects: () => Project[];
+  getUserApplications: () => Application[];
+  getUserTeams: () => Team[];
+  createProject: (projectData: Partial<Project>) => Promise<string | null>;
+  updateProject: (projectId: string, projectData: Partial<Project>) => Promise<boolean>;
+  deleteProject: (projectId: string) => Promise<boolean>;
+  submitApplication: (projectId: string, message: string) => Promise<boolean>;
+  updateApplication: (applicationId: string, status: 'pending' | 'accepted' | 'rejected') => Promise<boolean>;
+  createTeam: (teamData: Partial<Team>) => Promise<string | null>;
+  updateTeam: (teamId: string, teamData: Partial<Team>) => Promise<boolean>;
+  deleteTeam: (teamId: string) => Promise<boolean>;
+  joinTeam: (teamId: string) => Promise<boolean>;
+  leaveTeam: (teamId: string) => Promise<boolean>;
+  addTeamMember: (teamId: string, userId: string, role: string) => Promise<boolean>;
+  removeTeamMember: (teamId: string, userId: string) => Promise<boolean>;
+  createTeamTask: (teamId: string, taskData: Partial<TeamTask>) => Promise<string | null>;
+  updateTeamTask: (taskId: string, taskData: Partial<TeamTask>) => Promise<boolean>;
+  deleteTeamTask: (taskId: string) => Promise<boolean>;
+  updateTaskStatus: (taskId: string, status: string) => Promise<boolean>;
 }
 
 const ProjectContext = createContext<ProjectContextType>({
@@ -33,627 +39,681 @@ const ProjectContext = createContext<ProjectContextType>({
   applications: [],
   teams: [],
   loading: false,
+  error: null,
   fetchProjects: async () => {},
+  fetchApplications: async () => {},
   fetchTeams: async () => {},
-  createProject: async () => { throw new Error("createProject function not implemented."); },
-  fetchProject: async () => null,
-  applyToProject: async () => {},
-  updateTaskStatus: async () => {},
-  addTask: async () => {},
-  addMilestone: async () => {},
-  createTeam: async () => { throw new Error("createTeam function not implemented."); },
-  deleteTeam: async () => {},
-  addTeamMember: async () => {},
-  removeTeamMember: async () => {},
-  updateApplicationStatus: async () => {},
   getUserProjects: () => [],
+  getUserApplications: () => [],
+  getUserTeams: () => [],
+  createProject: async () => null,
+  updateProject: async () => false,
+  deleteProject: async () => false,
+  submitApplication: async () => false,
+  updateApplication: async () => false,
+  createTeam: async () => null,
+  updateTeam: async () => false,
+  deleteTeam: async () => false,
+  joinTeam: async () => false,
+  leaveTeam: async () => false,
+  addTeamMember: async () => false,
+  removeTeamMember: async () => false,
+  createTeamTask: async () => null,
+  updateTeamTask: async () => false,
+  deleteTeamTask: async () => false,
+  updateTaskStatus: async () => false,
 });
 
 export const useProject = () => useContext(ProjectContext);
 
-export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchProjects = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select('*');
-
-      if (projectsError) {
-        throw projectsError;
-      }
-
-      if (projectsData) {
-        // Ensure each project has the required properties and correct types
-        const typedProjects: Project[] = projectsData.map(project => ({
-          ...project,
-          required_skills: project.required_skills || [],
-          deliverables: project.deliverables || [],
-          milestones: [],
-          resources: [],
-          applications: [],
-          stipend_amount: project.stipend_amount ? String(project.stipend_amount) : undefined,
-          hourly_rate: '', // Default empty string for fields that might not exist in the DB
-          fixed_amount: '', // Default empty string for fields that might not exist in the DB
-          equity_percentage: '', // Default empty string for fields that might not exist in the DB
-          updated_at: project.created_at, // Default to created_at if updated_at doesn't exist
-          status: project.status as ProjectStatus,
-          payment_model: project.payment_model as any,
-        }));
-        
-        setProjects(typedProjects);
-      }
-
-      // Fetch applications
-      if (user) {
-        const { data: applicationsData, error: applicationsError } = await supabase
-          .from('applications')
-          .select('*, team:teams(*, members:team_members(*, user:profiles(name)))');
-
-        if (applicationsError) {
-          throw applicationsError;
-        }
-
-        if (applicationsData) {
-          const typedApplications: Application[] = applicationsData.map(app => {
-            const teamMembers = app.team?.members ? app.team.members.map((member: any) => ({
-              ...member,
-              name: member.user?.name || 'Unknown User',
-              role: member.role as any,
-              status: member.status as any,
-            })) : [];
-            
-            return {
-              ...app,
-              status: app.status as any,
-              team: app.team ? {
-                ...app.team,
-                members: teamMembers,
-              } : undefined,
-            };
-          });
-          
-          setApplications(typedApplications);
-        } else {
-          setApplications([]);
-        }
-      }
-    } catch (error: any) {
-      console.error('Error fetching projects:', error.message);
-      toast.error(error.message || 'Error fetching projects');
-    } finally {
-      setLoading(false);
+  // Fetch projects on mount and when user changes
+  useEffect(() => {
+    if (user) {
+      fetchProjects();
+      fetchApplications();
+      fetchTeams();
     }
   }, [user]);
 
-  const fetchTeams = useCallback(async () => {
+  // Fetch all projects
+  const fetchProjects = async () => {
     setLoading(true);
     try {
-      const { data: teamsData, error: teamsError } = await supabase
-        .from('teams')
-        .select('*, members:team_members(*, user:profiles(name))');
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      if (teamsError) {
-        throw teamsError;
-      }
-
-      if (teamsData) {
-        const typedTeams: Team[] = teamsData.map(team => {
-          const members = team.members ? team.members.map((member: any) => ({
-            ...member,
-            name: member.user?.name || 'Unknown User',
-            role: member.role as any,
-            status: member.status as any,
-          })) : [];
-          
-          return {
-            ...team,
-            skills: team.skills || [],
-            members,
-          };
-        });
-        
-        setTeams(typedTeams);
-      } else {
-        setTeams([]);
-      }
+      if (error) throw error;
+      setProjects(data || []);
     } catch (error: any) {
-      console.error('Error fetching teams:', error.message);
-      toast.error(error.message || 'Error fetching teams');
+      console.error('Error fetching projects:', error.message);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    fetchProjects();
-    fetchTeams();
-  }, [fetchProjects, fetchTeams]);
-
-  const createProject = async (projectData: any): Promise<Project> => {
+  // Fetch all applications for the current user
+  const fetchApplications = async () => {
+    if (!user) return;
+    
+    setLoading(true);
     try {
-      // Make sure numerical fields are stored as strings in the type
-      const dataToInsert = {
-        ...projectData,
-        stipend_amount: projectData.stipend_amount ? String(projectData.stipend_amount) : undefined,
-        hourly_rate: projectData.hourly_rate ? String(projectData.hourly_rate) : undefined,
-        fixed_amount: projectData.fixed_amount ? String(projectData.fixed_amount) : undefined,
-        equity_percentage: projectData.equity_percentage ? String(projectData.equity_percentage) : undefined,
-      };
-
       const { data, error } = await supabase
-        .from('projects')
-        .insert([dataToInsert])
-        .select()
-        .single();
+        .from('applications')
+        .select('*')
+        .or(`user_id.eq.${user.id},project_id.in.(${getUserProjects().map(p => p.id).join(',')})`)
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        // Create a properly typed Project object
-        const newProject: Project = {
-          ...data,
-          required_skills: data.required_skills || [],
-          deliverables: data.deliverables || [],
-          milestones: [],
-          resources: [],
-          applications: [],
-          stipend_amount: data.stipend_amount ? String(data.stipend_amount) : undefined,
-          hourly_rate: '', // Default empty string
-          fixed_amount: '', // Default empty string
-          equity_percentage: '', // Default empty string
-          updated_at: data.created_at, // Default to created_at
-          status: data.status as ProjectStatus,
-          payment_model: data.payment_model as any,
-        };
-        
-        setProjects(prevProjects => [...prevProjects, newProject]);
-        return newProject;
-      } else {
-        throw new Error("Project creation failed");
-      }
+      if (error) throw error;
+      setApplications(data || []);
     } catch (error: any) {
-      console.error('Error creating project:', error.message);
-      toast.error(error.message || 'Error creating project');
-      throw error;
+      console.error('Error fetching applications:', error.message);
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchProject = async (projectId: string): Promise<Project | null> => {
+  // Fetch all teams
+  const fetchTeams = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .select(`
+          *,
+          members:team_members(
+            *,
+            user:profiles(id, name, avatar_url)
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Process the teams to ensure members is always an array
+      const processedTeams = (data || []).map(team => ({
+        ...team,
+        members: team.members || [],
+      }));
+
+      setTeams(processedTeams);
+    } catch (error: any) {
+      console.error('Error fetching teams:', error.message);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get projects created by the current user
+  const getUserProjects = () => {
+    if (!user) return [];
+    return projects.filter(project => project.created_by === user.id);
+  };
+
+  // Get applications submitted by the current user
+  const getUserApplications = () => {
+    if (!user) return [];
+    return applications.filter(application => application.user_id === user.id);
+  };
+
+  // Get teams the current user is a member of
+  const getUserTeams = () => {
+    if (!user) return [];
+    return teams.filter(team => 
+      team.lead_id === user.id || 
+      team.members?.some(member => member.user_id === user.id)
+    );
+  };
+
+  // Create a new project
+  const createProject = async (projectData: Partial<Project>): Promise<string | null> => {
+    if (!user) return null;
+    
     try {
       const { data, error } = await supabase
         .from('projects')
-        .select(`
-          *,
-          milestones:project_milestones (
-            *,
-            tasks:project_tasks (*)
-          )
-        `)
-        .eq('id', projectId)
-        .single();
-        
-      if (error) {
-        throw error;
-      }
+        .insert({
+          ...projectData,
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select();
+
+      if (error) throw error;
       
-      if (data) {
-        // Ensure milestones and tasks conform to the right types
-        const milestones = data.milestones?.map((milestone: any) => {
-          return {
-            ...milestone,
-            status: milestone.status as MilestoneStatus,
-            tasks: milestone.tasks?.map((task: any) => ({
-              ...task,
-              status: task.status as TaskStatus,
-              completed: false, // Add missing completed property
-            })) || [],
-          };
-        }) || [];
-        
-        // Create a properly typed Project object
-        const typedProject: Project = {
-          ...data,
-          milestones,
-          resources: [],
-          applications: [],
-          required_skills: data.required_skills || [],
-          deliverables: data.deliverables || [],
-          stipend_amount: data.stipend_amount ? String(data.stipend_amount) : undefined,
-          hourly_rate: '', // Default empty string
-          fixed_amount: '', // Default empty string
-          equity_percentage: '', // Default empty string
-          updated_at: data.created_at, // Default to created_at
-          status: data.status as ProjectStatus,
-          payment_model: data.payment_model as any,
-        };
-        
-        return typedProject;
-      } else {
-        return null;
+      if (data && data.length > 0) {
+        // Add the new project to the state
+        setProjects(prev => [data[0], ...prev]);
+        toast.success('Project created successfully!');
+        return data[0].id;
       }
+      return null;
     } catch (error: any) {
-      console.error('Error fetching project:', error.message);
-      toast.error(error.message || 'Error fetching project');
+      toast.error(`Error creating project: ${error.message}`);
       return null;
     }
   };
 
-  const applyToProject = async (projectId: string, teamId: string, coverLetter: string) => {
+  // Update an existing project
+  const updateProject = async (projectId: string, projectData: Partial<Project>): Promise<boolean> => {
+    if (!user) return false;
+    
     try {
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          ...projectData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', projectId)
+        .eq('created_by', user.id); // Ensure user owns the project
 
+      if (error) throw error;
+      
+      // Update the project in the state
+      setProjects(prev => 
+        prev.map(project => 
+          project.id === projectId ? { ...project, ...projectData, updated_at: new Date().toISOString() } : project
+        )
+      );
+      
+      toast.success('Project updated successfully!');
+      return true;
+    } catch (error: any) {
+      toast.error(`Error updating project: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Delete a project
+  const deleteProject = async (projectId: string): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId)
+        .eq('created_by', user.id); // Ensure user owns the project
+
+      if (error) throw error;
+      
+      // Remove the project from the state
+      setProjects(prev => prev.filter(project => project.id !== projectId));
+      
+      toast.success('Project deleted successfully!');
+      return true;
+    } catch (error: any) {
+      toast.error(`Error deleting project: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Submit an application to a project
+  const submitApplication = async (projectId: string, message: string): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      // Check if user already applied to this project
+      const existingApplication = applications.find(
+        app => app.project_id === projectId && app.user_id === user.id
+      );
+      
+      if (existingApplication) {
+        toast.error('You have already applied to this project');
+        return false;
+      }
+      
       const { data, error } = await supabase
         .from('applications')
-        .insert([
-          {
-            project_id: projectId,
-            team_id: teamId,
-            user_id: user.id,
-            cover_letter: coverLetter,
-            status: 'pending',
-          },
-        ])
-        .select()
-        .single();
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          message,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select();
 
       if (error) throw error;
-
-      if (data) {
-        const team = teams.find(t => t.id === teamId);
-        const newApplication: Application = {
-          ...data,
-          status: data.status as any,
-          team: team,
-          project: projects.find(p => p.id === projectId),
-        };
-        
-        setApplications(prevApplications => [...prevApplications, newApplication]);
-        toast.success("Application submitted successfully!");
+      
+      if (data && data.length > 0) {
+        // Add the new application to the state
+        setApplications(prev => [data[0], ...prev]);
+        toast.success('Application submitted successfully!');
+        return true;
       }
+      return false;
     } catch (error: any) {
-      console.error("Error applying to project:", error.message);
-      toast.error(error.message || "Error applying to project");
+      toast.error(`Error submitting application: ${error.message}`);
+      return false;
     }
   };
 
-  // Completely rewrite the updateTaskStatus function to avoid deep type instantiation
-  const updateTaskStatus = async (taskId: string, status: TaskStatus) => {
+  // Update an application status
+  const updateApplication = async (
+    applicationId: string, 
+    status: 'pending' | 'accepted' | 'rejected'
+  ): Promise<boolean> => {
+    if (!user) return false;
+    
     try {
-      // Update the task in the database
       const { error } = await supabase
-        .from('project_tasks')
-        .update({ status })
-        .eq('id', taskId);
-        
-      if (error) {
-        console.error("Error updating task status:", error);
-        toast.error("Error updating task status");
-        return;
-      }
+        .from('applications')
+        .update({
+          status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', applicationId);
 
-      // This is a completely refactored approach that avoids deep type instantiation
-      // Instead of modifying the nested state directly, we'll refetch the data
-      toast.success("Task status updated successfully");
-      
-      // Refresh projects data instead of doing complex state updates
-      // This is simpler and avoids TypeScript excessive type instantiation errors
-      fetchProjects();
-      
-    } catch (error: any) {
-      console.error("Error updating task status:", error.message);
-      toast.error(error.message || "Error updating task status");
-    }
-  };
-
-  const addTask = async (projectId: string, milestoneId: string, taskData: any) => {
-    try {
-      // Ensure completed property exists
-      const dataToInsert = {
-        ...taskData,
-        project_id: projectId,
-        milestone_id: milestoneId,
-        completed: taskData.completed !== undefined ? taskData.completed : false,
-      };
-
-      const { data, error } = await supabase
-        .from('project_tasks')
-        .insert([dataToInsert])
-        .select()
-        .single();
-        
       if (error) throw error;
       
-      if (data) {
-        const newTask: ProjectTask = {
-          ...data,
-          status: data.status as TaskStatus,
-          completed: false, // Add missing property with default value
-        };
-        
-        // Optimistically update the tasks in the local state
-        setProjects(prevProjects => {
-          return prevProjects.map(project => {
-            if (project.id === projectId) {
-              const updatedMilestones = project.milestones?.map(milestone => {
-                if (milestone.id === milestoneId) {
-                  return {
-                    ...milestone,
-                    tasks: [...(milestone.tasks || []), newTask]
-                  };
-                }
-                return milestone;
-              }) || [];
-              
-              return {
-                ...project,
-                milestones: updatedMilestones
-              };
-            }
-            return project;
-          });
-        });
-      }
-    } catch (error: any) {
-      console.error("Error adding task:", error.message);
-      toast.error(error.message || "Error adding task");
-    }
-  };
-
-  const addMilestone = async (projectId: string, milestoneData: any) => {
-    try {
-      const { data, error } = await supabase
-        .from('project_milestones')
-        .insert([{ ...milestoneData, project_id: projectId }])
-        .select()
-        .single();
-        
-      if (error) throw error;
+      // Update the application in the state
+      setApplications(prev => 
+        prev.map(app => 
+          app.id === applicationId ? { ...app, status, updated_at: new Date().toISOString() } : app
+        )
+      );
       
-      if (data) {
-        const newMilestone: ProjectMilestone = {
-          ...data,
-          status: data.status as MilestoneStatus,
-          tasks: [],
-        };
-        
-        // Optimistically update the milestones in the local state
-        setProjects(prevProjects => {
-          return prevProjects.map(project => {
-            if (project.id === projectId) {
-              return {
-                ...project,
-                milestones: [...(project.milestones || []), newMilestone]
-              };
-            }
-            return project;
-          });
-        });
-      }
+      toast.success(`Application ${status} successfully!`);
+      return true;
     } catch (error: any) {
-      console.error("Error adding milestone:", error.message);
-      toast.error(error.message || "Error adding milestone");
+      toast.error(`Error updating application: ${error.message}`);
+      return false;
     }
   };
 
-  // Team-related functions
-  const createTeam = async (teamData: any): Promise<Team> => {
+  // Create a new team
+  const createTeam = async (teamData: Partial<Team>): Promise<string | null> => {
+    if (!user) return null;
+    
     try {
       const { data, error } = await supabase
         .from('teams')
-        .insert([teamData])
-        .select()
-        .single();
+        .insert({
+          ...teamData,
+          lead_id: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select();
 
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        const newTeam: Team = {
-          ...data,
-          skills: data.skills || [],
-          members: [],
-        };
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Add the team leader as a member
+        const { error: memberError } = await supabase
+          .from('team_members')
+          .insert({
+            team_id: data[0].id,
+            user_id: user.id,
+            role: 'leader',
+            status: 'active',
+            joined_at: new Date().toISOString(),
+          });
+          
+        if (memberError) throw memberError;
         
-        setTeams(prevTeams => [...prevTeams, newTeam]);
-        return newTeam;
-      } else {
-        throw new Error("Team creation failed");
+        // Fetch the updated team with members
+        await fetchTeams();
+        
+        toast.success('Team created successfully!');
+        return data[0].id;
       }
+      return null;
     } catch (error: any) {
-      console.error('Error creating team:', error.message);
-      toast.error(error.message || 'Error creating team');
-      throw error;
+      toast.error(`Error creating team: ${error.message}`);
+      return null;
     }
   };
 
-  const deleteTeam = async (teamId: string) => {
+  // Update an existing team
+  const updateTeam = async (teamId: string, teamData: Partial<Team>): Promise<boolean> => {
+    if (!user) return false;
+    
     try {
-      // Check if user is the team lead
-      const team = teams.find(t => t.id === teamId);
-      if (!team) {
-        throw new Error("Team not found");
-      }
+      const { error } = await supabase
+        .from('teams')
+        .update({
+          ...teamData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', teamId)
+        .eq('lead_id', user.id); // Ensure user is the team leader
+
+      if (error) throw error;
       
-      if (team.lead_id !== user?.id) {
-        throw new Error("Only the team lead can delete a team");
-      }
+      // Update the team in the state
+      setTeams(prev => 
+        prev.map(team => 
+          team.id === teamId ? { ...team, ...teamData, updated_at: new Date().toISOString() } : team
+        )
+      );
       
+      toast.success('Team updated successfully!');
+      return true;
+    } catch (error: any) {
+      toast.error(`Error updating team: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Delete a team
+  const deleteTeam = async (teamId: string): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
       const { error } = await supabase
         .from('teams')
         .delete()
-        .eq('id', teamId);
-        
+        .eq('id', teamId)
+        .eq('lead_id', user.id); // Ensure user is the team leader
+
       if (error) throw error;
       
-      // Update local state
-      setTeams(prevTeams => prevTeams.filter(team => team.id !== teamId));
-      toast.success("Team deleted successfully!");
+      // Remove the team from the state
+      setTeams(prev => prev.filter(team => team.id !== teamId));
+      
+      toast.success('Team deleted successfully!');
+      return true;
     } catch (error: any) {
-      console.error("Error deleting team:", error.message);
-      toast.error(error.message || "Error deleting team");
+      toast.error(`Error deleting team: ${error.message}`);
+      return false;
     }
   };
 
-  const addTeamMember = async (teamId: string, email: string) => {
+  // Join a team
+  const joinTeam = async (teamId: string): Promise<boolean> => {
+    if (!user) return false;
+    
     try {
-      // Verify current user is team lead
+      // Check if user is already a member of this team
       const team = teams.find(t => t.id === teamId);
-      if (!team) {
-        throw new Error("Team not found");
-      }
-      
-      if (team.lead_id !== user?.id) {
-        throw new Error("Only the team lead can add members");
-      }
-      
-      // Get the user id from the email
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', email)
-        .single();
-        
-      if (userError) throw new Error("User not found with that email");
-      
-      if (userData) {
-        const { data, error } = await supabase
-          .from('team_members')
-          .insert([{
-            team_id: teamId,
-            user_id: userData.id,
-            role: 'member',
-            status: 'invited'
-          }])
-          .select()
-          .single();
-          
-        if (error) throw error;
-        
-        if (data) {
-          // Update local state
-          setTeams(prevTeams => 
-            prevTeams.map(team => {
-              if (team.id === teamId) {
-                const newMember: TeamMember = {
-                  ...data,
-                  name: email.split('@')[0],  // Use part of email as name until profile is loaded
-                  role: data.role as any,
-                  status: data.status as any,
-                };
-                return {
-                  ...team,
-                  members: [...(team.members || []), newMember]
-                };
-              }
-              return team;
-            })
-          );
-          toast.success("Team member invited successfully!");
-        }
-      }
-    } catch (error: any) {
-      console.error("Error adding team member:", error.message);
-      toast.error(error.message || "Error adding team member");
-    }
-  };
-
-  const removeTeamMember = async (teamId: string, memberId: string) => {
-    try {
-      // Verify current user is team lead
-      const team = teams.find(t => t.id === teamId);
-      if (!team) {
-        throw new Error("Team not found");
-      }
-      
-      if (team.lead_id !== user?.id) {
-        throw new Error("Only the team lead can remove members");
+      if (team && team.members?.some(member => member.user_id === user.id)) {
+        toast.error('You are already a member of this team');
+        return false;
       }
       
       const { error } = await supabase
         .from('team_members')
-        .delete()
-        .eq('id', memberId);
-        
+        .insert({
+          team_id: teamId,
+          user_id: user.id,
+          role: 'member',
+          status: 'pending',
+          joined_at: new Date().toISOString(),
+        });
+
       if (error) throw error;
       
-      // Update local state
-      setTeams(prevTeams => 
-        prevTeams.map(team => {
+      // Refresh teams to get updated members
+      await fetchTeams();
+      
+      toast.success('Team join request sent successfully!');
+      return true;
+    } catch (error: any) {
+      toast.error(`Error joining team: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Leave a team
+  const leaveTeam = async (teamId: string): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      const { error } = await supabase
+        .from('team_members')
+        .delete()
+        .eq('team_id', teamId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      
+      // Update the teams state
+      setTeams(prev => 
+        prev.map(team => {
           if (team.id === teamId) {
             return {
               ...team,
-              members: team.members?.filter(member => member.id !== memberId) || []
+              members: team.members?.filter(member => member.user_id !== user.id) || []
             };
           }
           return team;
         })
       );
-      toast.success("Team member removed successfully!");
+      
+      toast.success('Left team successfully!');
+      return true;
     } catch (error: any) {
-      console.error("Error removing team member:", error.message);
-      toast.error(error.message || "Error removing team member");
+      toast.error(`Error leaving team: ${error.message}`);
+      return false;
     }
   };
 
-  const updateApplicationStatus = async (applicationId: string, status: string) => {
+  // Add a member to a team
+  const addTeamMember = async (teamId: string, userId: string, role: string): Promise<boolean> => {
+    if (!user) return false;
+    
     try {
+      // Check if user is the team leader
+      const team = teams.find(t => t.id === teamId);
+      if (!team || team.lead_id !== user.id) {
+        toast.error('Only team leaders can add members');
+        return false;
+      }
+      
       const { error } = await supabase
-        .from('applications')
-        .update({ status })
-        .eq('id', applicationId);
-        
+        .from('team_members')
+        .insert({
+          team_id: teamId,
+          user_id: userId,
+          role,
+          status: 'active',
+          joined_at: new Date().toISOString(),
+        });
+
       if (error) throw error;
       
-      // Update local state
-      setApplications(prevApplications => 
-        prevApplications.map(app => 
-          app.id === applicationId ? { ...app, status: status as any } : app
-        )
-      );
-      toast.success("Application status updated successfully!");
+      // Refresh teams to get updated members
+      await fetchTeams();
+      
+      toast.success('Team member added successfully!');
+      return true;
     } catch (error: any) {
-      console.error("Error updating application status:", error.message);
-      toast.error(error.message || "Error updating application status");
+      toast.error(`Error adding team member: ${error.message}`);
+      return false;
     }
   };
 
-  const getUserProjects = () => {
-    if (!user) return [];
+  // Remove a member from a team
+  const removeTeamMember = async (teamId: string, userId: string): Promise<boolean> => {
+    if (!user) return false;
     
-    return projects.filter(project => project.created_by === user.id);
+    try {
+      // Check if user is the team leader
+      const team = teams.find(t => t.id === teamId);
+      if (!team || team.lead_id !== user.id) {
+        toast.error('Only team leaders can remove members');
+        return false;
+      }
+      
+      const { error } = await supabase
+        .from('team_members')
+        .delete()
+        .eq('team_id', teamId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      
+      // Update the teams state
+      setTeams(prev => 
+        prev.map(team => {
+          if (team.id === teamId) {
+            return {
+              ...team,
+              members: team.members?.filter(member => member.user_id !== userId) || []
+            };
+          }
+          return team;
+        })
+      );
+      
+      toast.success('Team member removed successfully!');
+      return true;
+    } catch (error: any) {
+      toast.error(`Error removing team member: ${error.message}`);
+      return false;
+    }
   };
 
-  const value: ProjectContextType = {
+  // Create a new team task
+  const createTeamTask = async (teamId: string, taskData: Partial<TeamTask>): Promise<string | null> => {
+    if (!user) return null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('team_tasks')
+        .insert({
+          ...taskData,
+          team_id: teamId,
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select();
+
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Refresh teams to get updated tasks
+        await fetchTeams();
+        
+        toast.success('Task created successfully!');
+        return data[0].id;
+      }
+      return null;
+    } catch (error: any) {
+      toast.error(`Error creating task: ${error.message}`);
+      return null;
+    }
+  };
+
+  // Update an existing team task
+  const updateTeamTask = async (taskId: string, taskData: Partial<TeamTask>): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      const { error } = await supabase
+        .from('team_tasks')
+        .update({
+          ...taskData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      // Refresh teams to get updated tasks
+      await fetchTeams();
+      
+      toast.success('Task updated successfully!');
+      return true;
+    } catch (error: any) {
+      toast.error(`Error updating task: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Delete a team task
+  const deleteTeamTask = async (taskId: string): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      const { error } = await supabase
+        .from('team_tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      // Refresh teams to get updated tasks
+      await fetchTeams();
+      
+      toast.success('Task deleted successfully!');
+      return true;
+    } catch (error: any) {
+      toast.error(`Error deleting task: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Update a task status
+  const updateTaskStatus = async (taskId: string, status: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('team_tasks')
+        .update({ status })
+        .eq('id', taskId);
+      
+      if (error) throw error;
+      
+      // Instead of updating state directly (which caused the deep type issues),
+      // we'll refetch the data to keep state in sync
+      
+      // Refetch the teams
+      await fetchTeams();
+      
+      toast.success('Task updated successfully!');
+      return true;
+    } catch (error: any) {
+      toast.error(`Error updating task: ${error.message}`);
+      return false;
+    }
+  };
+
+  const value = {
     projects,
     applications,
     teams,
     loading,
+    error,
     fetchProjects,
+    fetchApplications,
     fetchTeams,
+    getUserProjects,
+    getUserApplications,
+    getUserTeams,
     createProject,
-    fetchProject,
-    applyToProject,
-    updateTaskStatus,
-    addTask,
-    addMilestone,
+    updateProject,
+    deleteProject,
+    submitApplication,
+    updateApplication,
     createTeam,
+    updateTeam,
     deleteTeam,
+    joinTeam,
+    leaveTeam,
     addTeamMember,
     removeTeamMember,
-    updateApplicationStatus,
-    getUserProjects
+    createTeamTask,
+    updateTeamTask,
+    deleteTeamTask,
+    updateTaskStatus,
   };
 
   return (
