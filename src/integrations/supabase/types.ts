@@ -87,6 +87,30 @@ export type Database = {
           },
         ]
       }
+      college_verification_codes: {
+        Row: {
+          code: string
+          college_id: string
+          created_at: string
+          expires_at: string
+          id: string
+        }
+        Insert: {
+          code: string
+          college_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+        }
+        Update: {
+          code?: string
+          college_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -1051,6 +1075,36 @@ export type Database = {
           portfolio_url?: string | null
           skills?: string[] | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_verifications: {
+        Row: {
+          college_id: string | null
+          created_at: string
+          id: string
+          is_verified: boolean
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          college_id?: string | null
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          college_id?: string | null
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
         }
         Relationships: []
       }

@@ -28,7 +28,7 @@ export const fetchProjectMessages = async (projectId: string): Promise<ProjectMe
     // Check if msg.sender exists and is a valid object
     let senderName = defaultSender.name;
     
-    if (msg.sender && typeof msg.sender === 'object') {
+    if (msg.sender && typeof msg.sender === 'object' && msg.sender !== null) {
       // Now we know msg.sender is an object, not null
       const senderObj = msg.sender as Record<string, any>;
       
@@ -72,7 +72,7 @@ export const fetchTeamMessages = async (teamId: string): Promise<TeamMessage[]> 
     let senderName = defaultSender.name;
     let senderAvatar = defaultSender.avatar_url;
     
-    if (msg.sender && typeof msg.sender === 'object') {
+    if (msg.sender && typeof msg.sender === 'object' && msg.sender !== null) {
       // Now we know msg.sender is an object, not null
       const senderObj = msg.sender as Record<string, any>;
       
