@@ -240,6 +240,8 @@ export type Database = {
           company_size: string | null
           created_at: string
           education: Json | null
+          email: string | null
+          email_verified: boolean | null
           experience_level: string | null
           founded: number | null
           github_url: string | null
@@ -270,6 +272,8 @@ export type Database = {
           company_size?: string | null
           created_at?: string
           education?: Json | null
+          email?: string | null
+          email_verified?: boolean | null
           experience_level?: string | null
           founded?: number | null
           github_url?: string | null
@@ -300,6 +304,8 @@ export type Database = {
           company_size?: string | null
           created_at?: string
           education?: Json | null
+          email?: string | null
+          email_verified?: boolean | null
           experience_level?: string | null
           founded?: number | null
           github_url?: string | null
