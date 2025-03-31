@@ -40,69 +40,87 @@ const App = () => (
         <AuthProvider>
           <AuthorizationProvider>
             <ProjectProvider>
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/signin" element={<SignIn />} />
-                  <Route path="/signin/student" element={<SignInStudent />} />
-                  <Route path="/signin/startup" element={<SignInStartup />} />
-                  <Route path="/signup" element={<SignUp />} />
-                  <Route path="/signup/student" element={<SignUpStudent />} />
-                  <Route path="/signup/startup" element={<SignUpStartup />} />
-                  <Route path="/complete-profile" element={
-                    <ProtectedRoute>
-                      <CompleteProfile />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/verify-college" element={
-                    <ProtectedRoute requiredRole="student">
-                      <VerifyCollege />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard" element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/projects" element={
-                    <ProtectedRoute>
-                      <Projects />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/create-project" element={
-                    <ProtectedRoute requiredRole="startup" requiredPermission="create_project">
-                      <CreateProject />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/project/:projectId" element={
-                    <ProtectedRoute>
-                      <ProjectPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/profile" element={
-                    <ProtectedRoute>
-                      <Profile />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/teams" element={
-                    <ProtectedRoute>
-                      <Teams />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/messages" element={
-                    <ProtectedRoute>
-                      <Messages />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/teams/:teamId" element={
-                    <ProtectedRoute>
-                      <TeamPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/how-it-works" element={<HowItWorks />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Layout>
+              <Routes>
+                <Route path="/" element={<Layout><Index /></Layout>} />
+                <Route path="/signin" element={<Layout><SignIn /></Layout>} />
+                <Route path="/signin/student" element={<Layout><SignInStudent /></Layout>} />
+                <Route path="/signin/startup" element={<Layout><SignInStartup /></Layout>} />
+                <Route path="/signup" element={<Layout><SignUp /></Layout>} />
+                <Route path="/signup/student" element={<Layout><SignUpStudent /></Layout>} />
+                <Route path="/signup/startup" element={<Layout><SignUpStartup /></Layout>} />
+                <Route path="/complete-profile" element={
+                  <ProtectedRoute>
+                    <CompleteProfile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/verify-college" element={
+                  <ProtectedRoute requiredRole="student">
+                    <VerifyCollege />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/projects" element={
+                  <ProtectedRoute>
+                    <Projects />
+                  </ProtectedRoute>
+                } />
+                <Route path="/create-project" element={
+                  <ProtectedRoute requiredRole="startup" requiredPermission="create_project">
+                    <CreateProject />
+                  </ProtectedRoute>
+                } />
+                <Route path="/project/:projectId" element={
+                  <ProtectedRoute>
+                    <ProjectPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/teams" element={
+                  <ProtectedRoute>
+                    <Teams />
+                  </ProtectedRoute>
+                } />
+                <Route path="/messages" element={
+                  <ProtectedRoute>
+                    <Messages />
+                  </ProtectedRoute>
+                } />
+                <Route path="/teams/:teamId" element={
+                  <ProtectedRoute>
+                    <TeamPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/how-it-works" element={<Layout><HowItWorks /></Layout>} />
+                <Route path="/settings" element={
+                  <ProtectedRoute>
+                    <div>Settings Page - Coming Soon</div>
+                  </ProtectedRoute>
+                } />
+                <Route path="/support" element={
+                  <ProtectedRoute>
+                    <div>Help & Support Page - Coming Soon</div>
+                  </ProtectedRoute>
+                } />
+                <Route path="/members" element={
+                  <ProtectedRoute requiredRole="college_admin">
+                    <div>Club Members Page - Coming Soon</div>
+                  </ProtectedRoute>
+                } />
+                <Route path="/analytics" element={
+                  <ProtectedRoute requiredRole="college_admin">
+                    <div>Analytics Page - Coming Soon</div>
+                  </ProtectedRoute>
+                } />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
             </ProjectProvider>
           </AuthorizationProvider>
         </AuthProvider>

@@ -6,11 +6,12 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuthorization } from '@/context/AuthorizationContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, BarChart3, Users, FileText, MessageSquare } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import StudentDashboard from "@/components/layouts/StudentDashboard";
 import StartupDashboard from "@/components/layouts/StartupDashboard";
 import CollegeAdminDashboard from "@/components/layouts/CollegeAdminDashboard";
+import { Progress } from "@/components/ui/progress";
 
 const Dashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -43,11 +44,10 @@ const Dashboard = () => {
     return <Navigate to="/signin" />;
   }
 
-  // Render different dashboard based on user role
-  const renderDashboardContent = () => {
-    // If profile is missing, show complete profile notice
-    if (!profile || !profile.name) {
-      return (
+  // Render profile completion notice if needed
+  if (!profile || !profile.name) {
+    return (
+      <DashboardLayout activeTab="dashboard">
         <Card>
           <CardHeader>
             <CardTitle>Complete Your Profile</CardTitle>
@@ -65,12 +65,23 @@ const Dashboard = () => {
             </Button>
           </CardContent>
         </Card>
-      );
-    }
+      </DashboardLayout>
+    );
+  }
 
-    // Student verification check
-    if (userRole === 'student' && !isVerified) {
-      return (
+  // Student verification check
+  if (userRole === 'student' && !isVerified) {
+    return (
+      <DashboardLayout activeTab="dashboard">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Welcome, {profile?.name || 'Student'}!
+          </h1>
+          <p className="text-muted-foreground">
+            One more step to unlock all features
+          </p>
+        </div>
+        
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Verify Your College Affiliation</CardTitle>
@@ -88,10 +99,12 @@ const Dashboard = () => {
             </Button>
           </CardContent>
         </Card>
-      );
-    }
+      </DashboardLayout>
+    );
+  }
 
-    // Role-based dashboards
+  // Role-based dashboard content
+  const renderDashboardContent = () => {
     switch (userRole) {
       case 'student':
         return <StudentDashboard />;
@@ -100,48 +113,147 @@ const Dashboard = () => {
       case 'college_admin':
         return <CollegeAdminDashboard />;
       default:
-        return <StudentDashboard />;
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-blue-50 to-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Projects
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-3xl font-bold">0</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        No projects yet
+                      </p>
+                    </div>
+                    <FileText className="h-8 w-8 text-blue-500 opacity-80" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-green-50 to-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Teams
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-3xl font-bold">0</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        No teams yet
+                      </p>
+                    </div>
+                    <Users className="h-8 w-8 text-green-500 opacity-80" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-amber-50 to-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Messages
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-3xl font-bold">0</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        No messages yet
+                      </p>
+                    </div>
+                    <MessageSquare className="h-8 w-8 text-amber-500 opacity-80" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-purple-50 to-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-3xl font-bold">0</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        No recent activity
+                      </p>
+                    </div>
+                    <BarChart3 className="h-8 w-8 text-purple-500 opacity-80" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Welcome to Student-Startup Connect!</CardTitle>
+                <CardDescription>
+                  This is your dashboard. Get started by exploring the platform.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center py-6">
+                <div className="w-full max-w-md space-y-4">
+                  <Button 
+                    className="w-full" 
+                    onClick={() => navigate(userRole === 'startup' ? '/create-project' : '/projects')}
+                  >
+                    {userRole === 'startup' ? 'Create Your First Project' : 'Find Projects'}
+                  </Button>
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    onClick={() => navigate('/profile')}
+                  >
+                    Complete Your Profile
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
     }
   };
   
   return (
     <DashboardLayout activeTab="dashboard">
-      {/* Status alerts */}
-      {profile && userRole && (
-        <div className="mb-6 space-y-4">
-          {/* Role indicator */}
-          <Alert variant="default" className={
-            userRole === 'startup' ? 'bg-blue-50' : 
-            userRole === 'college_admin' ? 'bg-purple-50' : 'bg-green-50'
-          }>
-            <CheckCircle2 className="h-4 w-4 text-primary" />
-            <AlertTitle>
-              {userRole === 'startup' ? 'Startup Account' : 
-               userRole === 'college_admin' ? 'College Admin Account' : 'Student Account'}
-            </AlertTitle>
-            <AlertDescription>
-              {userRole === 'startup' 
-                ? 'You are logged in as a startup and can post and manage projects.'
-                : userRole === 'college_admin'
-                ? 'You are logged in as a college administrator and can manage student verifications.'
-                : 'You are logged in as a student and can apply to projects and join teams.'}
-            </AlertDescription>
-          </Alert>
-          
-          {/* Student verification status */}
-          {userRole === 'student' && (
-            <Alert variant={isVerified ? 'default' : 'destructive'} className={isVerified ? 'bg-green-50' : undefined}>
-              {isVerified ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-              <AlertTitle>
-                {isVerified ? 'Verified Student' : 'Verification Required'}
-              </AlertTitle>
-              <AlertDescription>
-                {isVerified 
-                  ? 'Your student status has been verified. You have full access to all features.'
-                  : 'Please verify your college affiliation to unlock all features.'}
-              </AlertDescription>
-            </Alert>
-          )}
+      {userRole === 'college_admin' ? (
+        // College Admin Dashboard Header
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Club Admin Dashboard
+          </h1>
+          <p className="text-muted-foreground">
+            Welcome back, {profile?.name || 'Admin'}! Here's what's happening.
+          </p>
+        </div>
+      ) : userRole === 'startup' ? (
+        // Startup Dashboard Header
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Startup Dashboard
+          </h1>
+          <p className="text-muted-foreground">
+            Welcome, {profile?.name || 'User'}! Manage your projects and find talented students.
+          </p>
+        </div>
+      ) : (
+        // Student Dashboard Header
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Welcome, {profile?.name || 'Student'}!
+          </h1>
+          <p className="text-muted-foreground">
+            Explore projects and build your portfolio.
+          </p>
         </div>
       )}
 

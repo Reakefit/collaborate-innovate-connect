@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useAuthorization, Permission } from '@/context/AuthorizationContext';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import DashboardLayout from './DashboardLayout';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -41,14 +42,14 @@ export default function ProtectedRoute({
       return;
     }
 
-    // Check if profile is complete
-    if (profile && !profile.name) {
+    // Check if profile is complete - skip this check for the complete-profile page
+    if (profile && !profile.name && !window.location.pathname.includes('/complete-profile')) {
       navigate('/complete-profile');
       return;
     }
 
     // Check verification if required
-    if (requireVerification && !isVerified) {
+    if (requireVerification && !isVerified && !window.location.pathname.includes('/verify-college')) {
       toast.warning('You need to verify your college affiliation first');
       navigate('/verify-college');
       return;
@@ -101,13 +102,13 @@ export default function ProtectedRoute({
     return <Navigate to="/signin" replace />;
   }
 
-  // If profile is not complete
-  if (profile && !profile.name) {
+  // If profile is not complete - skip this check for the complete-profile page
+  if (profile && !profile.name && !window.location.pathname.includes('/complete-profile')) {
     return <Navigate to="/complete-profile" replace />;
   }
 
   // If verification required but not verified
-  if (requireVerification && !isVerified) {
+  if (requireVerification && !isVerified && !window.location.pathname.includes('/verify-college')) {
     return <Navigate to="/verify-college" replace />;
   }
 
@@ -121,6 +122,6 @@ export default function ProtectedRoute({
     return <Navigate to="/dashboard" replace />;
   }
 
-  // If all checks pass, render the children
-  return <>{children}</>;
+  // If all checks pass, render the children with DashboardLayout
+  return children;
 }
