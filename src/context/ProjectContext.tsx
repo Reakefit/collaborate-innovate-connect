@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
@@ -941,3 +942,124 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       setError(error.message);
       console.error('Error updating team task:', error);
       return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const deleteTeamTask = useCallback(async (teamId: string, taskId: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { error } = await supabase
+        .from('team_tasks')
+        .delete()
+        .eq('id', taskId)
+        .eq('team_id', teamId);
+      
+      if (error) throw error;
+      
+      return true;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error deleting team task:', error);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchApplications = useCallback(async (projectId: string): Promise<Application[]> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const applications = await fetchApplicationsWithTeams(projectId);
+      
+      // Ensure all applications have the correct status type
+      const typedApplications = applications.map(app => ({
+        ...app,
+        status: app.status as ApplicationStatus
+      }));
+      
+      setApplications(typedApplications);
+      
+      return typedApplications;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error fetching applications:', error);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const updateApplicationStatus = useCallback(async (applicationId: string, status: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { error } = await supabase
+        .from('applications')
+        .update({ status: status })
+        .eq('id', applicationId);
+      
+      if (error) throw error;
+      
+      // Update the application status in the state with correct typing
+      setApplications(prevApplications =>
+        prevApplications.map(application => 
+          application.id === applicationId 
+            ? { ...application, status: status as ApplicationStatus } 
+            : application
+        )
+      );
+      
+      return true;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error updating application status:', error);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const value = {
+    projects,
+    applications,
+    teams,
+    loading,
+    error,
+    fetchProject,
+    fetchProjects,
+    createProject,
+    updateProject,
+    deleteProject,
+    getUserProjects,
+    updateProjectStatus,
+    applyToProject,
+    createTeam,
+    updateTeam,
+    deleteTeam,
+    joinTeam,
+    leaveTeam,
+    fetchTeam,
+    fetchTeams,
+    fetchUserTeams,
+    fetchTeamTasks,
+    createTeamTask,
+    updateTeamTask,
+    deleteTeamTask,
+    fetchApplications,
+    updateApplicationStatus,
+    addTask,
+    updateTaskStatus,
+    addMilestone,
+  };
+
+  return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
+};
+
+export const useProject = () => useContext(ProjectContext);
