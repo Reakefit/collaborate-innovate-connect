@@ -83,7 +83,7 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  // First, define our methods before they're used
+  // First, implement the missing methods that other methods might use
   const addTask = useCallback(async (projectId: string, milestoneId: string, taskData: any): Promise<boolean> => {
     try {
       setLoading(true);
