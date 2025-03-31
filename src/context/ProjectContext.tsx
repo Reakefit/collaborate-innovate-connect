@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
@@ -84,6 +83,98 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
+  // First, define our methods before they're used
+  const addTask = useCallback(async (projectId: string, milestoneId: string, taskData: any): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!user) {
+        throw new Error('You must be logged in to add a task');
+      }
+      
+      const { data, error } = await supabase
+        .from('project_tasks')
+        .insert({
+          project_id: projectId,
+          milestone_id: milestoneId,
+          title: taskData.title,
+          description: taskData.description,
+          status: taskData.status || 'todo',
+          assigned_to: taskData.assigned_to || null,
+          created_by: user.id,
+          due_date: taskData.due_date || null
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      toast.success('Task added successfully!');
+      return true;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error adding task:', error);
+      toast.error('Failed to add task.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const updateTaskStatus = useCallback(async (taskId: string, status: TaskStatus): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { error } = await supabase
+        .from('project_tasks')
+        .update({ status })
+        .eq('id', taskId);
+      
+      if (error) throw error;
+      
+      toast.success('Task status updated successfully!');
+      return true;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error updating task status:', error);
+      toast.error('Failed to update task status.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const addMilestone = useCallback(async (projectId: string, milestoneData: any): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { error } = await supabase
+        .from('project_milestones')
+        .insert({
+          project_id: projectId,
+          title: milestoneData.title,
+          description: milestoneData.description || null,
+          due_date: milestoneData.due_date,
+          status: milestoneData.status || 'not_started'
+        });
+      
+      if (error) throw error;
+      
+      toast.success('Milestone added successfully!');
+      return true;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error adding milestone:', error);
+      toast.error('Failed to add milestone.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Define joinTeam before it's used in createTeam
   const joinTeam = useCallback(async (teamId: string): Promise<boolean> => {
     try {
@@ -164,9 +255,10 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         team_size: project.team_size,
         payment_model: (project.payment_model || 'unpaid') as PaymentModel,
         stipend_amount: project.stipend_amount ? String(project.stipend_amount) : null,
-        equity_percentage: project.equity_percentage ? String(project.equity_percentage || '0') : null,
-        hourly_rate: project.hourly_rate ? String(project.hourly_rate || '0') : null,
-        fixed_amount: project.fixed_amount ? String(project.fixed_amount || '0') : null,
+        // Add type assertions for the properties that TypeScript can't see
+        equity_percentage: (project as any).equity_percentage ? String((project as any).equity_percentage || '0') : null,
+        hourly_rate: (project as any).hourly_rate ? String((project as any).hourly_rate || '0') : null,
+        fixed_amount: (project as any).fixed_amount ? String((project as any).fixed_amount || '0') : null,
         deliverables: project.deliverables || [],
         created_at: project.created_at,
         selected_team: project.selected_team || null,
@@ -212,9 +304,10 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         team_size: data.team_size,
         payment_model: (data.payment_model || 'unpaid') as PaymentModel,
         stipend_amount: data.stipend_amount ? String(data.stipend_amount) : null,
-        equity_percentage: data.equity_percentage ? String(data.equity_percentage || '0') : null,
-        hourly_rate: data.hourly_rate ? String(data.hourly_rate || '0') : null,
-        fixed_amount: data.fixed_amount ? String(data.fixed_amount || '0') : null,
+        // Add type assertions for the properties that TypeScript can't see
+        equity_percentage: (data as any).equity_percentage ? String((data as any).equity_percentage || '0') : null,
+        hourly_rate: (data as any).hourly_rate ? String((data as any).hourly_rate || '0') : null,
+        fixed_amount: (data as any).fixed_amount ? String((data as any).fixed_amount || '0') : null,
         deliverables: data.deliverables || [],
         created_at: data.created_at,
         selected_team: data.selected_team || null,
@@ -285,9 +378,10 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         team_size: data.team_size,
         payment_model: (data.payment_model || 'unpaid') as PaymentModel,
         stipend_amount: data.stipend_amount ? String(data.stipend_amount) : null,
-        equity_percentage: data.equity_percentage ? String(data.equity_percentage || '0') : null,
-        hourly_rate: data.hourly_rate ? String(data.hourly_rate || '0') : null,
-        fixed_amount: data.fixed_amount ? String(data.fixed_amount) : null,
+        // Add type assertions for the properties that TypeScript can't see
+        equity_percentage: (data as any).equity_percentage ? String((data as any).equity_percentage || '0') : null,
+        hourly_rate: (data as any).hourly_rate ? String((data as any).hourly_rate || '0') : null,
+        fixed_amount: (data as any).fixed_amount ? String((data as any).fixed_amount) : null,
         deliverables: data.deliverables || [],
         created_at: data.created_at,
         selected_team: data.selected_team || null,
@@ -847,250 +941,3 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       setError(error.message);
       console.error('Error updating team task:', error);
       return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const deleteTeamTask = useCallback(async (teamId: string, taskId: string): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { error } = await supabase
-        .from('team_tasks')
-        .delete()
-        .eq('id', taskId)
-        .eq('team_id', teamId);
-      
-      if (error) throw error;
-      
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error deleting team task:', error);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchApplications = useCallback(async (projectId: string): Promise<Application[]> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const applications = await fetchApplicationsWithTeams(projectId);
-      
-      // Ensure all applications have the correct status type
-      const typedApplications = applications.map(app => ({
-        ...app,
-        status: app.status as ApplicationStatus
-      }));
-      
-      setApplications(typedApplications);
-      
-      return typedApplications;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error fetching applications:', error);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateApplicationStatus = useCallback(async (applicationId: string, status: string): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { error } = await supabase
-        .from('applications')
-        .update({ status: status })
-        .eq('id', applicationId);
-      
-      if (error) throw error;
-      
-      // Update the application status in the state with correct typing
-      setApplications(prevApplications =>
-        prevApplications.map(application => 
-          application.id === applicationId 
-            ? { ...application, status: status as ApplicationStatus } 
-            : application
-        )
-      );
-      
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error updating application status:', error);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const value = {
-    projects,
-    applications,
-    teams,
-    loading,
-    error,
-    fetchProject,
-    fetchProjects,
-    createProject,
-    updateProject,
-    deleteProject,
-    getUserProjects,
-    updateProjectStatus,
-    applyToProject,
-    createTeam,
-    updateTeam,
-    deleteTeam,
-    joinTeam,
-    leaveTeam,
-    fetchTeam,
-    fetchTeams,
-    fetchUserTeams,
-    fetchTeamTasks,
-    createTeamTask,
-    updateTeamTask,
-    deleteTeamTask,
-    fetchApplications,
-    updateApplicationStatus,
-    // Implement the missing methods
-    addTask,
-    updateTaskStatus,
-    addMilestone,
-  };
-
-  // Implementing the missing methods
-  const addTask = useCallback(async (projectId: string, milestoneId: string, taskData: any): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      if (!user) {
-        throw new Error('You must be logged in to add a task');
-      }
-      
-      const { data, error } = await supabase
-        .from('project_tasks')
-        .insert({
-          project_id: projectId,
-          milestone_id: milestoneId,
-          title: taskData.title,
-          description: taskData.description,
-          status: taskData.status || 'todo',
-          assigned_to: taskData.assigned_to || null,
-          created_by: user.id,
-          due_date: taskData.due_date || null
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      toast.success('Task added successfully!');
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error adding task:', error);
-      toast.error('Failed to add task.');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  const updateTaskStatus = useCallback(async (taskId: string, status: TaskStatus): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { error } = await supabase
-        .from('project_tasks')
-        .update({ status })
-        .eq('id', taskId);
-      
-      if (error) throw error;
-      
-      toast.success('Task status updated successfully!');
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error updating task status:', error);
-      toast.error('Failed to update task status.');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const addMilestone = useCallback(async (projectId: string, milestoneData: any): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { error } = await supabase
-        .from('project_milestones')
-        .insert({
-          project_id: projectId,
-          title: milestoneData.title,
-          description: milestoneData.description || null,
-          due_date: milestoneData.due_date,
-          status: milestoneData.status || 'not_started'
-        });
-      
-      if (error) throw error;
-      
-      toast.success('Milestone added successfully!');
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error adding milestone:', error);
-      toast.error('Failed to add milestone.');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const value = {
-    projects,
-    applications,
-    teams,
-    loading,
-    error,
-    fetchProject,
-    fetchProjects,
-    createProject,
-    updateProject,
-    deleteProject,
-    getUserProjects,
-    updateProjectStatus,
-    applyToProject,
-    createTeam,
-    updateTeam,
-    deleteTeam,
-    joinTeam,
-    leaveTeam,
-    fetchTeam,
-    fetchTeams,
-    fetchUserTeams,
-    fetchTeamTasks,
-    createTeamTask,
-    updateTeamTask,
-    deleteTeamTask,
-    fetchApplications,
-    updateApplicationStatus,
-    addTask,
-    updateTaskStatus,
-    addMilestone,
-  };
-
-  return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
-};
-
-export const useProject = () => useContext(ProjectContext);
