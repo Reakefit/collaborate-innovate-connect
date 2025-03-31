@@ -1,245 +1,186 @@
+
 import { supabase } from '@/lib/supabase';
-import { 
-  Project, Application, ProjectMilestone, ProjectTask, 
-  ProjectMessage, ProjectReview, TeamTask, TeamMessage, Team, TeamMember, TeamTaskStatus
-} from '@/types/database';
+import { Project, Application, ProjectMessage, Team, TeamMember, Profile } from '@/types/database';
 
-// Function to fetch project messages
+// Fetch all projects from the database
+export const fetchProjects = async (): Promise<Project[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*');
+
+    if (error) throw error;
+    
+    return data as Project[];
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    return [];
+  }
+};
+
+// Fetch a single project by ID
+export const fetchProjectById = async (id: string): Promise<Project | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    
+    return data as Project;
+  } catch (error) {
+    console.error('Error fetching project:', error);
+    return null;
+  }
+};
+
+// Fetch applications for a given project
+export const fetchApplicationsForProject = async (projectId: string): Promise<Application[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        team:team_id (id, name),
+        user:user_id (id, email)
+      `)
+      .eq('project_id', projectId);
+
+    if (error) throw error;
+    
+    return data as Application[];
+  } catch (error) {
+    console.error('Error fetching applications:', error);
+    return [];
+  }
+};
+
+// Fetch applications for the current user
+export const fetchUserApplications = async (userId: string): Promise<Application[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        project:project_id (id, title, description, created_by, status)
+      `)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    
+    return data as Application[];
+  } catch (error) {
+    console.error('Error fetching user applications:', error);
+    return [];
+  }
+};
+
+// Fetch messages for a project
 export const fetchProjectMessages = async (projectId: string): Promise<ProjectMessage[]> => {
-  const { data, error } = await supabase
-    .from('project_messages')
-    .select(`
-      *,
-      sender:profiles(name)
-    `)
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from('project_messages')
+      .select(`
+        *,
+        sender:sender_id (id, name, avatar_url)
+      `)
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
 
-  if (error) {
+    if (error) throw error;
+    
+    return data as unknown as ProjectMessage[];
+  } catch (error) {
     console.error('Error fetching project messages:', error);
     return [];
   }
-
-  return (data || []).map(msg => {
-    // Create a default sender object with "Unknown User" as the name
-    const defaultSender = { name: 'Unknown User' };
-    
-    // Check if msg.sender exists and is a valid object
-    let senderName = defaultSender.name;
-    
-    if (msg.sender && typeof msg.sender === 'object' && msg.sender !== null) {
-      // Now we know msg.sender is an object, not null
-      const senderObj = msg.sender as Record<string, any>;
-      
-      // Check if it has a name property and the name is not null
-      if ('name' in senderObj && senderObj.name !== null) {
-        senderName = senderObj.name as string;
-      }
-    }
-    
-    return {
-      ...msg,
-      sender: { name: senderName }
-    } as ProjectMessage;
-  });
 };
 
-// Function to fetch team messages
-export const fetchTeamMessages = async (teamId: string): Promise<TeamMessage[]> => {
-  const { data, error } = await supabase
-    .from('team_messages')
-    .select(`
-      *,
-      sender:profiles(name, avatar_url)
-    `)
-    .eq('team_id', teamId)
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    console.error('Error fetching team messages:', error);
-    return [];
-  }
-
-  return (data || []).map(msg => {
-    // Create default values
-    const defaultSender = { 
-      name: 'Unknown User',
-      avatar_url: ''
-    };
-    
-    // Check if msg.sender exists and is a valid object
-    let senderName = defaultSender.name;
-    let senderAvatar = defaultSender.avatar_url;
-    
-    if (msg.sender && typeof msg.sender === 'object' && msg.sender !== null) {
-      // Now we know msg.sender is an object, not null
-      const senderObj = msg.sender as Record<string, any>;
-      
-      // Check if it has a name property and the name is not null
-      if ('name' in senderObj && senderObj.name !== null) {
-        senderName = senderObj.name as string;
-      }
-      
-      // Check if it has an avatar_url property and the avatar_url is not null
-      if ('avatar_url' in senderObj && senderObj.avatar_url !== null) {
-        senderAvatar = senderObj.avatar_url as string;
-      }
-    }
-    
-    return {
-      ...msg,
-      sender: {
-        name: senderName,
-        avatar_url: senderAvatar
-      }
-    } as TeamMessage;
-  });
-};
-
-// Function to fetch team by ID
+// Fetch team data for a specific team
 export const fetchTeamById = async (teamId: string): Promise<Team | null> => {
-  const { data: team, error } = await supabase
-    .from('teams')
-    .select(`
-      *,
-      members:team_members(
+  try {
+    const { data, error } = await supabase
+      .from('teams')
+      .select(`
         *,
-        user:profiles(name)
-      )
-    `)
-    .eq('id', teamId)
-    .single();
+        lead:lead_id (id, name, avatar_url)
+      `)
+      .eq('id', teamId)
+      .single();
 
-  if (error) {
+    if (error) throw error;
+    
+    return data as Team;
+  } catch (error) {
     console.error('Error fetching team:', error);
     return null;
   }
-
-  if (team) {
-    const typedMembers: TeamMember[] = (team.members || []).map((member: any) => ({
-      id: member.id,
-      team_id: member.team_id,
-      user_id: member.user_id,
-      role: member.role,
-      status: member.status,
-      joined_at: member.joined_at,
-      name: member.user?.name || 'Unknown User',
-      user: member.user,
-    }));
-
-    return {
-      ...team,
-      skills: team.skills || [],
-      members: typedMembers,
-    } as Team;
-  }
-
-  return null;
 };
 
-// Update fetchTeams to include tasks
-export const fetchTeamTasks = async (teamId: string): Promise<TeamTask[]> => {
-  const { data, error } = await supabase
-    .from('team_tasks')
-    .select(`
-      *,
-      assigned_to_profile:profiles(name)
-    `)
-    .eq('team_id', teamId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching team tasks:', error);
-    return [];
-  }
-
-  return (data || []).map(task => {
-    // Default value
-    let assignedToName = 'Unassigned';
-    
-    // Proper null checking
-    if (task.assigned_to_profile && typeof task.assigned_to_profile === 'object') {
-      const profileObj = task.assigned_to_profile as Record<string, any>;
-      
-      if (profileObj && 'name' in profileObj && profileObj.name) {
-        assignedToName = profileObj.name as string;
-      }
-    }
-
-    return {
-      id: task.id,
-      team_id: task.team_id,
-      title: task.title,
-      description: task.description || '',
-      status: (task.status === 'done' ? 'completed' : task.status) as TeamTaskStatus,
-      due_date: task.due_date,
-      assigned_to: task.assigned_to,
-      created_by: task.created_by,
-      created_at: task.created_at,
-      updated_at: task.updated_at,
-      assigned_to_profile: { name: assignedToName }
-    } as TeamTask;
-  });
-};
-
-// Function to fetch applications with team data
-export const fetchApplicationsWithTeams = async (projectId: string): Promise<Application[]> => {
-  const { data, error } = await supabase
-    .from('applications')
-    .select(`
-      *,
-      team:teams(
+// Fetch all team members for a team
+export const fetchTeamMembers = async (teamId: string): Promise<TeamMember[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('team_members')
+      .select(`
         *,
-        members:team_members(
-          *,
-          user:profiles(name)
-        )
-      )
-    `)
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: false });
+        user:user_id (id, name, avatar_url, role)
+      `)
+      .eq('team_id', teamId);
 
-  if (error) {
-    console.error('Error fetching applications with teams:', error);
+    if (error) throw error;
+    
+    return data as TeamMember[];
+  } catch (error) {
+    console.error('Error fetching team members:', error);
     return [];
   }
+};
 
-  // Process the applications to properly format the team and members
-  return (data || []).map(app => {
-    let teamData = null;
+// Fetch user profile by ID
+export const fetchUserProfile = async (userId: string): Promise<Profile | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error) throw error;
     
-    if (app.team && typeof app.team === 'object') {
-      const team = app.team as any;
+    return data as Profile;
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    return null;
+  }
+};
+
+// Create user profile if it doesn't exist
+export const createUserProfileIfNotExists = async (userId: string, initialData: Partial<Profile> = {}): Promise<void> => {
+  try {
+    // First check if profile exists
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
+    
+    // If no profile exists, create one
+    if (error && error.code === 'PGRST116') {
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          ...initialData
+        });
       
-      // Process team members
-      const members = Array.isArray(team.members) ? team.members.map((member: any) => ({
-        id: member.id,
-        team_id: member.team_id,
-        user_id: member.user_id,
-        role: member.role,
-        status: member.status,
-        joined_at: member.joined_at,
-        name: member.user?.name || 'Unknown User',
-        user: member.user,
-      })) : [];
-      
-      teamData = {
-        ...team,
-        skills: team.skills || [],
-        members
-      };
+      if (insertError) throw insertError;
+    } else if (error) {
+      throw error;
     }
-    
-    return {
-      id: app.id,
-      project_id: app.project_id,
-      user_id: app.user_id,
-      team_id: app.team_id,
-      status: app.status,
-      cover_letter: app.cover_letter,
-      created_at: app.created_at,
-      updated_at: app.updated_at,
-      team: teamData
-    } as Application;
-  });
+  } catch (error) {
+    console.error('Error creating user profile:', error);
+  }
 };

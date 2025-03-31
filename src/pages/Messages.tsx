@@ -10,6 +10,9 @@ import { ProjectMessage, Project } from "@/types/database";
 import { fetchProjectMessages } from '@/services/database';
 import { format } from 'date-fns';
 import { supabase } from '@/lib/supabase';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import DashboardLayout from '@/components/DashboardLayout';
 
 const Messages = () => {
   const { user, profile } = useAuth();
@@ -18,6 +21,7 @@ const Messages = () => {
   const [messages, setMessages] = useState<ProjectMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   // Load messages for the selected project
   useEffect(() => {
@@ -42,6 +46,7 @@ const Messages = () => {
       setMessages(messages);
     } catch (error) {
       console.error('Error loading messages:', error);
+      toast.error('Failed to load messages');
     } finally {
       setLoading(false);
     }
@@ -50,6 +55,7 @@ const Messages = () => {
   const sendMessage = async () => {
     if (!selectedProject || !newMessage.trim() || !user) return;
     
+    setSendingMessage(true);
     try {
       const { error } = await supabase
         .from('project_messages')
@@ -64,122 +70,135 @@ const Messages = () => {
       // Reload messages to include the new one
       await loadMessages(selectedProject);
       setNewMessage('');
+      toast.success('Message sent');
     } catch (error) {
       console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    } finally {
+      setSendingMessage(false);
     }
   };
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Project Messages</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Projects list */}
-        <div className="md:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Projects</CardTitle>
-              <CardDescription>Select a project to view messages</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {userProjects.length === 0 ? (
-                <p className="text-sm text-gray-500">You're not involved in any projects yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {userProjects.map(project => (
-                    <Button
-                      key={project.id}
-                      variant={selectedProject === project.id ? "default" : "outline"}
-                      className="w-full justify-start"
-                      onClick={() => setSelectedProject(project.id)}
-                    >
-                      {project.title}
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+    <DashboardLayout activeTab="messages">
+      <div className="container mx-auto py-6">
+        <h1 className="text-2xl font-bold mb-6">Project Messages</h1>
         
-        {/* Messages */}
-        <div className="md:col-span-2">
-          <Card className="h-[600px] flex flex-col">
-            <CardHeader>
-              <CardTitle>
-                {selectedProject 
-                  ? userProjects.find(p => p.id === selectedProject)?.title || 'Project Messages'
-                  : 'Select a project'}
-              </CardTitle>
-              <CardDescription>
-                {selectedProject ? 'Chat with project members' : 'Select a project to view messages'}
-              </CardDescription>
-            </CardHeader>
-            
-            <CardContent className="flex-grow overflow-hidden">
-              {selectedProject ? (
-                <ScrollArea className="h-[400px] pr-4">
-                  {loading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <p>Loading messages...</p>
-                    </div>
-                  ) : messages.length === 0 ? (
-                    <div className="flex items-center justify-center h-full">
-                      <p className="text-gray-500">No messages yet. Start the conversation!</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {messages.map(message => (
-                        <div 
-                          key={message.id} 
-                          className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-                        >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Projects list */}
+          <div className="md:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Projects</CardTitle>
+                <CardDescription>Select a project to view messages</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {userProjects.length === 0 ? (
+                  <p className="text-sm text-gray-500">You're not involved in any projects yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {userProjects.map(project => (
+                      <Button
+                        key={project.id}
+                        variant={selectedProject === project.id ? "default" : "outline"}
+                        className="w-full justify-start"
+                        onClick={() => setSelectedProject(project.id)}
+                      >
+                        {project.title}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Messages */}
+          <div className="md:col-span-2">
+            <Card className="h-[600px] flex flex-col">
+              <CardHeader>
+                <CardTitle>
+                  {selectedProject 
+                    ? userProjects.find(p => p.id === selectedProject)?.title || 'Project Messages'
+                    : 'Select a project'}
+                </CardTitle>
+                <CardDescription>
+                  {selectedProject ? 'Chat with project members' : 'Select a project to view messages'}
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent className="flex-grow overflow-hidden">
+                {selectedProject ? (
+                  <ScrollArea className="h-[400px] pr-4">
+                    {loading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        <p className="ml-2">Loading messages...</p>
+                      </div>
+                    ) : messages.length === 0 ? (
+                      <div className="flex items-center justify-center h-full">
+                        <p className="text-gray-500">No messages yet. Start the conversation!</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {messages.map(message => (
                           <div 
-                            className={`max-w-[70%] rounded-lg p-3 ${
-                              message.sender_id === user?.id 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'bg-muted'
-                            }`}
+                            key={message.id} 
+                            className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
                           >
-                            <div className="text-xs opacity-70 mb-1">
-                              {message.sender?.name || 'User'} • {format(new Date(message.created_at), 'MMM d, h:mm a')}
+                            <div 
+                              className={`max-w-[70%] rounded-lg p-3 ${
+                                message.sender_id === user?.id 
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : 'bg-muted'
+                              }`}
+                            >
+                              <div className="text-xs opacity-70 mb-1">
+                                {message.sender?.name || 'User'} • {format(new Date(message.created_at), 'MMM d, h:mm a')}
+                              </div>
+                              <p>{message.content}</p>
                             </div>
-                            <p>{message.content}</p>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-gray-500">Select a project to view messages</p>
-                </div>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-gray-500">Select a project to view messages</p>
+                  </div>
+                )}
+              </CardContent>
+              
+              {selectedProject && (
+                <CardFooter className="border-t pt-4">
+                  <div className="flex w-full space-x-2">
+                    <Input 
+                      placeholder="Type your message..." 
+                      value={newMessage}
+                      onChange={e => setNewMessage(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          sendMessage();
+                        }
+                      }}
+                    />
+                    <Button 
+                      onClick={sendMessage}
+                      disabled={sendingMessage || !newMessage.trim()}
+                    >
+                      {sendingMessage ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Send
+                    </Button>
+                  </div>
+                </CardFooter>
               )}
-            </CardContent>
-            
-            {selectedProject && (
-              <CardFooter className="border-t pt-4">
-                <div className="flex w-full space-x-2">
-                  <Input 
-                    placeholder="Type your message..." 
-                    value={newMessage}
-                    onChange={e => setNewMessage(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                      }
-                    }}
-                  />
-                  <Button onClick={sendMessage}>Send</Button>
-                </div>
-              </CardFooter>
-            )}
-          </Card>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 };
 

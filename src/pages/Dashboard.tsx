@@ -240,10 +240,10 @@ const Dashboard = () => {
     }
   };
   
-  return (
-    <DashboardLayout activeTab="dashboard">
-      {userRole === 'college_admin' ? (
-        // College Admin Dashboard Header
+  // The Dashboard header section based on user role
+  const renderDashboardHeader = () => {
+    if (userRole === 'college_admin') {
+      return (
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight">
             Club Admin Dashboard
@@ -252,8 +252,9 @@ const Dashboard = () => {
             Welcome back, {profile?.name || 'Admin'}! Here's what's happening.
           </p>
         </div>
-      ) : userRole === 'startup' ? (
-        // Startup Dashboard Header
+      );
+    } else if (userRole === 'startup') {
+      return (
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight">
             Startup Dashboard
@@ -262,8 +263,9 @@ const Dashboard = () => {
             Welcome, {profile?.name || 'User'}! Manage your projects and find talented students.
           </p>
         </div>
-      ) : userRole === 'platform_admin' ? (
-        // Platform Admin Dashboard Header
+      );
+    } else if (userRole === 'platform_admin') {
+      return (
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight">
             Platform Admin Dashboard
@@ -272,8 +274,9 @@ const Dashboard = () => {
             Welcome, {profile?.name || 'Admin'}! Manage the entire platform.
           </p>
         </div>
-      ) : (
-        // Student Dashboard Header
+      );
+    } else {
+      return (
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight">
             Welcome, {profile?.name || 'Student'}!
@@ -282,8 +285,13 @@ const Dashboard = () => {
             Explore projects and build your portfolio.
           </p>
         </div>
-      )}
-
+      );
+    }
+  };
+  
+  return (
+    <DashboardLayout activeTab="dashboard">
+      {renderDashboardHeader()}
       {renderDashboardContent()}
     </DashboardLayout>
   );
