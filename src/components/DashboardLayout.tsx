@@ -1,6 +1,6 @@
 
 import React, { ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "./Header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +23,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const { user, profile } = useAuth();
   const { userRole } = useAuthorization();
   const navigate = useNavigate();
+  const location = useLocation();
   
   if (!user) {
     return (
@@ -61,10 +62,39 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       case "profile":
         navigate("/profile");
         break;
+      case "students":
+        navigate("/students");
+        break;
+      case "verifications":
+        navigate("/verifications");
+        break;
+      case "college-settings":
+        navigate("/college-settings");
+        break;
       default:
         navigate("/dashboard");
     }
   };
+
+  // Detect the current active tab based on the route
+  const detectActiveTab = () => {
+    const path = location.pathname;
+    
+    if (path.includes("/create-project")) return "create-project";
+    if (path.includes("/students")) return "students";
+    if (path.includes("/verifications")) return "verifications";
+    if (path.includes("/college-settings")) return "college";
+    
+    if (path.includes("/projects")) return "projects";
+    if (path.includes("/teams")) return "teams";
+    if (path.includes("/messages")) return "messages";
+    if (path.includes("/profile")) return "profile";
+    
+    return "dashboard";
+  };
+
+  // Use the detected active tab if not explicitly provided
+  const currentActiveTab = activeTab || detectActiveTab();
 
   // Get role-specific navigation options
   const renderNavigationOptions = () => {
@@ -75,6 +105,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <TabsTrigger
               value="dashboard"
               className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/dashboard')}
             >
               <Home className="h-4 w-4 mr-2" />
               Dashboard
@@ -83,6 +114,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <TabsTrigger
               value="projects"
               className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/projects')}
             >
               <Briefcase className="h-4 w-4 mr-2" />
               My Projects
@@ -100,6 +132,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <TabsTrigger
               value="messages"
               className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/messages')}
             >
               <MessageSquare className="h-4 w-4 mr-2" />
               Messages
@@ -108,6 +141,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <TabsTrigger
               value="profile"
               className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/profile')}
             >
               <User className="h-4 w-4 mr-2" />
               Profile
@@ -121,6 +155,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <TabsTrigger
               value="dashboard"
               className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/dashboard')}
             >
               <Home className="h-4 w-4 mr-2" />
               Dashboard
@@ -147,6 +182,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <TabsTrigger
               value="projects"
               className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/projects')}
             >
               <BookOpen className="h-4 w-4 mr-2" />
               Projects
@@ -164,6 +200,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <TabsTrigger
               value="profile"
               className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/profile')}
             >
               <User className="h-4 w-4 mr-2" />
               Profile
@@ -177,6 +214,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <TabsTrigger
               value="dashboard"
               className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/dashboard')}
             >
               <Home className="h-4 w-4 mr-2" />
               Dashboard
@@ -185,6 +223,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <TabsTrigger
               value="projects"
               className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/projects')}
             >
               <SearchIcon className="h-4 w-4 mr-2" />
               Find Projects
@@ -193,6 +232,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <TabsTrigger
               value="teams"
               className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/teams')}
             >
               <Users className="h-4 w-4 mr-2" />
               My Teams
@@ -201,6 +241,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <TabsTrigger
               value="messages"
               className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/messages')}
             >
               <MessageSquare className="h-4 w-4 mr-2" />
               Messages
@@ -209,6 +250,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <TabsTrigger
               value="profile"
               className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/profile')}
             >
               <User className="h-4 w-4 mr-2" />
               Profile
@@ -226,8 +268,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       <div className="border-b bg-muted/40">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <Tabs
-            value={activeTab}
-            onValueChange={handleTabChange}
+            value={currentActiveTab}
             className="w-full"
           >
             {renderNavigationOptions()}
