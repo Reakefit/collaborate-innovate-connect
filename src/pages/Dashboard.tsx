@@ -112,6 +112,23 @@ const Dashboard = () => {
         return <StartupDashboard />;
       case 'college_admin':
         return <CollegeAdminDashboard />;
+      case 'platform_admin':
+        return (
+          <div className="space-y-6">
+            {/* Dashboard content for platform admin */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Platform Administration</CardTitle>
+                <CardDescription>
+                  Manage the entire platform
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p>Platform admin dashboard coming soon.</p>
+              </CardContent>
+            </Card>
+          </div>
+        );
       default:
         return (
           <div className="space-y-6">
@@ -243,6 +260,16 @@ const Dashboard = () => {
           </h1>
           <p className="text-muted-foreground">
             Welcome, {profile?.name || 'User'}! Manage your projects and find talented students.
+          </p>
+        </div>
+      ) : userRole === 'platform_admin' ? (
+        // Platform Admin Dashboard Header
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Platform Admin Dashboard
+          </h1>
+          <p className="text-muted-foreground">
+            Welcome, {profile?.name || 'Admin'}! Manage the entire platform.
           </p>
         </div>
       ) : (
