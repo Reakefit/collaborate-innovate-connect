@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 
 const Projects = () => {
   const { projects, loading, fetchProjects } = useProject();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { userRole } = useAuthorization();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,51 +52,31 @@ const Projects = () => {
     setFilteredProjects(filtered);
   }, [projects, searchTerm, userRole, user, activeTab]);
 
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'MMM d, yyyy');
-    } catch (error) {
-      return 'No date';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'open':
-        return 'bg-green-100 text-green-800';
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800';
-      case 'completed':
-        return 'bg-purple-100 text-purple-800';
-      case 'closed':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   return (
     <DashboardLayout activeTab="projects">
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {userRole === 'startup' ? 'My Projects' : 'Find Projects'}
-          </h1>
-          <p className="text-muted-foreground">
-            {userRole === 'startup' 
-              ? 'Manage your projects and track applications'
-              : 'Discover project opportunities and apply to work with startups'}
-          </p>
+      <div className="space-y-6">
+        {/* Page header section */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {userRole === 'startup' ? 'My Projects' : 'Find Projects'}
+            </h1>
+            <p className="text-muted-foreground">
+              {userRole === 'startup' 
+                ? 'Manage your projects and track applications'
+                : 'Discover project opportunities and apply to work with startups'}
+            </p>
+          </div>
+          
+          {userRole === 'startup' && (
+            <Button onClick={() => navigate('/create-project')}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Create Project
+            </Button>
+          )}
         </div>
-        {userRole === 'startup' && (
-          <Button onClick={() => navigate('/create-project')}>
-            <PlusCircle className="h-4 w-4 mr-2" />
-            Create Project
-          </Button>
-        )}
-      </div>
 
-      <div className="mb-6">
+        {/* Search input */}
         <div className="flex items-center space-x-2">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
@@ -106,87 +86,88 @@ const Projects = () => {
             className="flex-1"
           />
         </div>
-      </div>
 
-      {userRole === 'startup' ? (
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="my-projects">My Projects</TabsTrigger>
-            <TabsTrigger value="all-projects">All Projects</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="my-projects" className="space-y-4">
-            {filteredProjects.length === 0 ? (
-              <div className="text-center py-10">
-                <Briefcase className="h-12 w-12 mx-auto text-muted-foreground" />
-                <h3 className="mt-4 text-lg font-medium">No projects found</h3>
-                <p className="mt-1 text-muted-foreground">
-                  You haven't created any projects yet. Create your first project to get started.
-                </p>
-                <Button onClick={() => navigate('/create-project')} className="mt-4">
-                  Create Project
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProjects.map(project => (
-                  <ProjectCard 
-                    key={project.id} 
-                    project={project} 
-                    userRole={userRole}
-                    onClick={() => navigate(`/project/${project.id}`)}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="all-projects">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Project tabs and listing */}
+        {userRole === 'startup' ? (
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="my-projects">My Projects</TabsTrigger>
+              <TabsTrigger value="all-projects">All Projects</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="my-projects" className="space-y-4">
               {filteredProjects.length === 0 ? (
-                <div className="col-span-3 text-center py-10">
-                  <Search className="h-12 w-12 mx-auto text-muted-foreground" />
+                <div className="text-center py-10">
+                  <Briefcase className="h-12 w-12 mx-auto text-muted-foreground" />
                   <h3 className="mt-4 text-lg font-medium">No projects found</h3>
                   <p className="mt-1 text-muted-foreground">
-                    Try adjusting your search to find what you're looking for.
+                    You haven't created any projects yet. Create your first project to get started.
                   </p>
+                  <Button onClick={() => navigate('/create-project')} className="mt-4">
+                    Create Project
+                  </Button>
                 </div>
               ) : (
-                filteredProjects.map(project => (
-                  <ProjectCard 
-                    key={project.id} 
-                    project={project} 
-                    userRole={userRole}
-                    onClick={() => navigate(`/project/${project.id}`)}
-                  />
-                ))
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredProjects.map(project => (
+                    <ProjectCard 
+                      key={project.id} 
+                      project={project} 
+                      userRole={userRole}
+                      onClick={() => navigate(`/project/${project.id}`)}
+                    />
+                  ))}
+                </div>
               )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      ) : (
-        // Student view - always shows all available projects
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredProjects.length === 0 ? (
-            <div className="col-span-3 text-center py-10">
-              <Search className="h-12 w-12 mx-auto text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-medium">No projects found</h3>
-              <p className="mt-1 text-muted-foreground">
-                Try adjusting your search to find what you're looking for.
-              </p>
-            </div>
-          ) : (
-            filteredProjects.map(project => (
-              <ProjectCard 
-                key={project.id} 
-                project={project}
-                userRole={userRole}
-                onClick={() => navigate(`/project/${project.id}`)}
-              />
-            ))
-          )}
-        </div>
-      )}
+            </TabsContent>
+            
+            <TabsContent value="all-projects">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredProjects.length === 0 ? (
+                  <div className="col-span-3 text-center py-10">
+                    <Search className="h-12 w-12 mx-auto text-muted-foreground" />
+                    <h3 className="mt-4 text-lg font-medium">No projects found</h3>
+                    <p className="mt-1 text-muted-foreground">
+                      Try adjusting your search to find what you're looking for.
+                    </p>
+                  </div>
+                ) : (
+                  filteredProjects.map(project => (
+                    <ProjectCard 
+                      key={project.id} 
+                      project={project} 
+                      userRole={userRole}
+                      onClick={() => navigate(`/project/${project.id}`)}
+                    />
+                  ))
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        ) : (
+          // Student view - always shows all available projects
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredProjects.length === 0 ? (
+              <div className="col-span-3 text-center py-10">
+                <Search className="h-12 w-12 mx-auto text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-medium">No projects found</h3>
+                <p className="mt-1 text-muted-foreground">
+                  Try adjusting your search to find what you're looking for.
+                </p>
+              </div>
+            ) : (
+              filteredProjects.map(project => (
+                <ProjectCard 
+                  key={project.id} 
+                  project={project}
+                  userRole={userRole}
+                  onClick={() => navigate(`/project/${project.id}`)}
+                />
+              ))
+            )}
+          </div>
+        )}
+      </div>
     </DashboardLayout>
   );
 };
@@ -238,8 +219,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, userRole, onClick })
         </div>
       </CardContent>
       <CardFooter>
-        <Button variant="outline" className="w-full" onClick={onClick}>
-          {userRole === 'startup' && project.created_by === project.created_by ? 'Manage Project' : 'View Details'}
+        <Button variant="outline" className="w-full">
+          {userRole === 'startup' && project.created_by === user?.id ? 'Manage Project' : 'View Details'}
         </Button>
       </CardFooter>
     </Card>

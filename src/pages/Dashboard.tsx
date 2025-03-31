@@ -1,313 +1,152 @@
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
-import { useAuthorization } from "@/context/AuthorizationContext";
-import { useProject } from "@/context/ProjectContext";
-import { Briefcase, CheckCircle, Users, ArrowRight, AlertCircle, Plus, Search, FileText, MessageSquare, Calendar } from "lucide-react";
-import { Project, Application, Team } from "@/types/database";
-import { toast } from "sonner";
+import { useEffect } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
+import { useAuth } from '@/context/AuthContext';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { useAuthorization } from '@/context/AuthorizationContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import StudentDashboard from "@/components/layouts/StudentDashboard";
+import StartupDashboard from "@/components/layouts/StartupDashboard";
+import CollegeAdminDashboard from "@/components/layouts/CollegeAdminDashboard";
 
 const Dashboard = () => {
-  const { user, profile } = useAuth();
-  const { userRole } = useAuthorization();
-  const { projects, applications, teams, loading, getUserProjects } = useProject();
+  const { user, profile, loading } = useAuth();
+  const { userRole, isVerified } = useAuthorization();
   const navigate = useNavigate();
-  
-  const [userProjects, setUserProjects] = useState<Project[]>([]);
-  const [userApplications, setUserApplications] = useState<Application[]>([]);
-  const [userTeams, setUserTeams] = useState<Team[]>([]);
 
   useEffect(() => {
-    if (!user) {
-      navigate("/signin");
+    // Redirect to the appropriate sign-in page if the user is not logged in
+    if (!loading && !user) {
+      navigate('/signin');
       return;
     }
-
-    if (userRole === "startup") {
-      const startupProjects = getUserProjects();
-      setUserProjects(startupProjects);
-      console.log("Startup projects:", startupProjects);
-    } else {
-      setUserProjects(projects.filter(p => 
-        applications.some(a => a.project_id === p.id && a.status === 'accepted' && a.user_id === user.id)
-      ));
+    
+    // If profile is not completed, redirect to complete profile page
+    if (!loading && profile && !profile.name) {
+      navigate('/complete-profile');
+      return;
     }
-
-    setUserApplications(applications.filter(a => a.user_id === user.id));
-
-    setUserTeams(teams.filter(team => 
-      team.members?.some(member => member.user_id === user.id)
-    ));
-  }, [user, userRole, projects, applications, teams, navigate, getUserProjects]);
-
+  }, [user, profile, navigate, loading]);
+  
   if (loading) {
     return (
-      <div className="py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </div>
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  return (
-    <div className="py-8">
-      <div className="container mx-auto px-4">
-        <div className="space-y-8">
-          <div>
-            <h1 className="text-4xl font-bold mb-4">Dashboard</h1>
-            <p className="text-lg text-muted-foreground">
-              Welcome back, {profile?.name}! Here's what's happening with your {userRole === "startup" ? "startup" : "projects"}.
+  if (!user) {
+    return <Navigate to="/signin" />;
+  }
+
+  // Render different dashboard based on user role
+  const renderDashboardContent = () => {
+    // If profile is missing, show complete profile notice
+    if (!profile || !profile.name) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Complete Your Profile</CardTitle>
+            <CardDescription>
+              Please complete your profile to access all features
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center">
+            <AlertCircle className="h-16 w-16 text-amber-500 mb-4" />
+            <p className="mb-4 text-center">
+              Your profile is incomplete. We need more information to match you with the right opportunities.
             </p>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-none shadow-lg">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {userRole === "startup" ? "Your Projects" : "Active Projects"}
-                </CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{userProjects.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  {userRole === "startup" ? "Projects you've created" : "Projects you're working on"}
-                </p>
-              </CardContent>
-            </Card>
-            
-            {userRole === "student" && (
-              <Card className="border-none shadow-lg">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">My Teams</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{userTeams.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Teams you're part of
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-            
-            {userRole === "student" && (
-              <Card className="border-none shadow-lg">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Applications</CardTitle>
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{userApplications.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Applications you've submitted
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-            
-            {userRole === "startup" && (
-              <Card className="border-none shadow-lg">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Applications</CardTitle>
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {applications.filter(a => 
-                      userProjects.some(p => p.id === a.project_id)
-                    ).length}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Applications to your projects
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-            
-            <Card className="border-none shadow-lg">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Upcoming Deadlines</CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {userProjects.filter(p => new Date(p.end_date) > new Date()).length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Projects with upcoming deadlines
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-4">
-            {userRole === "startup" ? (
-              <Button onClick={() => navigate("/create-project")}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create New Project
-              </Button>
-            ) : (
-              <Button onClick={() => navigate("/projects")}>
-                <Search className="mr-2 h-4 w-4" />
-                Find Projects
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => navigate(userRole === "startup" ? "/projects" : "/teams")}>
-              {userRole === "startup" ? "View My Projects" : "Manage Teams"}
+            <Button onClick={() => navigate('/complete-profile')}>
+              Complete Profile
             </Button>
-          </div>
+          </CardContent>
+        </Card>
+      );
+    }
 
-          {/* Recent Projects Section */}
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">
-                {userRole === "startup" ? "Your Projects" : "Recent Projects"}
-              </h2>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>
-                View all
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
+    // Student verification check
+    if (userRole === 'student' && !isVerified) {
+      return (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Verify Your College Affiliation</CardTitle>
+            <CardDescription>
+              Please verify your college affiliation to access all student features
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center">
+            <AlertCircle className="h-16 w-16 text-amber-500 mb-4" />
+            <p className="mb-4 text-center">
+              Your college affiliation needs to be verified. This helps startups know you're a legitimate student.
+            </p>
+            <Button onClick={() => navigate('/verify-college')}>
+              Verify Now
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
 
-            {userProjects.length > 0 ? (
-              <div className="space-y-4">
-                {userProjects.slice(0, 5).map((project) => (
-                  <div
-                    key={project.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer"
-                    onClick={() => navigate(`/project/${project.id}`)}
-                  >
-                    <div>
-                      <h3 className="font-medium">{project.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(project.end_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <Card className="border-none shadow-lg bg-muted/50">
-                <CardContent className="flex flex-col items-center justify-center py-10">
-                  <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No Projects Yet</h3>
-                  <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-                    {userRole === "startup" ? 
-                      "You haven't created any projects yet. Create your first project to get started!" :
-                      "You haven't applied to any projects yet. Browse available projects to get started!"
-                    }
-                  </p>
-                  <Button onClick={() => navigate(userRole === "startup" ? "/create-project" : "/projects")}>
-                    {userRole === "startup" ? "Create Project" : "Find Projects"}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Additional sections for specific roles */}
-          {userRole === "student" && (
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Applications</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {userApplications.length > 0 ? (
-                    <div className="space-y-4">
-                      {userApplications.slice(0, 5).map((application) => {
-                        // Find project for this application
-                        const project = projects.find(p => p.id === application.project_id);
-                        
-                        return (
-                          <div
-                            key={application.id}
-                            className="flex items-center justify-between p-4 border rounded-lg"
-                          >
-                            <div>
-                              <h3 className="font-medium">{project?.title || "Unknown Project"}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                {application.status}
-                              </p>
-                            </div>
-                            <div className={`px-2 py-1 rounded-full text-xs ${
-                              application.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                              application.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {application.status}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">No applications yet</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {userRole === "startup" && (
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Applications to Your Projects</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {applications.filter(a => 
-                    userProjects.some(p => p.id === a.project_id)
-                  ).length > 0 ? (
-                    <div className="space-y-4">
-                      {applications
-                        .filter(a => userProjects.some(p => p.id === a.project_id))
-                        .slice(0, 5)
-                        .map((application) => {
-                          // Find project for this application
-                          const project = userProjects.find(p => p.id === application.project_id);
-                          
-                          return (
-                            <div
-                              key={application.id}
-                              className="flex items-center justify-between p-4 border rounded-lg"
-                            >
-                              <div>
-                                <h3 className="font-medium">{project?.title || "Unknown Project"}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  {application.status}
-                                </p>
-                              </div>
-                              <div className={`px-2 py-1 rounded-full text-xs ${
-                                application.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                                application.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {application.status}
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">No applications to your projects yet</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+    // Role-based dashboards
+    switch (userRole) {
+      case 'student':
+        return <StudentDashboard />;
+      case 'startup':
+        return <StartupDashboard />;
+      case 'college_admin':
+        return <CollegeAdminDashboard />;
+      default:
+        return <StudentDashboard />;
+    }
+  };
+  
+  return (
+    <DashboardLayout activeTab="dashboard">
+      {/* Status alerts */}
+      {profile && userRole && (
+        <div className="mb-6 space-y-4">
+          {/* Role indicator */}
+          <Alert variant="default" className={
+            userRole === 'startup' ? 'bg-blue-50' : 
+            userRole === 'college_admin' ? 'bg-purple-50' : 'bg-green-50'
+          }>
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <AlertTitle>
+              {userRole === 'startup' ? 'Startup Account' : 
+               userRole === 'college_admin' ? 'College Admin Account' : 'Student Account'}
+            </AlertTitle>
+            <AlertDescription>
+              {userRole === 'startup' 
+                ? 'You are logged in as a startup and can post and manage projects.'
+                : userRole === 'college_admin'
+                ? 'You are logged in as a college administrator and can manage student verifications.'
+                : 'You are logged in as a student and can apply to projects and join teams.'}
+            </AlertDescription>
+          </Alert>
+          
+          {/* Student verification status */}
+          {userRole === 'student' && (
+            <Alert variant={isVerified ? 'default' : 'destructive'} className={isVerified ? 'bg-green-50' : undefined}>
+              {isVerified ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+              <AlertTitle>
+                {isVerified ? 'Verified Student' : 'Verification Required'}
+              </AlertTitle>
+              <AlertDescription>
+                {isVerified 
+                  ? 'Your student status has been verified. You have full access to all features.'
+                  : 'Please verify your college affiliation to unlock all features.'}
+              </AlertDescription>
+            </Alert>
           )}
         </div>
-      </div>
-    </div>
+      )}
+
+      {renderDashboardContent()}
+    </DashboardLayout>
   );
 };
 

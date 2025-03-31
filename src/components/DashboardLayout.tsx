@@ -5,7 +5,11 @@ import Header from "./Header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import { Home, Briefcase, Users, MessageSquare, Settings, PlusCircle, SearchIcon, BookOpen } from "lucide-react";
+import { useAuthorization } from "@/context/AuthorizationContext";
+import { 
+  Home, Briefcase, Users, MessageSquare, Settings, 
+  PlusCircle, SearchIcon, BookOpen, School, CheckCircle, User
+} from "lucide-react";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -17,6 +21,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeTab = "dashboard" 
 }) => {
   const { user, profile } = useAuth();
+  const { userRole } = useAuthorization();
   const navigate = useNavigate();
   
   if (!user) {
@@ -45,12 +50,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         navigate("/dashboard");
         break;
       case "projects":
-        // Different project routes based on user role
-        if (profile?.role === 'startup') {
-          navigate("/projects");
-        } else {
-          navigate("/projects");
-        }
+        navigate("/projects");
         break;
       case "teams":
         navigate("/teams");
@@ -58,7 +58,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       case "messages":
         navigate("/messages");
         break;
-      case "settings":
+      case "profile":
         navigate("/profile");
         break;
       default:
@@ -66,98 +66,155 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     }
   };
 
-  // Define different navigation options based on user role
-  const getNavigationOptions = () => {
-    if (profile?.role === 'startup') {
-      return (
-        <TabsList className="h-14 w-full justify-start bg-transparent gap-2 overflow-x-auto">
-          <TabsTrigger
-            value="dashboard"
-            className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
-          >
-            <Home className="h-4 w-4 mr-2" />
-            Dashboard
-          </TabsTrigger>
+  // Get role-specific navigation options
+  const renderNavigationOptions = () => {
+    switch (userRole) {
+      case 'startup':
+        return (
+          <TabsList className="h-14 w-full justify-start bg-transparent gap-2 overflow-x-auto">
+            <TabsTrigger
+              value="dashboard"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Dashboard
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="projects"
-            className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
-          >
-            <Briefcase className="h-4 w-4 mr-2" />
-            My Projects
-          </TabsTrigger>
+            <TabsTrigger
+              value="projects"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <Briefcase className="h-4 w-4 mr-2" />
+              My Projects
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="create-project"
-            onClick={() => navigate('/create-project')}
-            className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
-          >
-            <PlusCircle className="h-4 w-4 mr-2" />
-            Create Project
-          </TabsTrigger>
+            <TabsTrigger
+              value="create-project"
+              onClick={() => navigate('/create-project')}
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Create Project
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="messages"
-            className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
-          >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Messages
-          </TabsTrigger>
+            <TabsTrigger
+              value="messages"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Messages
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="settings"
-            className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </TabsTrigger>
-        </TabsList>
-      );
-    } else {
-      // Student navigation
-      return (
-        <TabsList className="h-14 w-full justify-start bg-transparent gap-2 overflow-x-auto">
-          <TabsTrigger
-            value="dashboard"
-            className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
-          >
-            <Home className="h-4 w-4 mr-2" />
-            Dashboard
-          </TabsTrigger>
+            <TabsTrigger
+              value="profile"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Profile
+            </TabsTrigger>
+          </TabsList>
+        );
+        
+      case 'college_admin':
+        return (
+          <TabsList className="h-14 w-full justify-start bg-transparent gap-2 overflow-x-auto">
+            <TabsTrigger
+              value="dashboard"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Dashboard
+            </TabsTrigger>
+            
+            <TabsTrigger
+              value="students"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/students')}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Students
+            </TabsTrigger>
+            
+            <TabsTrigger
+              value="verifications"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/verifications')}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Verifications
+            </TabsTrigger>
+            
+            <TabsTrigger
+              value="projects"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Projects
+            </TabsTrigger>
+            
+            <TabsTrigger
+              value="college"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+              onClick={() => navigate('/college-settings')}
+            >
+              <School className="h-4 w-4 mr-2" />
+              College Info
+            </TabsTrigger>
+            
+            <TabsTrigger
+              value="profile"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Profile
+            </TabsTrigger>
+          </TabsList>
+        );
+        
+      default: // Student navigation
+        return (
+          <TabsList className="h-14 w-full justify-start bg-transparent gap-2 overflow-x-auto">
+            <TabsTrigger
+              value="dashboard"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Dashboard
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="projects"
-            className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
-          >
-            <SearchIcon className="h-4 w-4 mr-2" />
-            Find Projects
-          </TabsTrigger>
+            <TabsTrigger
+              value="projects"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <SearchIcon className="h-4 w-4 mr-2" />
+              Find Projects
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="teams"
-            className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
-          >
-            <Users className="h-4 w-4 mr-2" />
-            My Teams
-          </TabsTrigger>
+            <TabsTrigger
+              value="teams"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              My Teams
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="messages"
-            className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
-          >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Messages
-          </TabsTrigger>
+            <TabsTrigger
+              value="messages"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Messages
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="settings"
-            className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </TabsTrigger>
-        </TabsList>
-      );
+            <TabsTrigger
+              value="profile"
+              className="data-[state=active]:bg-background rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-full"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Profile
+            </TabsTrigger>
+          </TabsList>
+        );
     }
   };
 
@@ -173,7 +230,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             onValueChange={handleTabChange}
             className="w-full"
           >
-            {getNavigationOptions()}
+            {renderNavigationOptions()}
           </Tabs>
         </div>
       </div>
