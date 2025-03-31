@@ -179,6 +179,8 @@ interface ProjectCardProps {
 }
 
 const ProjectCard: React.FC<ProjectCardProps> = ({ project, userRole, onClick }) => {
+  const { user } = useAuth();
+  
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
       <CardHeader className="pb-2">
