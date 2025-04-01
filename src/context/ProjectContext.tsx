@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
@@ -239,6 +240,7 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
+      // Fix type conversions for Project data
       const formattedProjects: Project[] = data.map(project => ({
         id: project.id,
         title: project.title,
@@ -251,9 +253,10 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         team_size: project.team_size,
         payment_model: (project.payment_model || 'unpaid') as PaymentModel,
         stipend_amount: project.stipend_amount ? Number(project.stipend_amount) : null,
-        equity_percentage: project.equity_percentage ? Number(project.equity_percentage) : null,
-        hourly_rate: project.hourly_rate ? Number(project.hourly_rate) : null,
-        fixed_amount: project.fixed_amount ? Number(project.fixed_amount) : null,
+        // Add type casting for optional properties that might not exist
+        equity_percentage: ('equity_percentage' in project) ? Number(project.equity_percentage) : null,
+        hourly_rate: ('hourly_rate' in project) ? Number(project.hourly_rate) : null,
+        fixed_amount: ('fixed_amount' in project) ? Number(project.fixed_amount) : null,
         deliverables: project.deliverables || [],
         created_at: project.created_at,
         selected_team: project.selected_team || null,
@@ -286,6 +289,7 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
+      // Fix type conversions for Project data with milestones and tasks
       const formattedProject: Project = {
         id: data.id,
         title: data.title,
@@ -297,17 +301,18 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         end_date: data.end_date,
         team_size: data.team_size,
         payment_model: (data.payment_model || 'unpaid') as PaymentModel,
-        stipend_amount: data.stipend_amount ? String(data.stipend_amount) : null,
-        equity_percentage: (data as any).equity_percentage ? String((data as any).equity_percentage || '0') : null,
-        hourly_rate: (data as any).hourly_rate ? String((data as any).hourly_rate || '0') : null,
-        fixed_amount: (data as any).fixed_amount ? String((data as any).fixed_amount || '0') : null,
+        stipend_amount: data.stipend_amount ? Number(data.stipend_amount) : null,
+        // Fix numeric type conversions
+        equity_percentage: data.equity_percentage !== undefined ? Number(data.equity_percentage) : null,
+        hourly_rate: data.hourly_rate !== undefined ? Number(data.hourly_rate) : null,
+        fixed_amount: data.fixed_amount !== undefined ? Number(data.fixed_amount) : null,
         deliverables: data.deliverables || [],
         created_at: data.created_at,
         selected_team: data.selected_team || null,
         status: (data.status || 'open') as ProjectStatus,
         milestones: Array.isArray(data.milestones) ? data.milestones.map((milestone: any) => ({
           ...milestone,
-          status: (milestone.status || 'pending') as MilestoneStatus,
+          status: (milestone.status || 'not_started') as MilestoneStatus,
           tasks: Array.isArray(milestone.tasks) ? milestone.tasks.map((task: any) => ({
             ...task,
             status: (task.status || 'todo') as TaskStatus
@@ -324,6 +329,7 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   }, []);
 
+  // Fix the remaining methods...
   const createProject = useCallback(async (projectData: any): Promise<Project | null> => {
     try {
       setLoading(true);

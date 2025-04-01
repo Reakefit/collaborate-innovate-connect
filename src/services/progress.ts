@@ -1,21 +1,18 @@
-import { Project, ProjectMilestone, ProjectTask, TaskStatus } from '@/types/database';
 
-// Update any references to ProjectStatus to use string instead
+import { Project, ProjectMilestone, ProjectTask, TaskStatus } from "@/types/database";
+
 export const calculateProjectProgress = (project: Project): number => {
   if (!project.milestones || project.milestones.length === 0) {
     return 0;
   }
 
-  let totalMilestones = project.milestones.length;
-  let completedMilestones = 0;
+  // Calculate total milestones and completed milestones
+  const totalMilestones = project.milestones.length;
+  const completedMilestones = project.milestones.filter(
+    milestone => milestone.status === 'completed'
+  ).length;
 
-  for (const milestone of project.milestones) {
-    if (milestone.status === 'completed') {
-      completedMilestones++;
-    }
-  }
-
-  return (completedMilestones / totalMilestones) * 100;
+  return Math.round((completedMilestones / totalMilestones) * 100);
 };
 
 export const calculateMilestoneProgress = (milestone: ProjectMilestone): number => {
@@ -23,35 +20,45 @@ export const calculateMilestoneProgress = (milestone: ProjectMilestone): number 
     return 0;
   }
 
-  let totalTasks = milestone.tasks.length;
-  let completedTasks = 0;
+  // Calculate total tasks and completed tasks
+  const totalTasks = milestone.tasks.length;
+  const completedTasks = milestone.tasks.filter(
+    task => task.status === 'done' || task.status === 'completed'
+  ).length;
 
-  for (const task of milestone.tasks) {
-    if (task.status === 'completed') {
-      completedTasks++;
-    }
-  }
-
-  return (completedTasks / totalTasks) * 100;
+  return Math.round((completedTasks / totalTasks) * 100);
 };
 
-export const calculateTaskCompletion = (task: ProjectTask): number => {
-  //If task is completed, return 100, else return 0
-  return task.status === 'completed' ? 100 : 0;
-};
-
-// Fix the task status comparison
-export const getTaskStatusWeight = (status: TaskStatus): number => {
+export const getTaskStatusColor = (status: TaskStatus): string => {
   switch (status) {
+    case 'done':
     case 'completed':
-      return 1.0;
-    case 'review':
-      return 0.9;
+      return 'bg-green-500';
     case 'in_progress':
-      return 0.5;
-    case 'todo':
+      return 'bg-blue-500';
+    case 'review':
+      return 'bg-yellow-500';
     case 'blocked':
+      return 'bg-red-500';
+    case 'todo':
     default:
-      return 0;
+      return 'bg-gray-300';
+  }
+};
+
+export const getTaskStatusText = (status: TaskStatus): string => {
+  switch (status) {
+    case 'done':
+    case 'completed':
+      return 'Completed';
+    case 'in_progress':
+      return 'In Progress';
+    case 'review':
+      return 'In Review';
+    case 'blocked':
+      return 'Blocked';
+    case 'todo':
+    default:
+      return 'To Do';
   }
 };

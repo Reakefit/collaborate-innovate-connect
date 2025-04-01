@@ -166,7 +166,7 @@ const ProjectDetail = () => {
                       <h3 className="font-medium">Payment Model</h3>
                       <p className="text-muted-foreground">
                         {project.payment_model}
-                        {project.payment_model === "Stipend" && project.stipend_amount && ` (${project.stipend_amount})`}
+                        {project.payment_model === "stipend" && project.stipend_amount && ` (${project.stipend_amount})`}
                       </p>
                     </div>
                   )}
@@ -195,7 +195,7 @@ const ProjectDetail = () => {
                                 {application.team?.members?.map((member) => (
                                   <div key={member.id} className="flex items-center gap-2">
                                     <User className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-sm">{member.name || member.user?.name}</span>
+                                    <span className="text-sm">{member.name || ''}</span>
                                     {member.role === 'lead' && (
                                       <Badge variant="secondary">Team Lead</Badge>
                                     )}

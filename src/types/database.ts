@@ -1,4 +1,3 @@
-
 export type Json =
   | string
   | number
@@ -11,15 +10,15 @@ export type ProjectCategory = 'web_development' | 'mobile_app' | 'data_science' 
 
 export type ApplicationStatus = 'pending' | 'accepted' | 'rejected' | 'withdrawn';
 
-export type ProjectStatus = 'open' | 'in_progress' | 'completed' | 'cancelled';
+export type ProjectStatus = 'open' | 'in_progress' | 'completed' | 'cancelled' | 'draft';
 
 export type PaymentModel = 'unpaid' | 'stipend' | 'hourly' | 'fixed' | 'equity';
 
-export type MilestoneStatus = 'not_started' | 'in_progress' | 'completed' | 'pending' | 'cancelled';
+export type MilestoneStatus = 'not_started' | 'in_progress' | 'completed' | 'pending' | 'cancelled' | 'delayed';
 
-export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked';
+export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked' | 'completed' | 'review';
 
-export type TeamTaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked' | 'cancelled';
+export type TeamTaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked' | 'cancelled' | 'completed';
 
 export interface Project {
   id: string;
