@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from '@/context/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -12,6 +12,14 @@ import CollegeAdminDashboard from "@/components/layouts/CollegeAdminDashboard";
 const Dashboard = () => {
   const { user, profile, loading } = useAuth();
   const { userRole } = useAuthorization();
+  
+  useEffect(() => {
+    // Debug logs
+    console.log("Dashboard loading state:", loading);
+    console.log("Dashboard user:", user);
+    console.log("Dashboard profile:", profile);
+    console.log("Dashboard userRole:", userRole);
+  }, [loading, user, profile, userRole]);
   
   if (loading) {
     return (
@@ -32,6 +40,7 @@ const Dashboard = () => {
       return <Navigate to="/complete-profile" />;
     }
 
+    // Use userRole from AuthorizationContext
     switch (userRole) {
       case 'student':
         return <StudentDashboard />;
@@ -52,7 +61,14 @@ const Dashboard = () => {
           </div>
         );
       default:
-        return <StudentDashboard />;
+        // Fallback to showing appropriate dashboard based on profile role if userRole is not set
+        if (profile.role === 'startup') {
+          return <StartupDashboard />;
+        } else if (profile.role === 'college_admin') {
+          return <CollegeAdminDashboard />;
+        } else {
+          return <StudentDashboard />;
+        }
     }
   };
   

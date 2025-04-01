@@ -91,7 +91,8 @@ const CompleteProfile = () => {
       // Only include fields relevant to the user role
       const isStartup = user.user_metadata?.role === 'startup';
 
-      const profileData: Partial<Profile> = {
+      // Create a base profile object
+      const profileData: Record<string, any> = {
         id: user.id,
         name: formData.name,
         bio: formData.bio,
@@ -104,7 +105,7 @@ const CompleteProfile = () => {
         profileData.company_description = formData.company_description;
         profileData.industry = formData.industry;
         profileData.company_size = formData.company_size;
-        profileData.founded = formData.founded;
+        profileData.founded = formData.founded ? formData.founded : null;
         profileData.website = formData.website;
         profileData.stage = formData.stage;
         profileData.project_needs = formData.project_needs;

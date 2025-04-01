@@ -1,47 +1,60 @@
-
 import { supabase } from '@/lib/supabase';
-import { Project, Application, ProjectMessage, Team, TeamMember, Profile, ProjectCategory, ApplicationStatus, PaymentModel, ProjectStatus } from '@/types/database';
+import { Application, ApplicationStatus, Profile, Project, ProjectCategory } from '@/types/database';
+import { toast } from 'sonner';
 
-// Helper function to convert generic string category to ProjectCategory type
-const ensureProjectCategory = (category: string): ProjectCategory => {
-  const validCategories: ProjectCategory[] = [
-    'web_development', 'mobile_app', 'data_science', 'machine_learning', 
-    'blockchain', 'design', 'marketing', 'other'
-  ];
-  
+// Helper function to convert string to ProjectCategory enum
+const toProjectCategory = (category: string): ProjectCategory => {
+  const validCategories: ProjectCategory[] = ['web_development', 'mobile_app', 'data_science', 'machine_learning', 'ui_ux_design', 'blockchain', 'game_development', 'other'];
   return validCategories.includes(category as ProjectCategory) 
     ? (category as ProjectCategory) 
     : 'other';
 };
 
-// Helper function to convert generic string status to ApplicationStatus type
-const ensureApplicationStatus = (status: string): ApplicationStatus => {
-  const validStatuses: ApplicationStatus[] = ['pending', 'accepted', 'rejected'];
-  
+// Helper function to convert string to ApplicationStatus enum
+const toApplicationStatus = (status: string): ApplicationStatus => {
+  const validStatuses: ApplicationStatus[] = ['pending', 'accepted', 'rejected', 'withdrawn'];
   return validStatuses.includes(status as ApplicationStatus) 
     ? (status as ApplicationStatus) 
     : 'pending';
 };
 
-// Helper function to convert generic string status to ProjectStatus type
-const ensureProjectStatus = (status: string): ProjectStatus => {
-  const validStatuses: ProjectStatus[] = ['open', 'in_progress', 'completed', 'cancelled'];
-  
-  return validStatuses.includes(status as ProjectStatus)
-    ? (status as ProjectStatus)
-    : 'open';
+// Helper function for handling project_needs conversion
+const ensureArrayField = (field: any): string[] => {
+  if (!field) return [];
+  if (Array.isArray(field)) return field;
+  if (typeof field === 'string') {
+    return field.split(',').map(item => item.trim()).filter(Boolean);
+  }
+  return [];
 };
 
-// Helper function to convert generic string to PaymentModel type
-const ensurePaymentModel = (model: string): PaymentModel => {
-  const validModels: PaymentModel[] = ['hourly', 'fixed', 'equity', 'unpaid', 'stipend'];
+// Helper function to prepare profile data for database
+export const prepareProfileData = (profileData: any): Record<string, any> => {
+  const cleanData: Record<string, any> = { ...profileData };
   
-  return validModels.includes(model as PaymentModel)
-    ? (model as PaymentModel)
-    : 'fixed';
+  // Handle array fields
+  if (cleanData.project_needs) {
+    cleanData.project_needs = ensureArrayField(cleanData.project_needs);
+  }
+  if (cleanData.skills) {
+    cleanData.skills = ensureArrayField(cleanData.skills);
+  }
+  if (cleanData.interests) {
+    cleanData.interests = ensureArrayField(cleanData.interests);
+  }
+  if (cleanData.preferred_categories) {
+    cleanData.preferred_categories = ensureArrayField(cleanData.preferred_categories);
+  }
+  
+  // Convert founded to number or null
+  if (cleanData.founded !== undefined) {
+    cleanData.founded = cleanData.founded ? parseInt(cleanData.founded, 10) || null : null;
+  }
+  
+  return cleanData;
 };
 
-// Fetch all projects from the database
+// Fetch all projects
 export const fetchProjects = async (): Promise<Project[]> => {
   try {
     const { data, error } = await supabase
@@ -49,332 +62,301 @@ export const fetchProjects = async (): Promise<Project[]> => {
       .select('*');
 
     if (error) throw error;
-    
-    // Transform data to match the Project type
-    return (data || []).map(project => ({
-      id: project.id,
-      title: project.title,
-      description: project.description,
-      created_by: project.created_by,
-      category: ensureProjectCategory(project.category),
-      required_skills: project.required_skills || [],
-      start_date: project.start_date,
-      end_date: project.end_date,
-      team_size: project.team_size,
-      payment_model: ensurePaymentModel(project.payment_model),
-      stipend_amount: project.stipend_amount ? String(project.stipend_amount) : null,
-      equity_percentage: null, // Default if not present in DB
-      hourly_rate: null, // Default if not present in DB
-      fixed_amount: null, // Default if not present in DB
-      deliverables: project.deliverables || [],
-      created_at: project.created_at,
-      selected_team: project.selected_team || null,
-      status: ensureProjectStatus(project.status || 'open')
-    }));
+
+    if (!data) return [];
+
+    // Convert server data to Project type
+    return data.map(project => {
+      // Handle payment details
+      let equityPercentage = null;
+      let hourlyRate = null;
+      let fixedAmount = null;
+
+      const projectNeeds = ensureArrayField(project.project_needs);
+      const requiredSkills = ensureArrayField(project.required_skills);
+      const deliverables = ensureArrayField(project.deliverables);
+
+      return {
+        id: project.id,
+        title: project.title,
+        description: project.description,
+        created_by: project.created_by,
+        category: toProjectCategory(project.category),
+        required_skills: requiredSkills,
+        start_date: project.start_date,
+        end_date: project.end_date,
+        team_size: project.team_size,
+        payment_model: project.payment_model,
+        equity_percentage: equityPercentage,
+        hourly_rate: hourlyRate,
+        fixed_amount: fixedAmount,
+        stipend_amount: project.stipend_amount || null,
+        deliverables: deliverables,
+        status: project.status,
+        selected_team: project.selected_team,
+        created_at: project.created_at,
+      };
+    });
   } catch (error) {
     console.error('Error fetching projects:', error);
+    toast.error('Failed to fetch projects');
     return [];
   }
 };
 
 // Fetch a single project by ID
-export const fetchProjectById = async (id: string): Promise<Project | null> => {
+export const fetchProject = async (projectId: string): Promise<Project | null> => {
   try {
     const { data, error } = await supabase
       .from('projects')
       .select('*')
-      .eq('id', id)
+      .eq('id', projectId)
       .single();
 
     if (error) throw error;
-    
-    // Transform data to match the Project type
+
+    if (!data) return null;
+
+    // Handle payment details
+    let equityPercentage = null;
+    let hourlyRate = null;
+    let fixedAmount = null;
+
+    const projectNeeds = ensureArrayField(data.project_needs);
+    const requiredSkills = ensureArrayField(data.required_skills);
+    const deliverables = ensureArrayField(data.deliverables);
+
     return {
       id: data.id,
       title: data.title,
       description: data.description,
       created_by: data.created_by,
-      category: ensureProjectCategory(data.category),
-      required_skills: data.required_skills || [],
+      category: toProjectCategory(data.category),
+      required_skills: requiredSkills,
       start_date: data.start_date,
       end_date: data.end_date,
       team_size: data.team_size,
-      payment_model: ensurePaymentModel(data.payment_model),
-      stipend_amount: data.stipend_amount ? String(data.stipend_amount) : null,
-      equity_percentage: null, // Default if not present in DB
-      hourly_rate: null, // Default if not present in DB
-      fixed_amount: null, // Default if not present in DB
-      deliverables: data.deliverables || [],
+      payment_model: data.payment_model,
+      equity_percentage: equityPercentage,
+      hourly_rate: hourlyRate,
+      fixed_amount: fixedAmount,
+      stipend_amount: data.stipend_amount || null,
+      deliverables: deliverables,
+      status: data.status,
+      selected_team: data.selected_team,
       created_at: data.created_at,
-      selected_team: data.selected_team || null,
-      status: ensureProjectStatus(data.status || 'open')
     };
   } catch (error) {
     console.error('Error fetching project:', error);
+    toast.error('Failed to fetch project details');
     return null;
   }
 };
 
-// Fetch applications for a given project
-export const fetchApplicationsForProject = async (projectId: string): Promise<Application[]> => {
+// Fetch project applications
+export const fetchProjectApplications = async (projectId: string): Promise<Application[]> => {
   try {
     const { data, error } = await supabase
       .from('applications')
-      .select(`
-        *,
-        team:team_id (id, name),
-        user:user_id (id, email)
-      `)
+      .select('*, team:teams(*)')
       .eq('project_id', projectId);
 
     if (error) throw error;
-    
-    // Transform data to match the Application type
-    return (data || []).map(app => ({
+
+    if (!data) return [];
+
+    return data.map(app => ({
       id: app.id,
       project_id: app.project_id,
       user_id: app.user_id,
       team_id: app.team_id,
-      status: ensureApplicationStatus(app.status),
+      status: toApplicationStatus(app.status),
       cover_letter: app.cover_letter,
       created_at: app.created_at,
       updated_at: app.updated_at,
-      team: app.team ? {
-        id: app.team.id,
-        name: app.team.name,
-        description: '',
-        lead_id: '',
-        skills: [],
-        created_at: '',
-        updated_at: '',
-      } : undefined
+      team: app.team
     }));
   } catch (error) {
     console.error('Error fetching applications:', error);
+    toast.error('Failed to fetch applications');
     return [];
   }
 };
 
-// Fetch applications with teams for the current user or a project
-export const fetchApplicationsWithTeams = async (projectId?: string): Promise<Application[]> => {
-  try {
-    let query = supabase
-      .from('applications')
-      .select(`
-        *,
-        team:team_id (
-          id, 
-          name, 
-          description, 
-          lead_id, 
-          portfolio_url, 
-          skills
-        )
-      `);
-    
-    if (projectId) {
-      query = query.eq('project_id', projectId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-    
-    // Transform data to match the Application type
-    return (data || []).map(app => ({
-      id: app.id,
-      project_id: app.project_id,
-      user_id: app.user_id,
-      team_id: app.team_id,
-      status: ensureApplicationStatus(app.status),
-      cover_letter: app.cover_letter,
-      created_at: app.created_at,
-      updated_at: app.updated_at,
-      team: app.team ? {
-        id: app.team.id,
-        name: app.team.name,
-        description: app.team.description || '',
-        lead_id: app.team.lead_id,
-        skills: app.team.skills || [],
-        portfolio_url: app.team.portfolio_url,
-        created_at: '',
-        updated_at: '',
-        achievements: null
-      } : undefined
-    }));
-  } catch (error) {
-    console.error('Error fetching applications with teams:', error);
-    return [];
-  }
-};
-
-// Fetch applications for the current user
+// Fetch user applications
 export const fetchUserApplications = async (userId: string): Promise<Application[]> => {
   try {
     const { data, error } = await supabase
       .from('applications')
-      .select(`
-        *,
-        project:project_id (id, title, description, created_by, status)
-      `)
+      .select('*, team:teams(*)')
       .eq('user_id', userId);
 
     if (error) throw error;
-    
-    // Properly transform data to match the Application type
-    return (data || []).map(app => ({
+
+    if (!data) return [];
+
+    return data.map(app => ({
       id: app.id,
       project_id: app.project_id,
       user_id: app.user_id,
       team_id: app.team_id,
-      status: ensureApplicationStatus(app.status),
+      status: toApplicationStatus(app.status),
+      cover_letter: app.cover_letter,
+      created_at: app.created_at,
+      updated_at: app.updated_at,
+      team: app.team
+    }));
+  } catch (error) {
+    console.error('Error fetching user applications:', error);
+    toast.error('Failed to fetch your applications');
+    return [];
+  }
+};
+
+// Fetch team applications
+export const fetchTeamApplications = async (teamId: string): Promise<Application[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .select('*')
+      .eq('team_id', teamId);
+
+    if (error) throw error;
+
+    if (!data) return [];
+
+    return data.map(app => ({
+      id: app.id,
+      project_id: app.project_id,
+      user_id: app.user_id,
+      team_id: app.team_id,
+      status: toApplicationStatus(app.status),
       cover_letter: app.cover_letter,
       created_at: app.created_at,
       updated_at: app.updated_at
     }));
   } catch (error) {
-    console.error('Error fetching user applications:', error);
+    console.error('Error fetching team applications:', error);
+    toast.error('Failed to fetch team applications');
     return [];
   }
 };
 
-// Fetch messages for a project
-export const fetchProjectMessages = async (projectId: string): Promise<ProjectMessage[]> => {
+// Create a new project
+export const createProject = async (projectData: Partial<Project>): Promise<string | null> => {
   try {
     const { data, error } = await supabase
-      .from('project_messages')
-      .select(`
-        *,
-        sender:sender_id (id, name, avatar_url)
-      `)
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: true });
+      .from('projects')
+      .insert([{
+        title: projectData.title,
+        description: projectData.description,
+        created_by: projectData.created_by,
+        category: projectData.category,
+        required_skills: projectData.required_skills || [],
+        start_date: projectData.start_date,
+        end_date: projectData.end_date,
+        team_size: projectData.team_size,
+        payment_model: projectData.payment_model,
+        stipend_amount: projectData.stipend_amount,
+        deliverables: projectData.deliverables || [],
+        status: 'open'
+      }])
+      .select();
 
     if (error) throw error;
-    
-    return data as unknown as ProjectMessage[];
-  } catch (error) {
-    console.error('Error fetching project messages:', error);
-    return [];
-  }
-};
 
-// Fetch team data for a specific team
-export const fetchTeamById = async (teamId: string): Promise<Team | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('teams')
-      .select(`
-        *,
-        lead:lead_id (id, name, avatar_url)
-      `)
-      .eq('id', teamId)
-      .single();
-
-    if (error) throw error;
-    
-    return data as Team;
+    if (data && data.length > 0) {
+      return data[0].id;
+    }
+    return null;
   } catch (error) {
-    console.error('Error fetching team:', error);
+    console.error('Error creating project:', error);
+    toast.error('Failed to create project');
     return null;
   }
 };
 
-// Fetch all team members for a team
-export const fetchTeamMembers = async (teamId: string): Promise<TeamMember[]> => {
+// Update project status
+export const updateProjectStatus = async (projectId: string, status: string): Promise<boolean> => {
   try {
-    const { data, error } = await supabase
-      .from('team_members')
-      .select(`
-        *,
-        user:user_id (id, name, avatar_url, role)
-      `)
-      .eq('team_id', teamId);
+    const { error } = await supabase
+      .from('projects')
+      .update({ status })
+      .eq('id', projectId);
 
     if (error) throw error;
-    
-    // Transform data to match the TeamMember type with the name property
-    return (data || []).map(member => ({
-      id: member.id,
-      team_id: member.team_id,
-      user_id: member.user_id,
-      role: member.role,
-      status: member.status,
-      joined_at: member.joined_at,
-      name: member.user?.name || '',
-      user: member.user
-    }));
+
+    return true;
   } catch (error) {
-    console.error('Error fetching team members:', error);
-    return [];
+    console.error('Error updating project status:', error);
+    toast.error('Failed to update project status');
+    return false;
   }
 };
 
-// Fetch user profile by ID
-export const fetchUserProfile = async (userId: string): Promise<Profile | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (error) throw error;
-    
-    // Fix founded type mismatch (number in DB, string in type)
-    const profile = {
-      ...data,
-      // Convert founded from number to string
-      founded: data.founded ? String(data.founded) : null,
-      // Ensure project_needs is an array if it exists
-      project_needs: Array.isArray(data.project_needs) ? data.project_needs : 
-                    (data.project_needs ? [data.project_needs] : [])
-    } as unknown as Profile;
-    
-    return profile;
-  } catch (error) {
-    console.error('Error fetching user profile:', error);
-    return null;
-  }
-};
-
-// Create user profile if it doesn't exist
-export const createUserProfileIfNotExists = async (userId: string, initialData: Partial<Profile> = {}): Promise<void> => {
+// Create a user profile if it doesn't exist
+export const createUserProfileIfNotExists = async (userId: string, userData: any): Promise<boolean> => {
   try {
     // First check if profile exists
-    const { data, error } = await supabase
+    const { data: existingProfile } = await supabase
       .from('profiles')
       .select('id')
       .eq('id', userId)
       .single();
-    
-    // If no profile exists, create one
-    if (error && error.code === 'PGRST116') {
-      // Process initialData to ensure compatibility with DB schema
-      const dbData = {
-        ...initialData,
-        id: userId,
-        founded: initialData.founded ? parseInt(initialData.founded, 10) : null,
-        project_needs: initialData.project_needs || []
-      };
-      
-      // Ensure project_needs is properly formatted for the database
-      // Handle project_needs type conversion if needed
-      const formattedData = {
-        ...dbData,
-        // If project_needs is an array, handle appropriately for DB storage
-        project_needs: Array.isArray(dbData.project_needs) ? dbData.project_needs : []
-      };
-      
-      const { error: insertError } = await supabase
-        .from('profiles')
-        .insert(formattedData);
-      
-      if (insertError) throw insertError;
-    } else if (error) {
-      throw error;
+
+    if (existingProfile) {
+      return true; // Profile already exists
     }
+
+    // Prepare the profile data
+    const profileData = prepareProfileData({
+      id: userId,
+      name: userData.name || userData.email?.split('@')[0] || '',
+      email: userData.email,
+      role: userData.role || 'student',
+      // Add other default fields based on role
+      ...(userData.role === 'startup' ? {
+        skills: [],
+        project_needs: []
+      } : {
+        skills: [],
+        interests: []
+      })
+    });
+
+    // Create new profile
+    const { error } = await supabase
+      .from('profiles')
+      .insert(profileData);
+
+    if (error) throw error;
+
+    return true;
   } catch (error) {
     console.error('Error creating user profile:', error);
+    return false;
+  }
+};
+
+// Update a user profile
+export const updateUserProfile = async (userId: string, profileData: Partial<Profile>): Promise<boolean> => {
+  try {
+    // Prepare the profile data for the database
+    const cleanData = prepareProfileData({
+      ...profileData,
+      id: userId
+    });
+
+    const { error } = await supabase
+      .from('profiles')
+      .upsert(cleanData);
+
+    if (error) throw error;
+
+    return true;
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    toast.error('Failed to update profile');
+    return false;
   }
 };

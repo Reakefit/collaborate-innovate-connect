@@ -26,6 +26,15 @@ export default function ProtectedRoute({
   const location = useLocation();
 
   useEffect(() => {
+    // Debug logs for troubleshooting
+    console.log("ProtectedRoute - user:", user?.id);
+    console.log("ProtectedRoute - profile:", profile);
+    console.log("ProtectedRoute - userRole:", userRole);
+    console.log("ProtectedRoute - isVerified:", isVerified);
+    console.log("ProtectedRoute - path:", location.pathname);
+    console.log("ProtectedRoute - authLoading:", authLoading);
+    console.log("ProtectedRoute - authzLoading:", authzLoading);
+
     // If user exists but profile doesn't exist in the database,
     // attempt to create it to prevent routing issues
     if (user && !authLoading && !profile) {
@@ -36,85 +45,26 @@ export default function ProtectedRoute({
       };
       createUserProfileIfNotExists(user.id, userData);
     }
-  }, [user, profile, authLoading]);
+  }, [user, profile, authLoading, userRole, isVerified, location.pathname, authzLoading]);
 
-  useEffect(() => {
-    // Skip checks if still loading
-    if (authLoading || authzLoading) return;
-
-    // Check authentication
-    if (!user) {
-      // Redirect to appropriate sign-in page based on remembered role
-      const rememberedRole = localStorage.getItem('preferredRole');
-      if (rememberedRole === 'startup') {
-        navigate('/signin/startup', { replace: true });
-      } else if (rememberedRole === 'student') {
-        navigate('/signin/student', { replace: true });
-      } else {
-        navigate('/signin', { replace: true });
-      }
-      return;
+  // Handle profile completion checks
+  const needsProfileCompletion = () => {
+    if (!profile || !profile.name) return true;
+    
+    const isStartup = profile.role === 'startup';
+    
+    if (isStartup) {
+      return !profile.company_name || !profile.company_description;
     }
-
-    // Skip profile completion check for the complete-profile page
-    if (!location.pathname.includes('/complete-profile')) {
-      // Check if profile is complete by checking for required fields based on role
-      const isStartup = userRole === 'startup';
-      const hasIncompleteProfile = profile && (
-        !profile.name || 
-        (isStartup && (!profile.company_name || !profile.company_description)) ||
-        (!isStartup && (!profile.skills || profile.skills.length === 0 || !profile.college))
-      );
-      
-      if (hasIncompleteProfile) {
-        if (location.pathname !== '/complete-profile') {
-          toast.info('Please complete your profile to continue');
-          navigate('/complete-profile', { replace: true });
-        }
-        return;
-      }
-    }
-
-    // Check verification if required
-    if (requireVerification && !isVerified && !location.pathname.includes('/verify-college')) {
-      toast.warning('You need to verify your college affiliation first');
-      navigate('/verify-college', { replace: true });
-      return;
-    }
-
-    // Check role if specified
-    if (requiredRole && userRole !== requiredRole) {
-      toast.error(`This page is only accessible to ${requiredRole}s`);
-      navigate('/dashboard', { replace: true });
-      return;
-    }
-
-    // Check permission if specified
-    if (requiredPermission && !hasPermission(requiredPermission)) {
-      toast.error('You do not have permission to access this page');
-      navigate('/dashboard', { replace: true });
-      return;
-    }
-  }, [
-    user, 
-    userRole, 
-    isVerified, 
-    requiredRole, 
-    requiredPermission, 
-    requireVerification, 
-    hasPermission, 
-    authLoading, 
-    authzLoading,
-    navigate,
-    profile,
-    location.pathname
-  ]);
+    
+    return !profile.skills || profile.skills.length === 0 || !profile.college;
+  };
 
   // Show loading state while checking auth/authz
   if (authLoading || authzLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
+        <Loader2 className="h-8 w-4 animate-spin text-primary mr-2" />
         <p>Loading...</p>
       </div>
     );
@@ -131,17 +81,12 @@ export default function ProtectedRoute({
     return <Navigate to="/signin" replace />;
   }
 
-  // Check if profile is complete
-  if (profile) {
-    const isStartup = userRole === 'startup';
-    const hasIncompleteProfile = 
-      !profile.name || 
-      (isStartup && (!profile.company_name || !profile.company_description)) ||
-      (!isStartup && (!profile.skills || profile.skills.length === 0 || !profile.college));
-    
-    if (hasIncompleteProfile && !location.pathname.includes('/complete-profile')) {
-      return <Navigate to="/complete-profile" replace />;
-    }
+  // Check if on complete-profile page
+  const isOnCompleteProfilePage = location.pathname === '/complete-profile';
+  
+  // Check if profile needs completion and not already on complete-profile page
+  if (needsProfileCompletion() && !isOnCompleteProfilePage) {
+    return <Navigate to="/complete-profile" replace />;
   }
 
   // If verification required but not verified
@@ -151,11 +96,13 @@ export default function ProtectedRoute({
 
   // If role is required but user doesn't have it
   if (requiredRole && userRole !== requiredRole) {
+    toast.error(`This page is only accessible to ${requiredRole}s`);
     return <Navigate to="/dashboard" replace />;
   }
 
   // If permission is required but user doesn't have it
   if (requiredPermission && !hasPermission(requiredPermission)) {
+    toast.error('You do not have permission to access this page');
     return <Navigate to="/dashboard" replace />;
   }
 
