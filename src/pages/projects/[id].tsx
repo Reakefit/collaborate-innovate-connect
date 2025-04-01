@@ -44,6 +44,8 @@ const TaskItem = ({ task, onStatusChange }: TaskItemProps) => {
             <option value="in_progress">In Progress</option>
             <option value="done">Completed</option>
             <option value="blocked">Blocked</option>
+            <option value="review">In Review</option>
+            <option value="completed">Completed</option>
           </select>
         </div>
       </div>

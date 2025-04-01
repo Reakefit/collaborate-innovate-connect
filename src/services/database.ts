@@ -1,5 +1,46 @@
+
 import { supabase } from '@/lib/supabase';
-import { Application, ApplicationStatus, ProjectMessage } from '@/types/database';
+import { Application, ApplicationStatus, ProjectMessage, Team, Profile } from '@/types/database';
+
+/**
+ * Creates a user profile if it doesn't already exist
+ * @param userId User ID to check/create
+ * @param userData User data to insert
+ * @returns Profile object or null
+ */
+export const createUserProfileIfNotExists = async (userId: string, userData: { role: string, name: string, email: string | undefined }) => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
+    
+    // If profile doesn't exist, create it
+    if (error && error.code === 'PGRST116') {
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          role: userData.role,
+          name: userData.name,
+          email: userData.email
+        });
+      
+      if (insertError) {
+        console.error('Error creating user profile:', insertError);
+        return null;
+      }
+      
+      return { id: userId, role: userData.role, name: userData.name };
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error checking/creating user profile:', error);
+    return null;
+  }
+};
 
 /**
  * Fetches project messages
@@ -12,7 +53,7 @@ export const fetchProjectMessages = async (projectId: string): Promise<ProjectMe
       .from('project_messages')
       .select(`
         *,
-        sender:user_profiles(name)
+        sender:profiles(name)
       `)
       .eq('project_id', projectId)
       .order('created_at', { ascending: true });
@@ -50,7 +91,10 @@ export const fetchApplicationsWithTeams = async (projectId?: string): Promise<Ap
       .from('applications')
       .select(`
         *,
-        team:teams(*)
+        team:teams (
+          *,
+          members:team_members (*)
+        )
       `);
     
     if (projectId) {
@@ -83,71 +127,12 @@ export const fetchApplicationsWithTeams = async (projectId?: string): Promise<Ap
         portfolio_url: app.team.portfolio_url || null,
         achievements: app.team.achievements || null,
         created_at: app.team.created_at,
-        updated_at: app.team.updated_at
+        updated_at: app.team.updated_at,
+        members: app.team.members || []
       } : undefined
     }));
   } catch (error) {
     console.error('Error in fetchApplicationsWithTeams:', error);
-    return [];
-  }
-};
-import { supabase } from '@/lib/supabase';
-import { Application, Team, Profile } from '@/types/database';
-
-// Add the missing createUserProfileIfNotExists function
-export const createUserProfileIfNotExists = async (userId: string, userData: { role: string, name: string, email: string | undefined }) => {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .single();
-    
-    // If profile doesn't exist, create it
-    if (error && error.code === 'PGRST116') {
-      const { error: insertError } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          role: userData.role,
-          name: userData.name,
-          email: userData.email
-        });
-      
-      if (insertError) {
-        console.error('Error creating user profile:', insertError);
-        return null;
-      }
-      
-      return { id: userId, role: userData.role, name: userData.name };
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('Error checking/creating user profile:', error);
-    return null;
-  }
-};
-
-// Implement the fetchApplicationsWithTeams function
-export const fetchApplicationsWithTeams = async (projectId: string): Promise<Application[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('applications')
-      .select(`
-        *,
-        team:teams (
-          *,
-          members:team_members (*)
-        )
-      `)
-      .eq('project_id', projectId);
-    
-    if (error) throw error;
-    
-    return data as Application[];
-  } catch (error) {
-    console.error('Error fetching applications with teams:', error);
     return [];
   }
 };

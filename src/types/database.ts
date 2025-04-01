@@ -1,3 +1,4 @@
+
 export type Json =
   | string
   | number
@@ -16,7 +17,7 @@ export type PaymentModel = 'unpaid' | 'stipend' | 'hourly' | 'fixed' | 'equity';
 
 export type MilestoneStatus = 'not_started' | 'in_progress' | 'completed' | 'pending' | 'cancelled' | 'delayed';
 
-export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked' | 'completed' | 'review';
+export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked' | 'review' | 'completed';
 
 export type TeamTaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked' | 'cancelled' | 'completed';
 
@@ -80,6 +81,7 @@ export interface Profile {
   major: string | null;
   created_at: string;
   updated_at: string;
+  email?: string;
 }
 
 export interface Application {
