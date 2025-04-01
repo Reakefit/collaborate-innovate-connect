@@ -1,15 +1,13 @@
-
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { 
   Project, Application, ProjectCategory, ApplicationStatus, ProjectStatus,
   Team, TeamTask, TeamMember, ProjectMilestone, MilestoneStatus, TaskStatus, 
-  ProjectTask, TeamTaskStatus, PaymentModel
+  ProjectTask, TeamTaskStatus, PaymentModel, Json, TeamMemberRole, TeamMemberStatus
 } from '@/types/database';
 import { toast } from 'sonner';
 import { fetchApplicationsWithTeams } from '@/services/database';
-import { Json } from '@/types/supabase';
 
 interface ProjectContextType {
   projects: Project[];
@@ -268,6 +266,7 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       }));
       
       setProjects(formattedProjects);
+      console.log("Fetched projects:", formattedProjects);
     } catch (error: any) {
       setError(error.message);
       console.error('Error fetching projects:', error);
@@ -347,25 +346,30 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       console.log("Creating project with data:", projectData);
       
+      // Ensure data types are correct
+      const projectPayload = {
+        title: projectData.title,
+        description: projectData.description,
+        created_by: user.id,
+        category: projectData.category,
+        required_skills: Array.isArray(projectData.required_skills) ? projectData.required_skills : [],
+        start_date: projectData.start_date,
+        end_date: projectData.end_date,
+        team_size: Number(projectData.team_size),
+        payment_model: projectData.payment_model,
+        stipend_amount: projectData.stipend_amount ? Number(projectData.stipend_amount) : null,
+        equity_percentage: projectData.equity_percentage ? Number(projectData.equity_percentage) : null,
+        hourly_rate: projectData.hourly_rate ? Number(projectData.hourly_rate) : null,
+        fixed_amount: projectData.fixed_amount ? Number(projectData.fixed_amount) : null,
+        deliverables: Array.isArray(projectData.deliverables) ? projectData.deliverables : [],
+        status: 'open'
+      };
+      
+      console.log("Sending payload to Supabase:", projectPayload);
+      
       const { data, error } = await supabase
         .from('projects')
-        .insert({
-          title: projectData.title,
-          description: projectData.description,
-          created_by: user.id,
-          category: projectData.category,
-          required_skills: projectData.required_skills || [],
-          start_date: projectData.start_date,
-          end_date: projectData.end_date,
-          team_size: projectData.team_size,
-          payment_model: projectData.payment_model,
-          stipend_amount: projectData.stipend_amount ? Number(projectData.stipend_amount) : null,
-          equity_percentage: projectData.equity_percentage ? Number(projectData.equity_percentage) : null,
-          hourly_rate: projectData.hourly_rate ? Number(projectData.hourly_rate) : null,
-          fixed_amount: projectData.fixed_amount ? Number(projectData.fixed_amount) : null,
-          deliverables: projectData.deliverables || [],
-          status: 'open'
-        })
+        .insert(projectPayload)
         .select()
         .single();
       
@@ -404,10 +408,12 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       // Add the new project to the state
       setProjects(prevProjects => [...prevProjects, newProject]);
       
+      toast.success('Project created successfully!');
       return newProject;
     } catch (error: any) {
       setError(error.message);
       console.error('Error creating project:', error);
+      toast.error(`Failed to create project: ${error.message}`);
       return null;
     } finally {
       setLoading(false);
@@ -936,125 +942,3 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       if (error) throw error;
       
       return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error updating team task:', error);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const deleteTeamTask = useCallback(async (teamId: string, taskId: string): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { error } = await supabase
-        .from('team_tasks')
-        .delete()
-        .eq('id', taskId)
-        .eq('team_id', teamId);
-      
-      if (error) throw error;
-      
-      toast.success('Task deleted successfully!');
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error deleting team task:', error);
-      toast.error('Failed to delete team task.');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchApplications = useCallback(async (projectId: string): Promise<Application[]> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const applications = await fetchApplicationsWithTeams(projectId);
-      
-      return applications;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error fetching applications:', error);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateApplicationStatus = useCallback(async (applicationId: string, status: string): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { error } = await supabase
-        .from('applications')
-        .update({ status })
-        .eq('id', applicationId);
-      
-      if (error) throw error;
-      
-      setApplications(prevApplications =>
-        prevApplications.map(app => 
-          app.id === applicationId 
-            ? { ...app, status: status as ApplicationStatus } 
-            : app
-        )
-      );
-      
-      toast.success(`Application ${status} successfully!`);
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error updating application status:', error);
-      toast.error('Failed to update application status.');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  return (
-    <ProjectContext.Provider
-      value={{
-        projects,
-        applications,
-        teams,
-        loading,
-        error,
-        fetchProject,
-        fetchProjects,
-        createProject,
-        updateProject,
-        deleteProject,
-        getUserProjects,
-        updateProjectStatus,
-        applyToProject,
-        createTeam,
-        updateTeam,
-        deleteTeam,
-        joinTeam,
-        leaveTeam,
-        fetchTeam,
-        fetchTeams,
-        fetchUserTeams,
-        fetchTeamTasks,
-        createTeamTask,
-        updateTeamTask,
-        deleteTeamTask,
-        fetchApplications,
-        updateApplicationStatus,
-        addTask,
-        updateTaskStatus,
-        addMilestone
-      }}
-    >
-      {children}
-    </ProjectContext.Provider>
-  );
-};

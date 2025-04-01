@@ -1,6 +1,8 @@
 
 import { Json } from './supabase';
 
+export type { Json } from './supabase';
+
 export interface Project {
   id: string;
   title: string;
@@ -82,11 +84,14 @@ export interface TeamMember {
   id: string;
   user_id: string;
   team_id: string;
-  role: "lead" | "member";
-  status: "active" | "inactive";
+  role: TeamMemberRole;
+  status: TeamMemberStatus;
   joined_at: string;
   name?: string;
 }
+
+export type TeamMemberRole = "lead" | "member";
+export type TeamMemberStatus = "active" | "inactive";
 
 export interface TeamTask {
   id: string;
@@ -197,3 +202,6 @@ export interface ProjectMessage {
     avatar_url?: string;
   };
 }
+
+// Alias type for Task since it appears in progress.ts
+export type Task = ProjectTask;

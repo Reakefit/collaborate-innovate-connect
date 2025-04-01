@@ -1,642 +1,510 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import DashboardLayout from '@/components/DashboardLayout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProject } from '@/context/ProjectContext';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { ProjectCategory, PaymentModel } from '@/types/database';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { useProjectValidation } from '@/hooks/useProjectValidation';
+import { debugLog, debugError, logSupabaseOperation } from '@/utils/debug';
 import { 
-  Form, 
-  FormControl, 
-  FormDescription, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { useForm } from 'react-hook-form';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { MultiSelect } from "@/components/ui/multi-select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  CheckIcon,
-  Loader2,
-  ChevronRightIcon,
-  Lightbulb,
-  Code,
-  PenTool,
-  LineChart,
-  Smartphone,
-  ShieldCheck,
-  Rocket,
-  Globe,
-} from 'lucide-react';
+  ProjectCategory, 
+  PaymentModel 
+} from '@/types/database';
 
-export default function CreateProjectPage() {
-  return (
-    <ProtectedRoute requiredRole="startup" requiredPermission="create_project">
-      <CreateProjectContent />
-    </ProtectedRoute>
-  );
-}
-
-// Project templates to offer quick starts
-const projectTemplates = [
-  {
-    id: 'market_research',
-    title: 'Market Research & Validation',
-    description: 'Conduct market research to validate your business idea, identify target customers, and analyze competitors.',
-    category: 'market_research',
-    skills: ['market_research', 'business_analysis', 'user_interviews', 'competitive_analysis'],
-    deliverables: ['Market Analysis Report', 'Competitive Landscape Analysis', 'User Persona Development', 'Validation Findings'],
-    duration: 4, // weeks
-    teamSize: 2,
-    icon: <Lightbulb className="h-8 w-8 text-amber-500" />
-  },
-  {
-    id: 'mvp_development',
-    title: 'MVP Development',
-    description: 'Build a minimum viable product to demonstrate your core functionality and test with early adopters.',
-    category: 'web_development',
-    skills: ['javascript', 'react', 'node_js', 'product_management'],
-    deliverables: ['Functional MVP', 'Source Code', 'Technical Documentation', 'User Testing Feedback'],
-    duration: 8,
-    teamSize: 3,
-    icon: <Code className="h-8 w-8 text-blue-500" />
-  },
-  {
-    id: 'ui_ux_design',
-    title: 'UI/UX Design',
-    description: 'Create user-centered designs and interfaces to enhance user experience and visual appeal.',
-    category: 'ui_ux_design',
-    skills: ['ui_design', 'ux_design', 'figma', 'user_testing'],
-    deliverables: ['UI Design System', 'Wireframes', 'Interactive Prototype', 'User Testing Results'],
-    duration: 4,
-    teamSize: 2,
-    icon: <PenTool className="h-8 w-8 text-purple-500" />
-  },
-  {
-    id: 'data_analysis',
-    title: 'Data Analysis & Insights',
-    description: 'Analyze your data to uncover insights that can drive business decisions and growth strategies.',
-    category: 'data_science',
-    skills: ['data_analysis', 'python', 'data_visualization', 'sql'],
-    deliverables: ['Data Analysis Report', 'Interactive Dashboard', 'Key Insights Summary', 'Recommendations'],
-    duration: 4,
-    teamSize: 2,
-    icon: <LineChart className="h-8 w-8 text-green-500" />
-  },
-  {
-    id: 'mobile_app',
-    title: 'Mobile App Development',
-    description: 'Develop a mobile application for iOS and/or Android platforms.',
-    category: 'mobile_development',
-    skills: ['react_native', 'flutter', 'ios', 'android'],
-    deliverables: ['Mobile Application', 'Source Code', 'App Store Submission', 'Testing Documentation'],
-    duration: 8,
-    teamSize: 3,
-    icon: <Smartphone className="h-8 w-8 text-indigo-500" />
-  },
-  {
-    id: 'cybersecurity',
-    title: 'Security Assessment',
-    description: 'Evaluate your system security, identify vulnerabilities, and implement security best practices.',
-    category: 'cybersecurity',
-    skills: ['penetration_testing', 'security_audit', 'risk_assessment', 'compliance'],
-    deliverables: ['Security Audit Report', 'Vulnerability Assessment', 'Remediation Plan', 'Security Guidelines'],
-    duration: 3,
-    teamSize: 2,
-    icon: <ShieldCheck className="h-8 w-8 text-red-500" />
-  },
-  {
-    id: 'gtm_strategy',
-    title: 'Go-to-Market Strategy',
-    description: 'Develop a comprehensive strategy to launch or scale your product in the market.',
-    category: 'other',
-    skills: ['marketing_strategy', 'market_research', 'competitor_analysis', 'pricing_strategy'],
-    deliverables: ['GTM Strategy Document', 'Marketing Plan', 'Launch Timeline', 'KPI Framework'],
-    duration: 4,
-    teamSize: 2,
-    icon: <Rocket className="h-8 w-8 text-orange-500" />
-  },
-  {
-    id: 'custom',
-    title: 'Custom Project',
-    description: 'Define your own project with custom requirements and deliverables.',
-    category: 'other',
-    skills: [],
-    deliverables: [],
-    duration: 0,
-    teamSize: 0,
-    icon: <Globe className="h-8 w-8 text-gray-500" />
-  }
-];
-
-// Available skill options
-const skillOptions = [
-  { value: 'javascript', label: 'JavaScript' },
-  { value: 'react', label: 'React' },
-  { value: 'node_js', label: 'Node.js' },
-  { value: 'python', label: 'Python' },
-  { value: 'typescript', label: 'TypeScript' },
-  { value: 'java', label: 'Java' },
-  { value: 'c++', label: 'C++' },
-  { value: 'swift', label: 'Swift' },
-  { value: 'kotlin', label: 'Kotlin' },
-  { value: 'sql', label: 'SQL' },
-  { value: 'mongodb', label: 'MongoDB' },
-  { value: 'aws', label: 'AWS' },
-  { value: 'docker', label: 'Docker' },
-  { value: 'kubernetes', label: 'Kubernetes' },
-  { value: 'git', label: 'Git' },
-  { value: 'ui_design', label: 'UI Design' },
-  { value: 'ux_design', label: 'UX Design' },
-  { value: 'product_management', label: 'Product Management' },
+const CATEGORIES = [
+  { value: 'web_development', label: 'Web Development' },
+  { value: 'mobile_development', label: 'Mobile Development' },
+  { value: 'data_science', label: 'Data Science' },
+  { value: 'machine_learning', label: 'Machine Learning' },
+  { value: 'ui_ux_design', label: 'UI/UX Design' },
+  { value: 'devops', label: 'DevOps' },
+  { value: 'cybersecurity', label: 'Cybersecurity' },
+  { value: 'blockchain', label: 'Blockchain' },
   { value: 'market_research', label: 'Market Research' },
-  { value: 'data_analysis', label: 'Data Analysis' },
-  { value: 'data_visualization', label: 'Data Visualization' },
-  { value: 'figma', label: 'Figma' },
-  { value: 'digital_marketing', label: 'Digital Marketing' },
-  { value: 'content_creation', label: 'Content Creation' },
-  { value: 'seo', label: 'SEO' },
+  { value: 'other', label: 'Other' }
 ];
 
-// Template deliverable options
-const deliverableOptions = [
-  { value: 'market_analysis', label: 'Market Analysis Report' },
-  { value: 'competitive_analysis', label: 'Competitive Analysis' },
-  { value: 'user_personas', label: 'User Personas' },
-  { value: 'mvp', label: 'Minimum Viable Product (MVP)' },
-  { value: 'source_code', label: 'Source Code' },
-  { value: 'documentation', label: 'Technical Documentation' },
-  { value: 'ui_design', label: 'UI Design' },
-  { value: 'wireframes', label: 'Wireframes' },
-  { value: 'prototype', label: 'Interactive Prototype' },
-  { value: 'mobile_app', label: 'Mobile Application' },
-  { value: 'data_analysis', label: 'Data Analysis Report' },
-  { value: 'dashboard', label: 'Interactive Dashboard' },
-  { value: 'marketing_plan', label: 'Marketing Plan' },
-  { value: 'content_strategy', label: 'Content Strategy' },
-  { value: 'social_media_plan', label: 'Social Media Plan' },
-  { value: 'seo_recommendations', label: 'SEO Recommendations' },
-  { value: 'security_audit', label: 'Security Audit' },
-  { value: 'testing_report', label: 'Testing Report' },
-  { value: 'analytics_setup', label: 'Analytics Setup' },
+const PAYMENT_MODELS = [
+  { value: 'unpaid', label: 'Unpaid' },
+  { value: 'stipend', label: 'Stipend' },
+  { value: 'hourly', label: 'Hourly Rate' },
+  { value: 'fixed', label: 'Fixed Amount' },
+  { value: 'equity', label: 'Equity' }
 ];
 
-// This is the actual content that will only be shown to authorized users
-function CreateProjectContent() {
-  const { user } = useAuth();
-  const { createProject } = useProject();
+const CreateProject = () => {
   const navigate = useNavigate();
+  const { createProject } = useProject();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { errors, validateProject, clearErrors } = useProjectValidation();
+  
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState<ProjectCategory>('web_development');
+  const [requiredSkills, setRequiredSkills] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [teamSize, setTeamSize] = useState(1);
+  const [paymentModel, setPaymentModel] = useState<PaymentModel>('unpaid');
+  const [stipendAmount, setStipendAmount] = useState<number | null>(null);
+  const [equityPercentage, setEquityPercentage] = useState<number | null>(null);
+  const [hourlyRate, setHourlyRate] = useState<number | null>(null);
+  const [fixedAmount, setFixedAmount] = useState<number | null>(null);
+  const [deliverables, setDeliverables] = useState<string[]>([]);
+  const [newDeliverable, setNewDeliverable] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [activeTab, setActiveTab] = useState('templates');
 
-  // Set up form with react-hook-form
-  const form = useForm({
-    defaultValues: {
-      title: '',
-      description: '',
-      category: '',
-      deliverables: [],
-      required_skills: [],
-      start_date: '',
-      end_date: '',
-      payment_model: 'unpaid',
-      stipend_amount: '',
-      equity_percentage: '',
-      hourly_rate: '',
-      fixed_amount: '',
-      team_size: 2,
+  // Add a skill to the required skills list
+  const addSkill = () => {
+    if (newSkill.trim() !== '') {
+      if (!requiredSkills.includes(newSkill.trim())) {
+        setRequiredSkills([...requiredSkills, newSkill.trim()]);
+      }
+      setNewSkill('');
     }
-  });
+  };
 
-  // Apply template to form
-  const applyTemplate = (templateId) => {
-    const template = projectTemplates.find(t => t.id === templateId);
-    if (!template) return;
-    
-    setSelectedTemplate(template);
-    
-    // If it's the custom template, don't prefill anything
-    if (templateId === 'custom') {
-      setActiveTab('details');
-      return;
+  // Remove a skill from the required skills list
+  const removeSkill = (skill: string) => {
+    setRequiredSkills(requiredSkills.filter(s => s !== skill));
+  };
+
+  // Add a deliverable to the deliverables list
+  const addDeliverable = () => {
+    if (newDeliverable.trim() !== '') {
+      if (!deliverables.includes(newDeliverable.trim())) {
+        setDeliverables([...deliverables, newDeliverable.trim()]);
+      }
+      setNewDeliverable('');
     }
+  };
+
+  // Remove a deliverable from the deliverables list
+  const removeDeliverable = (deliverable: string) => {
+    setDeliverables(deliverables.filter(d => d !== deliverable));
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    // Calculate end date from duration (weeks)
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + (template.duration * 7));
+    debugLog('CreateProject', 'Starting project creation process');
     
-    // Format dates as YYYY-MM-DD for input fields
-    const formatDate = (date) => {
-      return date.toISOString().split('T')[0];
+    // Create project data object
+    const projectData = {
+      title,
+      description,
+      category,
+      required_skills: requiredSkills,
+      start_date: startDate,
+      end_date: endDate,
+      team_size: Number(teamSize),
+      payment_model: paymentModel,
+      stipend_amount: paymentModel === 'stipend' ? stipendAmount : null,
+      equity_percentage: paymentModel === 'equity' ? equityPercentage : null,
+      hourly_rate: paymentModel === 'hourly' ? hourlyRate : null,
+      fixed_amount: paymentModel === 'fixed' ? fixedAmount : null,
+      deliverables
     };
     
-    // Update form with template data
-    form.reset({
-      title: template.title,
-      description: template.description,
-      category: template.category,
-      deliverables: template.deliverables,
-      required_skills: template.skills,
-      start_date: formatDate(startDate),
-      end_date: formatDate(endDate),
-      payment_model: 'unpaid',
-      stipend_amount: '',
-      equity_percentage: '',
-      hourly_rate: '',
-      fixed_amount: '',
-      team_size: template.teamSize,
-    });
+    // Validate project data
+    const { isValid } = validateProject(projectData);
     
-    setActiveTab('details');
-  };
-
-  const onSubmit = async (data) => {
-    setIsSubmitting(true);
-
-    try {
-      const projectData = {
-        ...data,
-        created_by: user.id,
-      };
-
-      await createProject(projectData);
-      toast.success("Project created successfully!");
-      navigate("/projects");
-    } catch (error) {
-      console.error("Error creating project:", error);
-      toast.error(error.message || "Failed to create project");
-    } finally {
-      setIsSubmitting(false);
+    if (isValid) {
+      try {
+        setIsSubmitting(true);
+        
+        logSupabaseOperation('insert', 'projects', projectData);
+        
+        const result = await createProject(projectData);
+        
+        if (result) {
+          debugLog('CreateProject', 'Project created successfully', result);
+          toast({
+            title: 'Success',
+            description: 'Project created successfully!'
+          });
+          navigate('/dashboard');
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to create project. Please try again.'
+          });
+        }
+      } catch (error: any) {
+        debugError('CreateProject', error, 'Failed to create project');
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: error.message || 'An unexpected error occurred'
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      // Display a toast with validation errors
+      toast({
+        variant: 'destructive',
+        title: 'Validation Error',
+        description: 'Please fix the highlighted errors'
+      });
     }
   };
 
+  if (!user) {
+    return (
+      <DashboardLayout activeTab="create-project">
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="text-center">Not Authenticated</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-center mb-4">You need to be logged in to create a project.</p>
+              <Button className="w-full" onClick={() => navigate('/signin')}>Sign In</Button>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <div className="container max-w-4xl mx-auto py-8 px-4">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Create a New Project</h1>
-        <p className="text-muted-foreground mt-1">Select a template or create a custom project to get started.</p>
-      </div>
-      
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="templates">Choose Template</TabsTrigger>
-          <TabsTrigger value="details">Project Details</TabsTrigger>
-        </TabsList>
+    <DashboardLayout activeTab="create-project">
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8">Create New Project</h1>
         
-        <TabsContent value="templates" className="space-y-4 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projectTemplates.map((template) => (
-              <Card 
-                key={template.id} 
-                className={`cursor-pointer transition-all hover:shadow-md ${selectedTemplate?.id === template.id ? 'ring-2 ring-primary' : ''}`}
-                onClick={() => applyTemplate(template.id)}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start mb-2">
-                    {template.icon}
-                    {selectedTemplate?.id === template.id && (
-                      <CheckIcon className="h-5 w-5 text-primary" />
-                    )}
-                  </div>
-                  <CardTitle className="text-lg">{template.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="pb-2">
-                  <p className="text-sm text-muted-foreground">{template.description}</p>
-                </CardContent>
-                {template.id !== 'custom' && (
-                  <CardFooter className="flex justify-between text-xs text-muted-foreground pt-0">
-                    <div>Duration: ~{template.duration} weeks</div>
-                    <div>Team: {template.teamSize} people</div>
-                  </CardFooter>
-                )}
-                <div className="p-3 bg-muted/50 flex justify-end border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      applyTemplate(template.id);
-                    }}
-                  >
-                    Select <ChevronRightIcon className="h-3 w-3 ml-1" />
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-          
-          <div className="flex justify-end mt-4">
-            <Button 
-              onClick={() => setActiveTab('details')} 
-              disabled={!selectedTemplate}
-            >
-              Continue to Details
-              <ChevronRightIcon className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="details">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Project Basic Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Project Details</CardTitle>
-              <CardDescription>
-                Fill in the details below to post your project.
-              </CardDescription>
+              <CardTitle>Basic Information</CardTitle>
             </CardHeader>
-            
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
-                <CardContent className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Project Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter a descriptive title" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Project Description</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Describe the project, goals, and what you're looking for"
-                            className="min-h-24"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Category</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a category" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="web_development">Web Development</SelectItem>
-                              <SelectItem value="mobile_development">Mobile Development</SelectItem>
-                              <SelectItem value="data_science">Data Science</SelectItem>
-                              <SelectItem value="machine_learning">Machine Learning</SelectItem>
-                              <SelectItem value="ui_ux_design">UI/UX Design</SelectItem>
-                              <SelectItem value="devops">DevOps</SelectItem>
-                              <SelectItem value="cybersecurity">Cybersecurity</SelectItem>
-                              <SelectItem value="blockchain">Blockchain</SelectItem>
-                              <SelectItem value="market_research">Market Research</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="team_size"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Team Size</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min="1" 
-                              max="10"
-                              {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Number of students needed for this project
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="required_skills"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Required Skills</FormLabel>
-                        <FormControl>
-                          <MultiSelect
-                            options={skillOptions}
-                            placeholder="Select required skills"
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="deliverables"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Deliverables</FormLabel>
-                        <FormControl>
-                          <MultiSelect
-                            options={deliverableOptions}
-                            placeholder="Select expected deliverables"
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="start_date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Start Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="end_date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>End Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="payment_model"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Payment Model</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select payment model" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="unpaid">Unpaid (Experience Only)</SelectItem>
-                            <SelectItem value="stipend">Stipend</SelectItem>
-                            <SelectItem value="hourly">Hourly Rate</SelectItem>
-                            <SelectItem value="fixed">Fixed Amount</SelectItem>
-                            <SelectItem value="equity">Equity</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {form.watch('payment_model') === 'stipend' && (
-                    <FormField
-                      control={form.control}
-                      name="stipend_amount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Stipend Amount</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="Enter amount" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-                  
-                  {form.watch('payment_model') === 'hourly' && (
-                    <FormField
-                      control={form.control}
-                      name="hourly_rate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Hourly Rate</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="Enter rate" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-                  
-                  {form.watch('payment_model') === 'fixed' && (
-                    <FormField
-                      control={form.control}
-                      name="fixed_amount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Fixed Amount</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="Enter amount" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-                  
-                  {form.watch('payment_model') === 'equity' && (
-                    <FormField
-                      control={form.control}
-                      name="equity_percentage"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Equity Percentage</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="Enter percentage" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-                </CardContent>
-                
-                <CardFooter className="flex justify-between border-t p-6">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setActiveTab('templates')}
-                  >
-                    Back to Templates
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <CheckIcon className="mr-2 h-4 w-4" />
-                        Create Project
-                      </>
-                    )}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Form>
+            <CardContent className="space-y-4">
+              {/* Title */}
+              <div>
+                <label htmlFor="title" className="block text-sm font-medium mb-1">
+                  Project Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="title"
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className={`w-full p-2 border rounded ${errors.title ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="Enter project title"
+                />
+                {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
+              </div>
+              
+              {/* Description */}
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium mb-1">
+                  Project Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className={`w-full p-2 border rounded ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="Describe your project"
+                  rows={4}
+                ></textarea>
+                {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+              </div>
+              
+              {/* Category */}
+              <div>
+                <label htmlFor="category" className="block text-sm font-medium mb-1">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as ProjectCategory)}
+                  className={`w-full p-2 border rounded ${errors.category ? 'border-red-500' : 'border-gray-300'}`}
+                >
+                  {CATEGORIES.map((categoryOption) => (
+                    <option key={categoryOption.value} value={categoryOption.value}>
+                      {categoryOption.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category}</p>}
+              </div>
+            </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+          
+          {/* Project Requirements */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Project Requirements</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Required Skills */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Required Skills</label>
+                <div className="flex">
+                  <input
+                    type="text"
+                    value={newSkill}
+                    onChange={(e) => setNewSkill(e.target.value)}
+                    className="flex-1 p-2 border border-gray-300 rounded-l"
+                    placeholder="Add a required skill"
+                  />
+                  <button
+                    type="button"
+                    onClick={addSkill}
+                    className="bg-primary text-primary-foreground px-4 py-2 rounded-r"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {requiredSkills.map((skill) => (
+                    <div key={skill} className="bg-primary/10 text-primary px-3 py-1 rounded-full flex items-center">
+                      <span>{skill}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeSkill(skill)}
+                        className="ml-2 text-red-500"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Timeline */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Start Date */}
+                <div>
+                  <label htmlFor="startDate" className="block text-sm font-medium mb-1">
+                    Start Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="startDate"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className={`w-full p-2 border rounded ${errors.start_date ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {errors.start_date && <p className="text-red-500 text-sm mt-1">{errors.start_date}</p>}
+                </div>
+                
+                {/* End Date */}
+                <div>
+                  <label htmlFor="endDate" className="block text-sm font-medium mb-1">
+                    End Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="endDate"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className={`w-full p-2 border rounded ${errors.end_date ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {errors.end_date && <p className="text-red-500 text-sm mt-1">{errors.end_date}</p>}
+                </div>
+              </div>
+              
+              {/* Team Size */}
+              <div>
+                <label htmlFor="teamSize" className="block text-sm font-medium mb-1">
+                  Team Size <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="teamSize"
+                  type="number"
+                  min="1"
+                  value={teamSize}
+                  onChange={(e) => setTeamSize(parseInt(e.target.value) || 1)}
+                  className={`w-full p-2 border rounded ${errors.team_size ? 'border-red-500' : 'border-gray-300'}`}
+                />
+                {errors.team_size && <p className="text-red-500 text-sm mt-1">{errors.team_size}</p>}
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Payment Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Payment Model */}
+              <div>
+                <label htmlFor="paymentModel" className="block text-sm font-medium mb-1">
+                  Payment Model <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="paymentModel"
+                  value={paymentModel}
+                  onChange={(e) => setPaymentModel(e.target.value as PaymentModel)}
+                  className={`w-full p-2 border rounded ${errors.payment_model ? 'border-red-500' : 'border-gray-300'}`}
+                >
+                  {PAYMENT_MODELS.map((model) => (
+                    <option key={model.value} value={model.value}>
+                      {model.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.payment_model && <p className="text-red-500 text-sm mt-1">{errors.payment_model}</p>}
+              </div>
+              
+              {/* Payment Details based on selected model */}
+              {paymentModel === 'stipend' && (
+                <div>
+                  <label htmlFor="stipendAmount" className="block text-sm font-medium mb-1">
+                    Stipend Amount <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="stipendAmount"
+                    type="number"
+                    min="0"
+                    value={stipendAmount || ''}
+                    onChange={(e) => setStipendAmount(parseFloat(e.target.value) || null)}
+                    className={`w-full p-2 border rounded ${errors.stipend_amount ? 'border-red-500' : 'border-gray-300'}`}
+                    placeholder="Enter amount"
+                  />
+                  {errors.stipend_amount && <p className="text-red-500 text-sm mt-1">{errors.stipend_amount}</p>}
+                </div>
+              )}
+              
+              {paymentModel === 'equity' && (
+                <div>
+                  <label htmlFor="equityPercentage" className="block text-sm font-medium mb-1">
+                    Equity Percentage <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="equityPercentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={equityPercentage || ''}
+                    onChange={(e) => setEquityPercentage(parseFloat(e.target.value) || null)}
+                    className={`w-full p-2 border rounded ${errors.equity_percentage ? 'border-red-500' : 'border-gray-300'}`}
+                    placeholder="Enter percentage"
+                  />
+                  {errors.equity_percentage && <p className="text-red-500 text-sm mt-1">{errors.equity_percentage}</p>}
+                </div>
+              )}
+              
+              {paymentModel === 'hourly' && (
+                <div>
+                  <label htmlFor="hourlyRate" className="block text-sm font-medium mb-1">
+                    Hourly Rate <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="hourlyRate"
+                    type="number"
+                    min="0"
+                    value={hourlyRate || ''}
+                    onChange={(e) => setHourlyRate(parseFloat(e.target.value) || null)}
+                    className={`w-full p-2 border rounded ${errors.hourly_rate ? 'border-red-500' : 'border-gray-300'}`}
+                    placeholder="Enter hourly rate"
+                  />
+                  {errors.hourly_rate && <p className="text-red-500 text-sm mt-1">{errors.hourly_rate}</p>}
+                </div>
+              )}
+              
+              {paymentModel === 'fixed' && (
+                <div>
+                  <label htmlFor="fixedAmount" className="block text-sm font-medium mb-1">
+                    Fixed Amount <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="fixedAmount"
+                    type="number"
+                    min="0"
+                    value={fixedAmount || ''}
+                    onChange={(e) => setFixedAmount(parseFloat(e.target.value) || null)}
+                    className={`w-full p-2 border rounded ${errors.fixed_amount ? 'border-red-500' : 'border-gray-300'}`}
+                    placeholder="Enter fixed amount"
+                  />
+                  {errors.fixed_amount && <p className="text-red-500 text-sm mt-1">{errors.fixed_amount}</p>}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Deliverables */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Deliverables</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Deliverables <span className="text-red-500">*</span>
+                </label>
+                <div className="flex">
+                  <input
+                    type="text"
+                    value={newDeliverable}
+                    onChange={(e) => setNewDeliverable(e.target.value)}
+                    className="flex-1 p-2 border border-gray-300 rounded-l"
+                    placeholder="Add a deliverable"
+                  />
+                  <button
+                    type="button"
+                    onClick={addDeliverable}
+                    className="bg-primary text-primary-foreground px-4 py-2 rounded-r"
+                  >
+                    Add
+                  </button>
+                </div>
+                {errors.deliverables && <p className="text-red-500 text-sm mt-1">{errors.deliverables}</p>}
+                <div className="mt-2">
+                  {deliverables.length === 0 ? (
+                    <p className="text-gray-500 italic">No deliverables added yet</p>
+                  ) : (
+                    <ul className="list-disc pl-5 space-y-1">
+                      {deliverables.map((deliverable, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="flex-1">{deliverable}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeDeliverable(deliverable)}
+                            className="text-red-500 ml-2"
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Submit Button */}
+          <div className="flex justify-end gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/dashboard')}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating...' : 'Create Project'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </DashboardLayout>
   );
-}
+};
+
+export default CreateProject;

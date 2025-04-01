@@ -1,8 +1,8 @@
 
-import { Task, TaskStatus } from '@/types/database';
+import { ProjectTask, TaskStatus } from '@/types/database';
 
 // Calculate progress percentage for tasks
-export const calculateTaskProgress = (tasks: Task[]): number => {
+export const calculateTaskProgress = (tasks: ProjectTask[]): number => {
   if (!tasks || tasks.length === 0) return 0;
   
   const completedTasks = tasks.filter(task => 
@@ -14,7 +14,7 @@ export const calculateTaskProgress = (tasks: Task[]): number => {
 };
 
 // Calculate task status counts
-export const calculateTaskStatusCounts = (tasks: Task[]) => {
+export const calculateTaskStatusCounts = (tasks: ProjectTask[]) => {
   if (!tasks) return { todo: 0, inProgress: 0, completed: 0, blocked: 0, review: 0 };
   
   return tasks.reduce((counts, task) => {

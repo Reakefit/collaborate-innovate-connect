@@ -1,6 +1,9 @@
 
 import { supabase } from '@/lib/supabase';
-import { Application, ApplicationStatus, ProjectMessage, Team, Profile, Json } from '@/types/database';
+import { 
+  Application, ApplicationStatus, ProjectMessage, Team, 
+  Profile, Json, TeamMember, TeamMemberRole, TeamMemberStatus 
+} from '@/types/database';
 
 /**
  * Creates a user profile if it doesn't already exist
@@ -108,29 +111,42 @@ export const fetchApplicationsWithTeams = async (projectId?: string): Promise<Ap
       throw error;
     }
     
-    // Format the applications with team data
-    return (data || []).map((app) => ({
-      id: app.id,
-      project_id: app.project_id,
-      user_id: app.user_id,
-      team_id: app.team_id,
-      status: app.status as ApplicationStatus,
-      cover_letter: app.cover_letter,
-      created_at: app.created_at,
-      updated_at: app.updated_at,
-      team: app.team ? {
-        id: app.team.id,
-        name: app.team.name,
-        description: app.team.description || '',
-        lead_id: app.team.lead_id,
-        skills: app.team.skills || [],
-        portfolio_url: app.team.portfolio_url || null,
-        achievements: app.team.achievements as Json,
-        created_at: app.team.created_at,
-        updated_at: app.team.updated_at,
-        members: app.team.members || []
-      } : undefined
-    }));
+    // Format the applications with team data and properly type the team members
+    return (data || []).map((app) => {
+      // Handle team members data with proper typing
+      const formattedMembers = app.team?.members ? app.team.members.map(member => ({
+        id: member.id,
+        user_id: member.user_id,
+        team_id: member.team_id,
+        role: (member.role === 'lead' || member.role === 'member') ? member.role as TeamMemberRole : 'member',
+        status: (member.status === 'active' || member.status === 'inactive') ? member.status as TeamMemberStatus : 'active',
+        joined_at: member.joined_at,
+        name: member.name
+      })) : [];
+      
+      return {
+        id: app.id,
+        project_id: app.project_id,
+        user_id: app.user_id,
+        team_id: app.team_id,
+        status: app.status as ApplicationStatus,
+        cover_letter: app.cover_letter,
+        created_at: app.created_at,
+        updated_at: app.updated_at,
+        team: app.team ? {
+          id: app.team.id,
+          name: app.team.name,
+          description: app.team.description || '',
+          lead_id: app.team.lead_id,
+          skills: app.team.skills || [],
+          portfolio_url: app.team.portfolio_url || null,
+          achievements: app.team.achievements as Json,
+          created_at: app.team.created_at,
+          updated_at: app.team.updated_at,
+          members: formattedMembers as TeamMember[]
+        } : undefined
+      };
+    });
   } catch (error) {
     console.error('Error in fetchApplicationsWithTeams:', error);
     return [];
