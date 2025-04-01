@@ -37,11 +37,15 @@ const Dashboard = () => {
   const renderDashboardContent = () => {
     // Check if profile exists and has required fields
     if (!profile || !profile.name) {
+      console.log("Profile incomplete, redirecting to complete-profile", profile);
       return <Navigate to="/complete-profile" />;
     }
 
     // Use userRole from AuthorizationContext
-    switch (userRole) {
+    console.log("Selecting dashboard for role:", userRole || profile?.role);
+    const role = userRole || profile?.role || 'student';
+
+    switch (role) {
       case 'student':
         return <StudentDashboard />;
       case 'startup':
@@ -61,10 +65,11 @@ const Dashboard = () => {
           </div>
         );
       default:
+        console.log("No matching role found, defaulting based on profile.role:", profile?.role);
         // Fallback to showing appropriate dashboard based on profile role if userRole is not set
-        if (profile.role === 'startup') {
+        if (profile?.role === 'startup') {
           return <StartupDashboard />;
-        } else if (profile.role === 'college_admin') {
+        } else if (profile?.role === 'college_admin') {
           return <CollegeAdminDashboard />;
         } else {
           return <StudentDashboard />;

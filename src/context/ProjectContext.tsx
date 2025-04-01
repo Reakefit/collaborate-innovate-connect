@@ -1,11 +1,10 @@
-
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { 
-  Project, Application, Team, TeamTask, TeamMember, ProjectMilestone, 
-  MilestoneStatus, TaskStatus, ProjectTask, ApplicationStatus, TeamTaskStatus,
-  ProjectCategory, PaymentModel, ProjectStatus
+  Project, Application, ProjectCategory, ApplicationStatus, ProjectStatus,
+  Team, TeamTask, TeamMember, ProjectMilestone, MilestoneStatus, TaskStatus, 
+  ProjectTask, TeamTaskStatus, PaymentModel
 } from '@/types/database';
 import { toast } from 'sonner';
 import { fetchApplicationsWithTeams } from '@/services/database';
@@ -255,11 +254,10 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         end_date: project.end_date,
         team_size: project.team_size,
         payment_model: (project.payment_model || 'unpaid') as PaymentModel,
-        stipend_amount: project.stipend_amount ? String(project.stipend_amount) : null,
-        // Add type assertions for the properties that TypeScript can't see
-        equity_percentage: (project as any).equity_percentage ? String((project as any).equity_percentage || '0') : null,
-        hourly_rate: (project as any).hourly_rate ? String((project as any).hourly_rate || '0') : null,
-        fixed_amount: (project as any).fixed_amount ? String((project as any).fixed_amount || '0') : null,
+        stipend_amount: project.stipend_amount ? Number(project.stipend_amount) : null,
+        equity_percentage: project.equity_percentage ? Number(project.equity_percentage) : null,
+        hourly_rate: project.hourly_rate ? Number(project.hourly_rate) : null,
+        fixed_amount: project.fixed_amount ? Number(project.fixed_amount) : null,
         deliverables: project.deliverables || [],
         created_at: project.created_at,
         selected_team: project.selected_team || null,
@@ -354,10 +352,10 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
           end_date: projectData.end_date,
           team_size: projectData.team_size,
           payment_model: projectData.payment_model,
-          stipend_amount: projectData.stipend_amount || null,
-          equity_percentage: projectData.equity_percentage || null,
-          hourly_rate: projectData.hourly_rate || null,
-          fixed_amount: projectData.fixed_amount || null,
+          stipend_amount: projectData.stipend_amount ? Number(projectData.stipend_amount) : null,
+          equity_percentage: projectData.equity_percentage ? Number(projectData.equity_percentage) : null,
+          hourly_rate: projectData.hourly_rate ? Number(projectData.hourly_rate) : null,
+          fixed_amount: projectData.fixed_amount ? Number(projectData.fixed_amount) : null,
           deliverables: projectData.deliverables || [],
           status: 'open'
         })
@@ -378,11 +376,10 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         end_date: data.end_date,
         team_size: data.team_size,
         payment_model: (data.payment_model || 'unpaid') as PaymentModel,
-        stipend_amount: data.stipend_amount ? String(data.stipend_amount) : null,
-        // Add type assertions for the properties that TypeScript can't see
-        equity_percentage: (data as any).equity_percentage ? String((data as any).equity_percentage || '0') : null,
-        hourly_rate: (data as any).hourly_rate ? String((data as any).hourly_rate || '0') : null,
-        fixed_amount: (data as any).fixed_amount ? String((data as any).fixed_amount) : null,
+        stipend_amount: data.stipend_amount ? Number(data.stipend_amount) : null,
+        equity_percentage: data.equity_percentage ? Number(data.equity_percentage) : null,
+        hourly_rate: data.hourly_rate ? Number(data.hourly_rate) : null,
+        fixed_amount: data.fixed_amount ? Number(data.fixed_amount) : null,
         deliverables: data.deliverables || [],
         created_at: data.created_at,
         selected_team: data.selected_team || null,
@@ -947,119 +944,4 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   }, []);
 
-  const deleteTeamTask = useCallback(async (teamId: string, taskId: string): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { error } = await supabase
-        .from('team_tasks')
-        .delete()
-        .eq('id', taskId)
-        .eq('team_id', teamId);
-      
-      if (error) throw error;
-      
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error deleting team task:', error);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchApplications = useCallback(async (projectId: string): Promise<Application[]> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const applications = await fetchApplicationsWithTeams(projectId);
-      
-      // Ensure all applications have the correct status type
-      const typedApplications = applications.map(app => ({
-        ...app,
-        status: app.status as ApplicationStatus
-      }));
-      
-      setApplications(typedApplications);
-      
-      return typedApplications;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error fetching applications:', error);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateApplicationStatus = useCallback(async (applicationId: string, status: string): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { error } = await supabase
-        .from('applications')
-        .update({ status: status })
-        .eq('id', applicationId);
-      
-      if (error) throw error;
-      
-      // Update the application status in the state with correct typing
-      setApplications(prevApplications =>
-        prevApplications.map(application => 
-          application.id === applicationId 
-            ? { ...application, status: status as ApplicationStatus } 
-            : application
-        )
-      );
-      
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error updating application status:', error);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const value = {
-    projects,
-    applications,
-    teams,
-    loading,
-    error,
-    fetchProject,
-    fetchProjects,
-    createProject,
-    updateProject,
-    deleteProject,
-    getUserProjects,
-    updateProjectStatus,
-    applyToProject,
-    createTeam,
-    updateTeam,
-    deleteTeam,
-    joinTeam,
-    leaveTeam,
-    fetchTeam,
-    fetchTeams,
-    fetchUserTeams,
-    fetchTeamTasks,
-    createTeamTask,
-    updateTeamTask,
-    deleteTeamTask,
-    fetchApplications,
-    updateApplicationStatus,
-    addTask,
-    updateTaskStatus,
-    addMilestone,
-  };
-
-  return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
-};
-
-export const useProject = () => useContext(ProjectContext);
+  const deleteTeamTask = useCallback(async (teamId

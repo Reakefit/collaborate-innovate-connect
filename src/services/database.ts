@@ -1,5 +1,6 @@
+
 import { supabase } from '@/lib/supabase';
-import { Application, ApplicationStatus, Profile, Project, ProjectCategory } from '@/types/database';
+import { Application, ApplicationStatus, Profile, Project, ProjectCategory, ProjectMessage } from '@/types/database';
 import { toast } from 'sonner';
 
 // Helper function to convert string to ProjectCategory enum
@@ -67,12 +68,6 @@ export const fetchProjects = async (): Promise<Project[]> => {
 
     // Convert server data to Project type
     return data.map(project => {
-      // Handle payment details
-      let equityPercentage = null;
-      let hourlyRate = null;
-      let fixedAmount = null;
-
-      const projectNeeds = ensureArrayField(project.project_needs);
       const requiredSkills = ensureArrayField(project.required_skills);
       const deliverables = ensureArrayField(project.deliverables);
 
@@ -87,10 +82,10 @@ export const fetchProjects = async (): Promise<Project[]> => {
         end_date: project.end_date,
         team_size: project.team_size,
         payment_model: project.payment_model,
-        equity_percentage: equityPercentage,
-        hourly_rate: hourlyRate,
-        fixed_amount: fixedAmount,
-        stipend_amount: project.stipend_amount || null,
+        equity_percentage: project.equity_percentage ? Number(project.equity_percentage) : null,
+        hourly_rate: project.hourly_rate ? Number(project.hourly_rate) : null,
+        fixed_amount: project.fixed_amount ? Number(project.fixed_amount) : null,
+        stipend_amount: project.stipend_amount ? Number(project.stipend_amount) : null,
         deliverables: deliverables,
         status: project.status,
         selected_team: project.selected_team,
@@ -109,7 +104,13 @@ export const fetchProject = async (projectId: string): Promise<Project | null> =
   try {
     const { data, error } = await supabase
       .from('projects')
-      .select('*')
+      .select(`
+        *,
+        project_milestones(
+          *,
+          project_tasks(*)
+        )
+      `)
       .eq('id', projectId)
       .single();
 
@@ -117,14 +118,37 @@ export const fetchProject = async (projectId: string): Promise<Project | null> =
 
     if (!data) return null;
 
-    // Handle payment details
-    let equityPercentage = null;
-    let hourlyRate = null;
-    let fixedAmount = null;
-
-    const projectNeeds = ensureArrayField(data.project_needs);
     const requiredSkills = ensureArrayField(data.required_skills);
     const deliverables = ensureArrayField(data.deliverables);
+
+    // Format milestones and tasks
+    const milestones = Array.isArray(data.project_milestones) 
+      ? data.project_milestones.map((milestone: any) => ({
+          id: milestone.id,
+          project_id: milestone.project_id,
+          title: milestone.title,
+          description: milestone.description,
+          due_date: milestone.due_date,
+          status: milestone.status,
+          created_at: milestone.created_at,
+          updated_at: milestone.updated_at,
+          tasks: Array.isArray(milestone.project_tasks) 
+            ? milestone.project_tasks.map((task: any) => ({
+                id: task.id,
+                project_id: task.project_id,
+                milestone_id: task.milestone_id,
+                title: task.title,
+                description: task.description,
+                status: task.status,
+                assigned_to: task.assigned_to,
+                due_date: task.due_date,
+                created_by: task.created_by,
+                created_at: task.created_at,
+                updated_at: task.updated_at
+              }))
+            : []
+        }))
+      : [];
 
     return {
       id: data.id,
@@ -137,19 +161,84 @@ export const fetchProject = async (projectId: string): Promise<Project | null> =
       end_date: data.end_date,
       team_size: data.team_size,
       payment_model: data.payment_model,
-      equity_percentage: equityPercentage,
-      hourly_rate: hourlyRate,
-      fixed_amount: fixedAmount,
-      stipend_amount: data.stipend_amount || null,
+      equity_percentage: data.equity_percentage ? Number(data.equity_percentage) : null,
+      hourly_rate: data.hourly_rate ? Number(data.hourly_rate) : null,
+      fixed_amount: data.fixed_amount ? Number(data.fixed_amount) : null,
+      stipend_amount: data.stipend_amount ? Number(data.stipend_amount) : null,
       deliverables: deliverables,
       status: data.status,
       selected_team: data.selected_team,
       created_at: data.created_at,
+      milestones: milestones
     };
   } catch (error) {
     console.error('Error fetching project:', error);
     toast.error('Failed to fetch project details');
     return null;
+  }
+};
+
+// Function to fetch applications with team details for a project
+export const fetchApplicationsWithTeams = async (projectId: string): Promise<Application[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        teams(*)
+      `)
+      .eq('project_id', projectId);
+
+    if (error) throw error;
+
+    if (!data) return [];
+
+    return data.map(app => ({
+      id: app.id,
+      project_id: app.project_id,
+      user_id: app.user_id,
+      team_id: app.team_id,
+      status: toApplicationStatus(app.status),
+      cover_letter: app.cover_letter,
+      created_at: app.created_at,
+      updated_at: app.updated_at,
+      team: app.teams
+    }));
+  } catch (error) {
+    console.error('Error fetching applications with teams:', error);
+    toast.error('Failed to fetch applications');
+    return [];
+  }
+};
+
+// Function to fetch project messages
+export const fetchProjectMessages = async (projectId: string): Promise<ProjectMessage[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('project_messages')
+      .select(`
+        *,
+        sender:profiles(name)
+      `)
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    if (!data) return [];
+
+    return data.map(message => ({
+      id: message.id,
+      project_id: message.project_id,
+      content: message.content,
+      sender_id: message.sender_id,
+      created_at: message.created_at,
+      sender: message.sender
+    }));
+  } catch (error) {
+    console.error('Error fetching project messages:', error);
+    toast.error('Failed to fetch messages');
+    return [];
   }
 };
 
@@ -258,6 +347,9 @@ export const createProject = async (projectData: Partial<Project>): Promise<stri
         team_size: projectData.team_size,
         payment_model: projectData.payment_model,
         stipend_amount: projectData.stipend_amount,
+        equity_percentage: projectData.equity_percentage,
+        hourly_rate: projectData.hourly_rate,
+        fixed_amount: projectData.fixed_amount,
         deliverables: projectData.deliverables || [],
         status: 'open'
       }])
@@ -327,7 +419,7 @@ export const createUserProfileIfNotExists = async (userId: string, userData: any
     // Create new profile
     const { error } = await supabase
       .from('profiles')
-      .insert(profileData);
+      .insert([profileData]);
 
     if (error) throw error;
 
@@ -349,7 +441,7 @@ export const updateUserProfile = async (userId: string, profileData: Partial<Pro
 
     const { error } = await supabase
       .from('profiles')
-      .upsert(cleanData);
+      .upsert([cleanData]);
 
     if (error) throw error;
 
