@@ -11,14 +11,25 @@ export const fetchProjects = async (): Promise<Project[]> => {
 
     if (error) throw error;
     
-    // Fix type conversion by adding the missing properties
-    return (data as unknown as Project[]).map(project => ({
-      ...project,
-      equity_percentage: project.equity_percentage || null,
-      hourly_rate: project.hourly_rate || null,
-      fixed_amount: project.fixed_amount || null,
+    // Transform data to match the Project type
+    return (data || []).map(project => ({
+      id: project.id,
+      title: project.title,
+      description: project.description,
+      created_by: project.created_by,
+      category: project.category,
       required_skills: project.required_skills || [],
+      start_date: project.start_date,
+      end_date: project.end_date,
+      team_size: project.team_size,
+      payment_model: project.payment_model,
+      stipend_amount: project.stipend_amount ? String(project.stipend_amount) : null,
+      equity_percentage: project.equity_percentage ? String(project.equity_percentage) : null,
+      hourly_rate: project.hourly_rate ? String(project.hourly_rate) : null,
+      fixed_amount: project.fixed_amount ? String(project.fixed_amount) : null,
       deliverables: project.deliverables || [],
+      created_at: project.created_at,
+      selected_team: project.selected_team || null,
       status: project.status || 'open'
     }));
   } catch (error) {
@@ -38,16 +49,27 @@ export const fetchProjectById = async (id: string): Promise<Project | null> => {
 
     if (error) throw error;
     
-    // Fix type conversion by adding the missing properties
+    // Transform data to match the Project type
     return {
-      ...data,
-      equity_percentage: data.equity_percentage || null,
-      hourly_rate: data.hourly_rate || null,
-      fixed_amount: data.fixed_amount || null,
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      created_by: data.created_by,
+      category: data.category,
       required_skills: data.required_skills || [],
+      start_date: data.start_date,
+      end_date: data.end_date,
+      team_size: data.team_size,
+      payment_model: data.payment_model,
+      stipend_amount: data.stipend_amount ? String(data.stipend_amount) : null,
+      equity_percentage: data.equity_percentage ? String(data.equity_percentage) : null,
+      hourly_rate: data.hourly_rate ? String(data.hourly_rate) : null,
+      fixed_amount: data.fixed_amount ? String(data.fixed_amount) : null,
       deliverables: data.deliverables || [],
+      created_at: data.created_at,
+      selected_team: data.selected_team || null,
       status: data.status || 'open'
-    } as Project;
+    };
   } catch (error) {
     console.error('Error fetching project:', error);
     return null;
@@ -68,7 +90,7 @@ export const fetchApplicationsForProject = async (projectId: string): Promise<Ap
 
     if (error) throw error;
     
-    // Fix type conversion by properly transforming team object
+    // Transform data to match the Application type
     return (data || []).map(app => ({
       id: app.id,
       project_id: app.project_id,
@@ -87,7 +109,7 @@ export const fetchApplicationsForProject = async (projectId: string): Promise<Ap
         created_at: '',
         updated_at: '',
       } : undefined
-    })) as Application[];
+    }));
   } catch (error) {
     console.error('Error fetching applications:', error);
     return [];
@@ -119,7 +141,7 @@ export const fetchApplicationsWithTeams = async (projectId?: string): Promise<Ap
 
     if (error) throw error;
     
-    // Transform data to match Application type
+    // Transform data to match the Application type
     return (data || []).map(app => ({
       id: app.id,
       project_id: app.project_id,
@@ -140,7 +162,7 @@ export const fetchApplicationsWithTeams = async (projectId?: string): Promise<Ap
         updated_at: '',
         achievements: null
       } : undefined
-    })) as Application[];
+    }));
   } catch (error) {
     console.error('Error fetching applications with teams:', error);
     return [];
@@ -160,7 +182,17 @@ export const fetchUserApplications = async (userId: string): Promise<Application
 
     if (error) throw error;
     
-    return data as unknown as Application[];
+    // Properly transform data to match the Application type
+    return (data || []).map(app => ({
+      id: app.id,
+      project_id: app.project_id,
+      user_id: app.user_id,
+      team_id: app.team_id,
+      status: app.status,
+      cover_letter: app.cover_letter,
+      created_at: app.created_at,
+      updated_at: app.updated_at
+    }));
   } catch (error) {
     console.error('Error fetching user applications:', error);
     return [];
@@ -222,7 +254,7 @@ export const fetchTeamMembers = async (teamId: string): Promise<TeamMember[]> =>
 
     if (error) throw error;
     
-    // Fix the type conversion by adding the missing 'name' property
+    // Transform data to match the TeamMember type with the name property
     return (data || []).map(member => ({
       id: member.id,
       team_id: member.team_id,
@@ -232,7 +264,7 @@ export const fetchTeamMembers = async (teamId: string): Promise<TeamMember[]> =>
       joined_at: member.joined_at,
       name: member.user?.name || '',
       user: member.user
-    })) as TeamMember[];
+    }));
   } catch (error) {
     console.error('Error fetching team members:', error);
     return [];
@@ -253,7 +285,11 @@ export const fetchUserProfile = async (userId: string): Promise<Profile | null> 
     // Fix founded type mismatch (number in DB, string in type)
     const profile = {
       ...data,
-      founded: data.founded ? String(data.founded) : null
+      // Convert founded from number to string
+      founded: data.founded ? String(data.founded) : null,
+      // Ensure project_needs is an array if it exists
+      project_needs: Array.isArray(data.project_needs) ? data.project_needs : 
+                    (data.project_needs ? [data.project_needs] : [])
     } as unknown as Profile;
     
     return profile;
@@ -276,15 +312,18 @@ export const createUserProfileIfNotExists = async (userId: string, initialData: 
     // If no profile exists, create one
     if (error && error.code === 'PGRST116') {
       // Convert founded from string to number if present
+      // And ensure project_needs is properly formatted for the database
       const dbData = {
         ...initialData,
         id: userId,
-        founded: initialData.founded ? parseInt(initialData.founded, 10) : null
+        founded: initialData.founded ? parseInt(initialData.founded, 10) : null,
+        project_needs: initialData.project_needs || []
       };
       
+      // Cast to unknown first to bypass type checking since we're doing manual conversion
       const { error: insertError } = await supabase
         .from('profiles')
-        .insert(dbData);
+        .insert(dbData as unknown as any);
       
       if (insertError) throw insertError;
     } else if (error) {
