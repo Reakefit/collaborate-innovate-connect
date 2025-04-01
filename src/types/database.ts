@@ -1,25 +1,4 @@
-
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
-
-export type ProjectCategory = 'web_development' | 'mobile_app' | 'data_science' | 'machine_learning' | 'ui_ux_design' | 'blockchain' | 'game_development' | 'other';
-
-export type ApplicationStatus = 'pending' | 'accepted' | 'rejected' | 'withdrawn';
-
-export type ProjectStatus = 'open' | 'in_progress' | 'completed' | 'cancelled' | 'draft';
-
-export type PaymentModel = 'unpaid' | 'stipend' | 'hourly' | 'fixed' | 'equity';
-
-export type MilestoneStatus = 'not_started' | 'in_progress' | 'completed' | 'pending' | 'cancelled' | 'delayed';
-
-export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked' | 'review' | 'completed';
-
-export type TeamTaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked' | 'cancelled' | 'completed';
+import { Json } from './supabase';
 
 export interface Project {
   id: string;
@@ -32,57 +11,41 @@ export interface Project {
   end_date: string;
   team_size: number;
   payment_model: PaymentModel;
+  stipend_amount: number | null;
   equity_percentage: number | null;
   hourly_rate: number | null;
   fixed_amount: number | null;
-  stipend_amount: number | null;
   deliverables: string[];
-  status: ProjectStatus;
-  selected_team: string | null;
   created_at: string;
+  selected_team: string | null;
+  status: ProjectStatus;
   milestones?: ProjectMilestone[];
 }
 
-export interface Education {
-  school: string;
-  degree: string;
-  field: string;
-  start_date: string;
-  end_date: string;
-  current: boolean;
-}
+export type ProjectCategory =
+  | "web_development"
+  | "mobile_development"
+  | "data_science"
+  | "machine_learning"
+  | "ui_ux_design"
+  | "devops"
+  | "cybersecurity"
+  | "blockchain"
+  | "market_research"
+  | "other";
 
-export interface Profile {
-  id: string;
-  name: string;
-  role: "student" | "startup" | "college_admin" | "platform_admin";
-  avatar_url: string | null;
-  bio: string | null;
-  company_name: string | null;
-  company_description: string | null;
-  industry: string | null;
-  company_size: string | null;
-  founded: string | null;
-  website: string | null;
-  stage: string | null;
-  project_needs: string[] | null;
-  skills: string[] | null;
-  education: Json | null;  // Change this to Json type to match Supabase expectations
-  portfolio_url: string | null;
-  resume_url: string | null;
-  github_url: string | null;
-  linkedin_url: string | null;
-  availability: string | null;
-  interests: string[] | null;
-  experience_level: string | null;
-  preferred_categories: string[] | null;
-  college: string | null;
-  graduation_year: string | null;
-  major: string | null;
-  created_at: string;
-  updated_at: string;
-  email?: string;
-}
+export type ProjectStatus =
+  | "open"
+  | "in_progress"
+  | "completed"
+  | "closed";
+
+export type PaymentModel =
+  | "unpaid"
+  | "stipend"
+  | "hourly"
+  | "fixed"
+  | "equity";
 
 export interface Application {
   id: string;
@@ -93,8 +56,13 @@ export interface Application {
   cover_letter: string;
   created_at: string;
   updated_at: string;
-  team?: Team; // Team details when joined in a query
+  team?: Team;
 }
+
+export type ApplicationStatus =
+  | "pending"
+  | "accepted"
+  | "rejected";
 
 export interface Team {
   id: string;
@@ -103,7 +71,7 @@ export interface Team {
   lead_id: string;
   skills: string[];
   portfolio_url: string | null;
-  achievements: any | null;
+  achievements: string | null;
   created_at: string;
   updated_at: string;
   members?: TeamMember[];
@@ -111,10 +79,10 @@ export interface Team {
 
 export interface TeamMember {
   id: string;
-  team_id: string;
   user_id: string;
-  role: string;
-  status: string;
+  team_id: string;
+  role: "lead" | "member";
+  status: "active" | "inactive";
   joined_at: string;
   name?: string;
 }
@@ -132,28 +100,82 @@ export interface TeamTask {
   updated_at: string;
 }
 
+export type TeamTaskStatus =
+  | "todo"
+  | "in_progress"
+  | "completed"
+  | "blocked";
+
 export interface ProjectMilestone {
   id: string;
   project_id: string;
   title: string;
   description: string | null;
-  due_date: string | null;
+  due_date: string;
   status: MilestoneStatus;
   tasks?: ProjectTask[];
-  created_at: string;
-  updated_at: string;
 }
+
+export type MilestoneStatus =
+  | "not_started"
+  | "in_progress"
+  | "completed"
+  | "blocked";
 
 export interface ProjectTask {
   id: string;
   project_id: string;
-  milestone_id: string | null;
+  milestone_id: string;
   title: string;
   description: string | null;
   status: TaskStatus;
   assigned_to: string | null;
+  created_by: string;
   due_date: string | null;
-  created_by: string | null;
+}
+
+export type TaskStatus =
+  | "todo"
+  | "in_progress"
+  | "completed"
+  | "blocked";
+
+export interface Education {
+  school: string;
+  degree: string;
+  field: string;
+  start_year: string;
+  end_year?: string;
+  current?: boolean;
+}
+
+export interface Profile {
+  id: string;
+  name: string;
+  role: "student" | "startup";
+  avatar_url: string;
+  bio: string;
+  company_name: string;
+  company_description: string;
+  industry: string;
+  company_size: string;
+  founded: string;
+  website: string;
+  stage: string;
+  project_needs: string[];
+  skills: string[];
+  education: Json; // Changed from Education[] to Json to match database
+  portfolio_url: string;
+  resume_url: string;
+  github_url: string;
+  linkedin_url: string;
+  availability: string;
+  interests: string[];
+  experience_level: string;
+  preferred_categories: string[];
+  college: string;
+  graduation_year: string;
+  major: string;
   created_at: string;
   updated_at: string;
 }
@@ -161,10 +183,11 @@ export interface ProjectTask {
 export interface ProjectMessage {
   id: string;
   project_id: string;
-  content: string;
   sender_id: string;
+  content: string;
   created_at: string;
   sender?: {
     name: string;
+    avatar_url: string;
   };
 }

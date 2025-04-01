@@ -1,9 +1,9 @@
-
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Profile, Education } from '@/types/database';
+import { Json } from '@/types/supabase';
 
 type Provider = "google" | "github" | "linkedin_oidc";
 
@@ -208,6 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (typeof data.education === 'string') {
               educationData = JSON.parse(data.education);
             } else {
+              // Cast the education data to the expected type
               educationData = data.education as unknown as Education[];
             }
           } catch (e) {
@@ -239,7 +240,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           stage: data.stage || '',
           project_needs: project_needs,
           skills: skills,
-          education: educationData,
+          education: educationData as unknown as Json, // Cast to Json to satisfy TypeScript
           portfolio_url: data.portfolio_url || '',
           resume_url: data.resume_url || '',
           github_url: data.github_url || '',
