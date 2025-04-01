@@ -83,7 +83,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  // First, implement the missing methods that other methods might use
   const addTask = useCallback(async (projectId: string, milestoneId: string, taskData: any): Promise<boolean> => {
     try {
       setLoading(true);
@@ -175,7 +174,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   }, []);
 
-  // Define joinTeam before it's used in createTeam
   const joinTeam = useCallback(async (teamId: string): Promise<boolean> => {
     try {
       setLoading(true);
@@ -196,7 +194,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Update the team in the state with proper typing
       setTeams(prevTeams =>
         prevTeams.map(team =>
           team.id === teamId
@@ -205,13 +202,13 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
                 members: [
                   ...(team.members || []), 
                   { 
-                    id: '', // Temporary ID that will be replaced when refetching
+                    id: '', 
                     user_id: user.id, 
                     team_id: teamId,
                     role: 'member', 
                     status: 'active',
                     joined_at: new Date().toISOString(),
-                    name: '' // Temporary name that will be replaced when refetching
+                    name: '' 
                   } as TeamMember
                 ] 
               }
@@ -242,7 +239,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Make sure to properly format the project data to match the Project type
       const formattedProjects: Project[] = data.map(project => ({
         id: project.id,
         title: project.title,
@@ -290,7 +286,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Format the project data to match the Project type
       const formattedProject: Project = {
         id: data.id,
         title: data.title,
@@ -303,7 +298,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         team_size: data.team_size,
         payment_model: (data.payment_model || 'unpaid') as PaymentModel,
         stipend_amount: data.stipend_amount ? String(data.stipend_amount) : null,
-        // Add type assertions for the properties that TypeScript can't see
         equity_percentage: (data as any).equity_percentage ? String((data as any).equity_percentage || '0') : null,
         hourly_rate: (data as any).hourly_rate ? String((data as any).hourly_rate || '0') : null,
         fixed_amount: (data as any).fixed_amount ? String((data as any).fixed_amount || '0') : null,
@@ -335,7 +329,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       setLoading(true);
       setError(null);
       
-      // Make sure the user is authenticated
       if (!user) {
         throw new Error('You must be logged in to create a project');
       }
@@ -364,7 +357,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Format the created project to match the Project type
       const newProject: Project = {
         id: data.id,
         title: data.title,
@@ -386,7 +378,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         status: (data.status || 'open') as ProjectStatus
       };
       
-      // Add the new project to the state
       setProjects(prevProjects => [...prevProjects, newProject]);
       
       return newProject;
@@ -425,7 +416,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Update the project in the state
       setProjects(prevProjects =>
         prevProjects.map(project => (project.id === id ? { ...project, ...projectData } : project))
       );
@@ -452,7 +442,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Remove the project from the state
       setProjects(prevProjects => prevProjects.filter(project => project.id !== id));
       
       return true;
@@ -482,7 +471,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
 
       if (error) throw error;
 
-      // Update the project status in the state
       setProjects(prevProjects =>
         prevProjects.map(project => (project.id === id ? { ...project, status: status as ProjectStatus } : project))
       );
@@ -520,7 +508,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Add the new application to the state
       const newApplication: Application = {
         id: data.id,
         project_id: data.project_id,
@@ -570,10 +557,8 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Add the team lead as a member
       await joinTeam(data.id);
       
-      // Format the created team to match the Team type
       const newTeam: Team = {
         id: data.id,
         name: data.name,
@@ -587,7 +572,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         members: []
       };
       
-      // Add the new team to the state
       setTeams(prevTeams => [...prevTeams, newTeam]);
       
       toast.success('Team created successfully!');
@@ -620,7 +604,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Update the team in the state
       setTeams(prevTeams =>
         prevTeams.map(team => (team.id === id ? { ...team, ...teamData } : team))
       );
@@ -649,7 +632,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Remove the team from the state
       setTeams(prevTeams => prevTeams.filter(team => team.id !== id));
       
       toast.success('Team deleted successfully!');
@@ -681,7 +663,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Update the team in the state
       setTeams(prevTeams =>
         prevTeams.map(team =>
           team.id === teamId
@@ -715,7 +696,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Format the team data to match the Team type
       const formattedTeam: Team = {
         id: data.id,
         name: data.name,
@@ -750,7 +730,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Format the team data to match the Team type
       const formattedTeams: Team[] = data.map(team => ({
         id: team.id,
         name: team.name,
@@ -842,12 +821,11 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Format the team task data to match the TeamTask type
       const formattedTeamTasks: TeamTask[] = data.map(task => ({
         id: task.id,
         team_id: task.team_id,
         title: task.title,
-        description: task.description || '',
+        description: task.description,
         status: task.status as TeamTaskStatus,
         due_date: task.due_date || null,
         assigned_to: task.assigned_to || null,
@@ -891,7 +869,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Format the created team task to match the TeamTask type
       const newTeamTask: TeamTask = {
         id: data.id,
         team_id: data.team_id,
@@ -944,4 +921,119 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   }, []);
 
-  const deleteTeamTask = useCallback(async (teamId
+  const deleteTeamTask = useCallback(async (teamId: string, taskId: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { error } = await supabase
+        .from('team_tasks')
+        .delete()
+        .eq('id', taskId)
+        .eq('team_id', teamId);
+      
+      if (error) throw error;
+      
+      toast.success('Task deleted successfully!');
+      return true;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error deleting team task:', error);
+      toast.error('Failed to delete task.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchApplications = useCallback(async (projectId: string): Promise<Application[]> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const applications = await fetchApplicationsWithTeams(projectId);
+      setApplications(applications);
+      
+      return applications;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error fetching applications:', error);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const updateApplicationStatus = useCallback(async (applicationId: string, status: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { error } = await supabase
+        .from('applications')
+        .update({ status })
+        .eq('id', applicationId);
+      
+      if (error) throw error;
+      
+      setApplications(prevApplications =>
+        prevApplications.map(app => 
+          app.id === applicationId 
+            ? { ...app, status: status as ApplicationStatus } 
+            : app
+        )
+      );
+      
+      toast.success('Application status updated successfully!');
+      return true;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error updating application status:', error);
+      toast.error('Failed to update application status.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return (
+    <ProjectContext.Provider
+      value={{
+        projects,
+        applications,
+        teams,
+        loading,
+        error,
+        fetchProject,
+        fetchProjects,
+        createProject,
+        updateProject,
+        deleteProject,
+        getUserProjects,
+        updateProjectStatus,
+        applyToProject,
+        createTeam,
+        updateTeam,
+        deleteTeam,
+        joinTeam,
+        leaveTeam,
+        fetchTeam,
+        fetchTeams,
+        fetchUserTeams,
+        fetchTeamTasks,
+        createTeamTask,
+        updateTeamTask,
+        deleteTeamTask,
+        fetchApplications,
+        updateApplicationStatus,
+        addTask,
+        updateTaskStatus,
+        addMilestone
+      }}
+    >
+      {children}
+    </ProjectContext.Provider>
+  );
+};
+
+export const useProject = () => useContext(ProjectContext);
