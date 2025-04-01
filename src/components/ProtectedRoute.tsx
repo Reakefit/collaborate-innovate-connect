@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useAuthorization, Permission } from '@/context/AuthorizationContext';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { createUserProfileIfNotExists } from '@/services/database';
+import { supabase } from '@/lib/supabase';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -38,27 +38,35 @@ export default function ProtectedRoute({
     // If user exists but profile doesn't exist in the database,
     // attempt to create it to prevent routing issues
     if (user && !authLoading && !profile) {
-      const userData = {
-        role: user.user_metadata?.role || 'student',
-        name: user.user_metadata?.name || '',
-        email: user.email
+      const createUserProfile = async () => {
+        try {
+          // Check if profile exists
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', user.id)
+            .single();
+          
+          if (error && error.code === 'PGRST116') {
+            // Profile doesn't exist, create it
+            const userData = {
+              id: user.id,
+              role: user.user_metadata?.role || 'student',
+              name: user.user_metadata?.name || '',
+              email: user.email
+            };
+            
+            await supabase.from('profiles').insert(userData);
+            console.log("Created user profile for", user.id);
+          }
+        } catch (error) {
+          console.error("Error creating user profile:", error);
+        }
       };
-      createUserProfileIfNotExists(user.id, userData);
+      
+      createUserProfile();
     }
   }, [user, profile, authLoading, userRole, isVerified, location.pathname, authzLoading]);
-
-  // Handle profile completion checks
-  const needsProfileCompletion = () => {
-    if (!profile || !profile.name) return true;
-    
-    const isStartup = profile.role === 'startup';
-    
-    if (isStartup) {
-      return !profile.company_name || !profile.company_description;
-    }
-    
-    return !profile.skills || profile.skills.length === 0 || !profile.college;
-  };
 
   // Show loading state while checking auth/authz
   if (authLoading || authzLoading) {
@@ -83,6 +91,26 @@ export default function ProtectedRoute({
 
   // Check if on complete-profile page
   const isOnCompleteProfilePage = location.pathname === '/complete-profile';
+  
+  // Only redirect to complete profile if basic required fields are missing
+  const needsProfileCompletion = () => {
+    if (!profile) return true;
+    
+    // If profile exists but has no name, profile completion is needed
+    if (!profile.name || profile.name.trim() === '') return true;
+    
+    // For startup, also check company name
+    if (profile.role === 'startup' && (!profile.company_name || profile.company_name.trim() === '')) {
+      return true;
+    }
+    
+    // For student, also check college
+    if (profile.role === 'student' && (!profile.college || profile.college.trim() === '')) {
+      return true;
+    }
+    
+    return false;
+  };
   
   // Check if profile needs completion and not already on complete-profile page
   if (needsProfileCompletion() && !isOnCompleteProfilePage) {

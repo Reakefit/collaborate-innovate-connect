@@ -948,4 +948,4 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       toast.success('Task deleted successfully!');
       return true;
-    } catch (error: any) {
+    } catch (error: any

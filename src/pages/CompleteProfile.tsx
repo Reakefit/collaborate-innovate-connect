@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -10,53 +11,136 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
+  CardFooter,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
+import { CheckIcon, Loader2 } from 'lucide-react';
 import { Profile } from '@/types/database';
-import { Loader2 } from 'lucide-react';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 // Define UserRole type to match with what's expected
 type UserRole = 'student' | 'startup' | 'college_admin' | 'platform_admin';
 
+// Skill options
+const skillOptions = [
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'react', label: 'React' },
+  { value: 'node_js', label: 'Node.js' },
+  { value: 'python', label: 'Python' },
+  { value: 'java', label: 'Java' },
+  { value: 'product_management', label: 'Product Management' },
+  { value: 'ui_design', label: 'UI Design' },
+  { value: 'market_research', label: 'Market Research' },
+  { value: 'data_science', label: 'Data Science' },
+  { value: 'machine_learning', label: 'Machine Learning' },
+  { value: 'blockchain', label: 'Blockchain' },
+  { value: 'mobile_development', label: 'Mobile Development' },
+  { value: 'devops', label: 'DevOps' },
+  { value: 'cybersecurity', label: 'Cybersecurity' },
+  { value: 'project_management', label: 'Project Management' },
+];
+
+// Interest options
+const interestOptions = [
+  { value: 'web_development', label: 'Web Development' },
+  { value: 'mobile_apps', label: 'Mobile Apps' },
+  { value: 'ai', label: 'Artificial Intelligence' },
+  { value: 'data_science', label: 'Data Science' },
+  { value: 'blockchain', label: 'Blockchain' },
+  { value: 'cybersecurity', label: 'Cybersecurity' },
+  { value: 'iot', label: 'Internet of Things' },
+  { value: 'ar_vr', label: 'AR/VR' },
+  { value: 'saas', label: 'SaaS' },
+  { value: 'fintech', label: 'FinTech' },
+  { value: 'healthtech', label: 'HealthTech' },
+  { value: 'edtech', label: 'EdTech' },
+  { value: 'ecommerce', label: 'E-Commerce' },
+  { value: 'sustainability', label: 'Sustainability' },
+];
+
+// Project needs options for startups
+const projectNeedsOptions = [
+  { value: 'market_research', label: 'Market Research' },
+  { value: 'mvp_development', label: 'MVP Development' },
+  { value: 'ui_ux_design', label: 'UI/UX Design' },
+  { value: 'mobile_app', label: 'Mobile App Development' },
+  { value: 'web_platform', label: 'Web Platform Development' },
+  { value: 'data_analytics', label: 'Data Analytics' },
+  { value: 'marketing_strategy', label: 'Marketing Strategy' },
+  { value: 'gtm_strategy', label: 'Go-to-Market Strategy' },
+  { value: 'branding', label: 'Branding & Identity' },
+  { value: 'social_media', label: 'Social Media Strategy' },
+  { value: 'content_creation', label: 'Content Creation' },
+  { value: 'seo_optimization', label: 'SEO Optimization' },
+  { value: 'prototype_testing', label: 'Prototype Testing' },
+  { value: 'business_plan', label: 'Business Plan Development' },
+];
+
 const CompleteProfile = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { userRole } = useAuthorization();
   const navigate = useNavigate();
-  const [profileData, setProfileData] = useState<Partial<Profile>>({
-    role: userRole as UserRole || 'student'
-  });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (userRole) {
-      setProfileData(prev => ({ ...prev, role: userRole as UserRole }));
+  
+  // Create form with react-hook-form
+  const form = useForm({
+    defaultValues: {
+      role: userRole as UserRole || 'student',
+      name: profile?.name || '',
+      company_name: profile?.company_name || '',
+      company_description: profile?.company_description || '',
+      industry: profile?.industry || '',
+      company_size: profile?.company_size || '',
+      founded: profile?.founded || '',
+      website: profile?.website || '',
+      stage: profile?.stage || '',
+      college: profile?.college || '',
+      major: profile?.major || '',
+      graduation_year: profile?.graduation_year || '',
+      skills: profile?.skills || [],
+      interests: profile?.interests || [],
+      project_needs: profile?.project_needs || [],
     }
-  }, [userRole]);
+  });
 
-  // Handle input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setProfileData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setProfileData(prev => ({ ...prev, [name]: value }));
-  };
+  // Update form when profile or userRole changes
+  useEffect(() => {
+    if (profile) {
+      form.reset({
+        role: userRole as UserRole || profile.role,
+        name: profile.name || '',
+        company_name: profile.company_name || '',
+        company_description: profile.company_description || '',
+        industry: profile.industry || '',
+        company_size: profile.company_size || '',
+        founded: profile.founded || '',
+        website: profile.website || '',
+        stage: profile.stage || '',
+        college: profile.college || '',
+        major: profile.major || '',
+        graduation_year: profile.graduation_year || '',
+        skills: profile.skills || [],
+        interests: profile.interests || [],
+        project_needs: profile.project_needs || [],
+      });
+    }
+  }, [profile, userRole]);
 
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Submitting form with profileData:', profileData);
+  const onSubmit = async (data) => {
+    console.log('Submitting form with data:', data);
     setIsSubmitting(true);
 
     try {
@@ -66,38 +150,15 @@ const CompleteProfile = () => {
         return;
       }
 
-      // Make sure profileData includes id and role
+      // Make sure profile data includes id
       const completeProfileData = {
-        ...profileData,
+        ...data,
         id: user.id,
-        role: userRole as UserRole || 'student'
       };
-
-      // Ensure array fields are arrays
-      if (completeProfileData.skills && typeof completeProfileData.skills === 'string') {
-        completeProfileData.skills = (completeProfileData.skills as string).split(',').map(skill => skill.trim());
-      }
-      
-      if (completeProfileData.interests && typeof completeProfileData.interests === 'string') {
-        completeProfileData.interests = (completeProfileData.interests as string).split(',').map(interest => interest.trim());
-      }
-      
-      if (completeProfileData.preferred_categories && typeof completeProfileData.preferred_categories === 'string') {
-        completeProfileData.preferred_categories = (completeProfileData.preferred_categories as string).split(',').map(cat => cat.trim());
-      }
-      
-      if (completeProfileData.project_needs && typeof completeProfileData.project_needs === 'string') {
-        completeProfileData.project_needs = (completeProfileData.project_needs as string).split(',').map(need => need.trim());
-      }
-
-      // Convert education data to JSON if present
-      if (completeProfileData.education && Array.isArray(completeProfileData.education)) {
-        completeProfileData.education = JSON.stringify(completeProfileData.education);
-      }
 
       console.log('Prepared profile data for submission:', completeProfileData);
 
-      // Update profile in Supabase - pass the single object, not as an array
+      // Update profile in Supabase
       const { error } = await supabase
         .from('profiles')
         .upsert(completeProfileData);
@@ -110,7 +171,7 @@ const CompleteProfile = () => {
       // Success - redirect to dashboard
       toast.success('Profile completed successfully!');
       navigate('/dashboard');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error completing profile:', error);
       toast.error(`Failed to complete profile: ${error.message}`);
     } finally {
@@ -119,191 +180,301 @@ const CompleteProfile = () => {
   };
 
   return (
-    <div className="container mx-auto py-10">
+    <div className="container mx-auto py-10 px-4">
       <Card className="max-w-3xl mx-auto">
-        <CardHeader>
-          <CardTitle className="text-2xl">Complete Your Profile</CardTitle>
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold">Complete Your Profile</CardTitle>
           <CardDescription>
             Tell us a bit about yourself to get started.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Common Fields */}
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input
-                type="text"
-                id="name"
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="space-y-6">
+              {/* Common Fields - Name */}
+              <FormField
+                control={form.control}
                 name="name"
-                value={profileData.name || ''}
-                onChange={handleChange}
-                required
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter your full name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            
-            {/* Role Specific Fields */}
-            {profileData.role === 'student' && (
-              <>
-                <div>
-                  <Label htmlFor="college">College</Label>
-                  <Input
-                    type="text"
-                    id="college"
+              
+              {/* Role-specific fields */}
+              {form.watch('role') === 'student' && (
+                <div className="space-y-6">
+                  <FormField
+                    control={form.control}
                     name="college"
-                    value={profileData.college || ''}
-                    onChange={handleChange}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>College/University</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter your college or university" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div>
-                  <Label htmlFor="major">Major</Label>
-                  <Input
-                    type="text"
-                    id="major"
+                  
+                  <FormField
+                    control={form.control}
                     name="major"
-                    value={profileData.major || ''}
-                    onChange={handleChange}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Major/Field of Study</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="E.g., Computer Science, Business" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div>
-                  <Label htmlFor="graduation_year">Graduation Year</Label>
-                  <Input
-                    type="text"
-                    id="graduation_year"
+                  
+                  <FormField
+                    control={form.control}
                     name="graduation_year"
-                    value={profileData.graduation_year || ''}
-                    onChange={handleChange}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Graduation Year</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="E.g., 2025" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div>
-                  <Label htmlFor="skills">Skills (comma-separated)</Label>
-                  <Input
-                    type="text"
-                    id="skills"
+                  
+                  <FormField
+                    control={form.control}
                     name="skills"
-                    value={profileData.skills || ''}
-                    onChange={handleChange}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Skills</FormLabel>
+                        <FormControl>
+                          <MultiSelect
+                            options={skillOptions}
+                            placeholder="Select your skills"
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div>
-                  <Label htmlFor="interests">Interests (comma-separated)</Label>
-                  <Input
-                    type="text"
-                    id="interests"
+                  
+                  <FormField
+                    control={form.control}
                     name="interests"
-                    value={profileData.interests || ''}
-                    onChange={handleChange}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Interests</FormLabel>
+                        <FormControl>
+                          <MultiSelect
+                            options={interestOptions}
+                            placeholder="Select your interests"
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-              </>
-            )}
-
-            {profileData.role === 'startup' && (
-              <>
-                <div>
-                  <Label htmlFor="company_name">Company Name</Label>
-                  <Input
-                    type="text"
-                    id="company_name"
-                    name="company_name"
-                    value={profileData.company_name || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="company_description">Company Description</Label>
-                  <Textarea
-                    id="company_description"
-                    name="company_description"
-                    value={profileData.company_description || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="industry">Industry</Label>
-                  <Input
-                    type="text"
-                    id="industry"
-                    name="industry"
-                    value={profileData.industry || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="company_size">Company Size</Label>
-                  <Input
-                    type="text"
-                    id="company_size"
-                    name="company_size"
-                    value={profileData.company_size || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="founded">Founded Year</Label>
-                  <Input
-                    type="text"
-                    id="founded"
-                    name="founded"
-                    value={profileData.founded || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    type="url"
-                    id="website"
-                    name="website"
-                    value={profileData.website || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="stage">Stage</Label>
-                  <Input
-                    type="text"
-                    id="stage"
-                    name="stage"
-                    value={profileData.stage || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="project_needs">Project Needs (comma-separated)</Label>
-                  <Input
-                    type="text"
-                    id="project_needs"
-                    name="project_needs"
-                    value={profileData.project_needs || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="skills">Skills (comma-separated)</Label>
-                  <Input
-                    type="text"
-                    id="skills"
-                    name="skills"
-                    value={profileData.skills || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-              </>
-            )}
-
-            <Button disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Please wait...
-                </>
-              ) : (
-                'Complete Profile'
               )}
-            </Button>
+
+              {form.watch('role') === 'startup' && (
+                <div className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="company_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Company Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter your company name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="company_description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Company Description</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} placeholder="Briefly describe your company" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="industry"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Industry</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="E.g., FinTech, Healthcare, EdTech" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="company_size"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Size</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select company size" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="1-5">1-5 employees</SelectItem>
+                              <SelectItem value="6-20">6-20 employees</SelectItem>
+                              <SelectItem value="21-50">21-50 employees</SelectItem>
+                              <SelectItem value="51-100">51-100 employees</SelectItem>
+                              <SelectItem value="100+">100+ employees</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="founded"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Founded Year</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="E.g., 2022" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="website"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Website</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="https://example.com" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="stage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Stage</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select company stage" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="idea">Idea Stage</SelectItem>
+                            <SelectItem value="mvp">MVP</SelectItem>
+                            <SelectItem value="pre_seed">Pre-Seed</SelectItem>
+                            <SelectItem value="seed">Seed</SelectItem>
+                            <SelectItem value="series_a">Series A</SelectItem>
+                            <SelectItem value="series_b">Series B+</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="project_needs"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Project Needs</FormLabel>
+                        <FormControl>
+                          <MultiSelect
+                            options={projectNeedsOptions}
+                            placeholder="Select project needs"
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="skills"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Skills Looking For</FormLabel>
+                        <FormControl>
+                          <MultiSelect
+                            options={skillOptions}
+                            placeholder="Select skills you're looking for"
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+            </CardContent>
+            
+            <CardFooter>
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Please wait...
+                  </>
+                ) : (
+                  <>
+                    <CheckIcon className="mr-2 h-4 w-4" />
+                    Complete Profile
+                  </>
+                )}
+              </Button>
+            </CardFooter>
           </form>
-        </CardContent>
+        </Form>
       </Card>
     </div>
   );
