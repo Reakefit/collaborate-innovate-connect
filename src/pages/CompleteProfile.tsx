@@ -25,18 +25,21 @@ import {
 import { Profile } from '@/types/database';
 import { Loader2 } from 'lucide-react';
 
+// Define UserRole type to match with what's expected
+type UserRole = 'student' | 'startup' | 'college_admin' | 'platform_admin';
+
 const CompleteProfile = () => {
   const { user } = useAuth();
   const { userRole } = useAuthorization();
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState<Partial<Profile>>({
-    role: userRole || 'student'
+    role: userRole as UserRole || 'student'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (userRole) {
-      setProfileData(prev => ({ ...prev, role: userRole }));
+      setProfileData(prev => ({ ...prev, role: userRole as UserRole }));
     }
   }, [userRole]);
 
@@ -67,32 +70,37 @@ const CompleteProfile = () => {
       const completeProfileData = {
         ...profileData,
         id: user.id,
-        role: userRole || 'student'
+        role: userRole as UserRole || 'student'
       };
 
       // Ensure array fields are arrays
-      if (completeProfileData.skills && !Array.isArray(completeProfileData.skills)) {
-        completeProfileData.skills = (completeProfileData.skills as string).split(',').map((skill: string) => skill.trim());
+      if (completeProfileData.skills && typeof completeProfileData.skills === 'string') {
+        completeProfileData.skills = (completeProfileData.skills as string).split(',').map(skill => skill.trim());
       }
       
-      if (completeProfileData.interests && !Array.isArray(completeProfileData.interests)) {
-        completeProfileData.interests = (completeProfileData.interests as string).split(',').map((interest: string) => interest.trim());
+      if (completeProfileData.interests && typeof completeProfileData.interests === 'string') {
+        completeProfileData.interests = (completeProfileData.interests as string).split(',').map(interest => interest.trim());
       }
       
-      if (completeProfileData.preferred_categories && !Array.isArray(completeProfileData.preferred_categories)) {
-        completeProfileData.preferred_categories = (completeProfileData.preferred_categories as string).split(',').map((cat: string) => cat.trim());
+      if (completeProfileData.preferred_categories && typeof completeProfileData.preferred_categories === 'string') {
+        completeProfileData.preferred_categories = (completeProfileData.preferred_categories as string).split(',').map(cat => cat.trim());
       }
       
-      if (completeProfileData.project_needs && !Array.isArray(completeProfileData.project_needs)) {
-        completeProfileData.project_needs = (completeProfileData.project_needs as string).split(',').map((need: string) => need.trim());
+      if (completeProfileData.project_needs && typeof completeProfileData.project_needs === 'string') {
+        completeProfileData.project_needs = (completeProfileData.project_needs as string).split(',').map(need => need.trim());
+      }
+
+      // Convert education data to JSON if present
+      if (completeProfileData.education && Array.isArray(completeProfileData.education)) {
+        completeProfileData.education = JSON.stringify(completeProfileData.education);
       }
 
       console.log('Prepared profile data for submission:', completeProfileData);
 
-      // Update profile in Supabase
+      // Update profile in Supabase - pass the single object, not as an array
       const { error } = await supabase
         .from('profiles')
-        .upsert([completeProfileData]);
+        .upsert(completeProfileData);
 
       if (error) {
         console.error('Error updating profile:', error);

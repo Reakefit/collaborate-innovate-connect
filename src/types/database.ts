@@ -67,7 +67,7 @@ export interface Profile {
   stage: string | null;
   project_needs: string[] | null;
   skills: string[] | null;
-  education: Education[] | null;
+  education: Json | null;  // Change this to Json type to match Supabase expectations
   portfolio_url: string | null;
   resume_url: string | null;
   github_url: string | null;

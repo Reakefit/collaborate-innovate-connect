@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
@@ -289,28 +288,31 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
-      // Fix type conversions for Project data with milestones and tasks
+      // Use type assertion to handle optional fields
+      const projectData = data as any;
+      
+      // Format the project data to match the Project type
       const formattedProject: Project = {
-        id: data.id,
-        title: data.title,
-        description: data.description,
-        created_by: data.created_by,
-        category: (data.category || 'other') as ProjectCategory,
-        required_skills: data.required_skills || [],
-        start_date: data.start_date,
-        end_date: data.end_date,
-        team_size: data.team_size,
-        payment_model: (data.payment_model || 'unpaid') as PaymentModel,
-        stipend_amount: data.stipend_amount ? Number(data.stipend_amount) : null,
-        // Fix numeric type conversions
-        equity_percentage: data.equity_percentage !== undefined ? Number(data.equity_percentage) : null,
-        hourly_rate: data.hourly_rate !== undefined ? Number(data.hourly_rate) : null,
-        fixed_amount: data.fixed_amount !== undefined ? Number(data.fixed_amount) : null,
-        deliverables: data.deliverables || [],
-        created_at: data.created_at,
-        selected_team: data.selected_team || null,
-        status: (data.status || 'open') as ProjectStatus,
-        milestones: Array.isArray(data.milestones) ? data.milestones.map((milestone: any) => ({
+        id: projectData.id,
+        title: projectData.title,
+        description: projectData.description,
+        created_by: projectData.created_by,
+        category: (projectData.category || 'other') as ProjectCategory,
+        required_skills: projectData.required_skills || [],
+        start_date: projectData.start_date,
+        end_date: projectData.end_date,
+        team_size: projectData.team_size,
+        payment_model: (projectData.payment_model || 'unpaid') as PaymentModel,
+        stipend_amount: projectData.stipend_amount ? Number(projectData.stipend_amount) : null,
+        // Handle optional fields properly
+        equity_percentage: projectData.equity_percentage !== undefined ? Number(projectData.equity_percentage) : null,
+        hourly_rate: projectData.hourly_rate !== undefined ? Number(projectData.hourly_rate) : null,
+        fixed_amount: projectData.fixed_amount !== undefined ? Number(projectData.fixed_amount) : null,
+        deliverables: projectData.deliverables || [],
+        created_at: projectData.created_at,
+        selected_team: projectData.selected_team || null,
+        status: (projectData.status || 'open') as ProjectStatus,
+        milestones: Array.isArray(projectData.milestones) ? projectData.milestones.map((milestone: any) => ({
           ...milestone,
           status: (milestone.status || 'not_started') as MilestoneStatus,
           tasks: Array.isArray(milestone.tasks) ? milestone.tasks.map((task: any) => ({
@@ -329,7 +331,6 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   }, []);
 
-  // Fix the remaining methods...
   const createProject = useCallback(async (projectData: any): Promise<Project | null> => {
     try {
       setLoading(true);
@@ -363,27 +364,32 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       
       if (error) throw error;
       
+      // Cast for optional fields
+      const newProjectData = data as any;
+      
+      // Format the created project to match the Project type
       const newProject: Project = {
-        id: data.id,
-        title: data.title,
-        description: data.description,
-        created_by: data.created_by,
-        category: (data.category || 'other') as ProjectCategory,
-        required_skills: data.required_skills || [],
-        start_date: data.start_date,
-        end_date: data.end_date,
-        team_size: data.team_size,
-        payment_model: (data.payment_model || 'unpaid') as PaymentModel,
-        stipend_amount: data.stipend_amount ? Number(data.stipend_amount) : null,
-        equity_percentage: data.equity_percentage ? Number(data.equity_percentage) : null,
-        hourly_rate: data.hourly_rate ? Number(data.hourly_rate) : null,
-        fixed_amount: data.fixed_amount ? Number(data.fixed_amount) : null,
-        deliverables: data.deliverables || [],
-        created_at: data.created_at,
-        selected_team: data.selected_team || null,
-        status: (data.status || 'open') as ProjectStatus
+        id: newProjectData.id,
+        title: newProjectData.title,
+        description: newProjectData.description,
+        created_by: newProjectData.created_by,
+        category: (newProjectData.category || 'other') as ProjectCategory,
+        required_skills: newProjectData.required_skills || [],
+        start_date: newProjectData.start_date,
+        end_date: newProjectData.end_date,
+        team_size: newProjectData.team_size,
+        payment_model: (newProjectData.payment_model || 'unpaid') as PaymentModel,
+        stipend_amount: newProjectData.stipend_amount ? Number(newProjectData.stipend_amount) : null,
+        equity_percentage: newProjectData.equity_percentage !== undefined ? Number(newProjectData.equity_percentage) : null,
+        hourly_rate: newProjectData.hourly_rate !== undefined ? Number(newProjectData.hourly_rate) : null,
+        fixed_amount: newProjectData.fixed_amount !== undefined ? Number(newProjectData.fixed_amount) : null,
+        deliverables: newProjectData.deliverables || [],
+        created_at: newProjectData.created_at,
+        selected_team: newProjectData.selected_team || null,
+        status: (newProjectData.status || 'open') as ProjectStatus
       };
       
+      // Add the new project to the state
       setProjects(prevProjects => [...prevProjects, newProject]);
       
       return newProject;
@@ -943,103 +949,3 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       toast.success('Task deleted successfully!');
       return true;
     } catch (error: any) {
-      setError(error.message);
-      console.error('Error deleting team task:', error);
-      toast.error('Failed to delete task.');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchApplications = useCallback(async (projectId: string): Promise<Application[]> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const applications = await fetchApplicationsWithTeams(projectId);
-      setApplications(applications);
-      
-      return applications;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error fetching applications:', error);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateApplicationStatus = useCallback(async (applicationId: string, status: string): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { error } = await supabase
-        .from('applications')
-        .update({ status })
-        .eq('id', applicationId);
-      
-      if (error) throw error;
-      
-      setApplications(prevApplications =>
-        prevApplications.map(app => 
-          app.id === applicationId 
-            ? { ...app, status: status as ApplicationStatus } 
-            : app
-        )
-      );
-      
-      toast.success('Application status updated successfully!');
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error updating application status:', error);
-      toast.error('Failed to update application status.');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  return (
-    <ProjectContext.Provider
-      value={{
-        projects,
-        applications,
-        teams,
-        loading,
-        error,
-        fetchProject,
-        fetchProjects,
-        createProject,
-        updateProject,
-        deleteProject,
-        getUserProjects,
-        updateProjectStatus,
-        applyToProject,
-        createTeam,
-        updateTeam,
-        deleteTeam,
-        joinTeam,
-        leaveTeam,
-        fetchTeam,
-        fetchTeams,
-        fetchUserTeams,
-        fetchTeamTasks,
-        createTeamTask,
-        updateTeamTask,
-        deleteTeamTask,
-        fetchApplications,
-        updateApplicationStatus,
-        addTask,
-        updateTaskStatus,
-        addMilestone
-      }}
-    >
-      {children}
-    </ProjectContext.Provider>
-  );
-};
-
-export const useProject = () => useContext(ProjectContext);
