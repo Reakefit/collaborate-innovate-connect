@@ -944,4 +944,4 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   }, []);
 
-  const deleteTeamTask = useCallback(async (teamId
+  const deleteTeamTask = useCallback(async (teamId: string,
