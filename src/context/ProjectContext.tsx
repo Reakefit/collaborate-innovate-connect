@@ -9,6 +9,7 @@ import {
 } from '@/types/database';
 import { toast } from 'sonner';
 import { fetchApplicationsWithTeams } from '@/services/database';
+import { Json } from '@/types/supabase';
 
 interface ProjectContextType {
   projects: Project[];
@@ -344,6 +345,8 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         throw new Error('You must be logged in to create a project');
       }
       
+      console.log("Creating project with data:", projectData);
+      
       const { data, error } = await supabase
         .from('projects')
         .insert({
@@ -366,7 +369,12 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
+      
+      console.log("Project created successfully:", data);
       
       // Cast for optional fields
       const newProjectData = data as any;
@@ -582,7 +590,7 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         lead_id: data.lead_id,
         skills: data.skills || [],
         portfolio_url: data.portfolio_url || null,
-        achievements: data.achievements || null,
+        achievements: data.achievements as Json,
         created_at: data.created_at,
         updated_at: data.updated_at,
         members: []
@@ -719,7 +727,7 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         lead_id: data.lead_id,
         skills: data.skills || [],
         portfolio_url: data.portfolio_url || null,
-        achievements: data.achievements || null,
+        achievements: data.achievements as Json,
         created_at: data.created_at,
         updated_at: data.updated_at,
         members: []
@@ -753,7 +761,7 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         lead_id: team.lead_id,
         skills: team.skills || [],
         portfolio_url: team.portfolio_url || null,
-        achievements: team.achievements || null,
+        achievements: team.achievements as Json,
         created_at: team.created_at,
         updated_at: team.updated_at,
         members: []
@@ -809,7 +817,7 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         lead_id: team.lead_id,
         skills: team.skills || [],
         portfolio_url: team.portfolio_url || null,
-        achievements: team.achievements || null,
+        achievements: team.achievements as Json,
         created_at: team.created_at,
         updated_at: team.updated_at,
         members: []

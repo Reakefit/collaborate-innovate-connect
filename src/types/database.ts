@@ -1,3 +1,4 @@
+
 import { Json } from './supabase';
 
 export interface Project {
@@ -71,7 +72,7 @@ export interface Team {
   lead_id: string;
   skills: string[];
   portfolio_url: string | null;
-  achievements: string | null;
+  achievements: Json | null;
   created_at: string;
   updated_at: string;
   members?: TeamMember[];
@@ -104,7 +105,9 @@ export type TeamTaskStatus =
   | "todo"
   | "in_progress"
   | "completed"
-  | "blocked";
+  | "blocked"
+  | "review"
+  | "done";
 
 export interface ProjectMilestone {
   id: string;
@@ -120,7 +123,8 @@ export type MilestoneStatus =
   | "not_started"
   | "in_progress"
   | "completed"
-  | "blocked";
+  | "blocked"
+  | "delayed";
 
 export interface ProjectTask {
   id: string;
@@ -138,7 +142,9 @@ export type TaskStatus =
   | "todo"
   | "in_progress"
   | "completed"
-  | "blocked";
+  | "blocked"
+  | "review"
+  | "done";
 
 export interface Education {
   school: string;
@@ -152,7 +158,7 @@ export interface Education {
 export interface Profile {
   id: string;
   name: string;
-  role: "student" | "startup";
+  role: "student" | "startup" | "college_admin";
   avatar_url: string;
   bio: string;
   company_name: string;
@@ -188,6 +194,6 @@ export interface ProjectMessage {
   created_at: string;
   sender?: {
     name: string;
-    avatar_url: string;
+    avatar_url?: string;
   };
 }

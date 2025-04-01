@@ -1,6 +1,6 @@
 
 import { supabase } from '@/lib/supabase';
-import { Application, ApplicationStatus, ProjectMessage, Team, Profile } from '@/types/database';
+import { Application, ApplicationStatus, ProjectMessage, Team, Profile, Json } from '@/types/database';
 
 /**
  * Creates a user profile if it doesn't already exist
@@ -125,7 +125,7 @@ export const fetchApplicationsWithTeams = async (projectId?: string): Promise<Ap
         lead_id: app.team.lead_id,
         skills: app.team.skills || [],
         portfolio_url: app.team.portfolio_url || null,
-        achievements: app.team.achievements || null,
+        achievements: app.team.achievements as Json,
         created_at: app.team.created_at,
         updated_at: app.team.updated_at,
         members: app.team.members || []
