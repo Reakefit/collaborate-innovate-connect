@@ -363,12 +363,12 @@ export const createUserProfileIfNotExists = async (userId: string, initialData: 
       const formattedData = {
         ...dbData,
         // If project_needs is an array, handle appropriately for DB storage
-        project_needs: Array.isArray(dbData.project_needs) ? dbData.project_needs.join(',') : dbData.project_needs
+        project_needs: Array.isArray(dbData.project_needs) ? dbData.project_needs : []
       };
       
       const { error: insertError } = await supabase
         .from('profiles')
-        .insert(formattedData as any);
+        .insert(formattedData);
       
       if (insertError) throw insertError;
     } else if (error) {

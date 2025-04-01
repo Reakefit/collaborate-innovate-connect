@@ -58,8 +58,15 @@ export default function ProtectedRoute({
 
     // Skip profile completion check for the complete-profile page
     if (!location.pathname.includes('/complete-profile')) {
-      // Check if profile is complete
-      if (profile && !profile.name) {
+      // Check if profile is complete by checking for required fields based on role
+      const isStartup = userRole === 'startup';
+      const hasIncompleteProfile = profile && (
+        !profile.name || 
+        (isStartup && (!profile.company_name || !profile.company_description)) ||
+        (!isStartup && (!profile.skills || profile.skills.length === 0 || !profile.college))
+      );
+      
+      if (hasIncompleteProfile) {
         if (location.pathname !== '/complete-profile') {
           toast.info('Please complete your profile to continue');
           navigate('/complete-profile', { replace: true });
@@ -124,9 +131,17 @@ export default function ProtectedRoute({
     return <Navigate to="/signin" replace />;
   }
 
-  // If profile is not complete - skip this check for the complete-profile page
-  if (profile && !profile.name && !location.pathname.includes('/complete-profile')) {
-    return <Navigate to="/complete-profile" replace />;
+  // Check if profile is complete
+  if (profile) {
+    const isStartup = userRole === 'startup';
+    const hasIncompleteProfile = 
+      !profile.name || 
+      (isStartup && (!profile.company_name || !profile.company_description)) ||
+      (!isStartup && (!profile.skills || profile.skills.length === 0 || !profile.college));
+    
+    if (hasIncompleteProfile && !location.pathname.includes('/complete-profile')) {
+      return <Navigate to="/complete-profile" replace />;
+    }
   }
 
   // If verification required but not verified
