@@ -1,6 +1,27 @@
 
 import { supabase } from '@/lib/supabase';
-import { Project, Application, ProjectMessage, Team, TeamMember, Profile } from '@/types/database';
+import { Project, Application, ProjectMessage, Team, TeamMember, Profile, ProjectCategory, ApplicationStatus, PaymentModel, ProjectStatus } from '@/types/database';
+
+// Helper function to convert generic string category to ProjectCategory type
+const ensureProjectCategory = (category: string): ProjectCategory => {
+  const validCategories: ProjectCategory[] = [
+    'web_development', 'mobile_app', 'data_science', 'machine_learning', 
+    'blockchain', 'design', 'marketing', 'other'
+  ];
+  
+  return validCategories.includes(category as ProjectCategory) 
+    ? (category as ProjectCategory) 
+    : 'other';
+};
+
+// Helper function to convert generic string status to ApplicationStatus type
+const ensureApplicationStatus = (status: string): ApplicationStatus => {
+  const validStatuses: ApplicationStatus[] = ['pending', 'accepted', 'rejected'];
+  
+  return validStatuses.includes(status as ApplicationStatus) 
+    ? (status as ApplicationStatus) 
+    : 'pending';
+};
 
 // Fetch all projects from the database
 export const fetchProjects = async (): Promise<Project[]> => {
@@ -17,12 +38,12 @@ export const fetchProjects = async (): Promise<Project[]> => {
       title: project.title,
       description: project.description,
       created_by: project.created_by,
-      category: project.category,
+      category: ensureProjectCategory(project.category),
       required_skills: project.required_skills || [],
       start_date: project.start_date,
       end_date: project.end_date,
       team_size: project.team_size,
-      payment_model: project.payment_model,
+      payment_model: project.payment_model as PaymentModel,
       stipend_amount: project.stipend_amount ? String(project.stipend_amount) : null,
       equity_percentage: project.equity_percentage ? String(project.equity_percentage) : null,
       hourly_rate: project.hourly_rate ? String(project.hourly_rate) : null,
@@ -30,7 +51,7 @@ export const fetchProjects = async (): Promise<Project[]> => {
       deliverables: project.deliverables || [],
       created_at: project.created_at,
       selected_team: project.selected_team || null,
-      status: project.status || 'open'
+      status: (project.status || 'open') as ProjectStatus
     }));
   } catch (error) {
     console.error('Error fetching projects:', error);
@@ -55,12 +76,12 @@ export const fetchProjectById = async (id: string): Promise<Project | null> => {
       title: data.title,
       description: data.description,
       created_by: data.created_by,
-      category: data.category,
+      category: ensureProjectCategory(data.category),
       required_skills: data.required_skills || [],
       start_date: data.start_date,
       end_date: data.end_date,
       team_size: data.team_size,
-      payment_model: data.payment_model,
+      payment_model: data.payment_model as PaymentModel,
       stipend_amount: data.stipend_amount ? String(data.stipend_amount) : null,
       equity_percentage: data.equity_percentage ? String(data.equity_percentage) : null,
       hourly_rate: data.hourly_rate ? String(data.hourly_rate) : null,
@@ -68,7 +89,7 @@ export const fetchProjectById = async (id: string): Promise<Project | null> => {
       deliverables: data.deliverables || [],
       created_at: data.created_at,
       selected_team: data.selected_team || null,
-      status: data.status || 'open'
+      status: (data.status || 'open') as ProjectStatus
     };
   } catch (error) {
     console.error('Error fetching project:', error);
@@ -96,7 +117,7 @@ export const fetchApplicationsForProject = async (projectId: string): Promise<Ap
       project_id: app.project_id,
       user_id: app.user_id,
       team_id: app.team_id,
-      status: app.status,
+      status: ensureApplicationStatus(app.status),
       cover_letter: app.cover_letter,
       created_at: app.created_at,
       updated_at: app.updated_at,
@@ -147,7 +168,7 @@ export const fetchApplicationsWithTeams = async (projectId?: string): Promise<Ap
       project_id: app.project_id,
       user_id: app.user_id,
       team_id: app.team_id,
-      status: app.status,
+      status: ensureApplicationStatus(app.status),
       cover_letter: app.cover_letter,
       created_at: app.created_at,
       updated_at: app.updated_at,
@@ -188,7 +209,7 @@ export const fetchUserApplications = async (userId: string): Promise<Application
       project_id: app.project_id,
       user_id: app.user_id,
       team_id: app.team_id,
-      status: app.status,
+      status: ensureApplicationStatus(app.status),
       cover_letter: app.cover_letter,
       created_at: app.created_at,
       updated_at: app.updated_at
@@ -320,10 +341,15 @@ export const createUserProfileIfNotExists = async (userId: string, initialData: 
         project_needs: initialData.project_needs || []
       };
       
-      // Cast to unknown first to bypass type checking since we're doing manual conversion
+      // Handle project_needs type conversion
+      if (Array.isArray(dbData.project_needs)) {
+        // If it's already an array, join it into a string
+        dbData.project_needs = dbData.project_needs.join(',');
+      }
+      
       const { error: insertError } = await supabase
         .from('profiles')
-        .insert(dbData as unknown as any);
+        .insert(dbData as any);
       
       if (insertError) throw insertError;
     } else if (error) {
