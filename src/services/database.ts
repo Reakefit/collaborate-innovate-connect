@@ -23,6 +23,24 @@ const ensureApplicationStatus = (status: string): ApplicationStatus => {
     : 'pending';
 };
 
+// Helper function to convert generic string status to ProjectStatus type
+const ensureProjectStatus = (status: string): ProjectStatus => {
+  const validStatuses: ProjectStatus[] = ['open', 'in_progress', 'completed', 'cancelled'];
+  
+  return validStatuses.includes(status as ProjectStatus)
+    ? (status as ProjectStatus)
+    : 'open';
+};
+
+// Helper function to convert generic string to PaymentModel type
+const ensurePaymentModel = (model: string): PaymentModel => {
+  const validModels: PaymentModel[] = ['hourly', 'fixed', 'equity', 'unpaid', 'stipend'];
+  
+  return validModels.includes(model as PaymentModel)
+    ? (model as PaymentModel)
+    : 'fixed';
+};
+
 // Fetch all projects from the database
 export const fetchProjects = async (): Promise<Project[]> => {
   try {
@@ -43,15 +61,15 @@ export const fetchProjects = async (): Promise<Project[]> => {
       start_date: project.start_date,
       end_date: project.end_date,
       team_size: project.team_size,
-      payment_model: project.payment_model as PaymentModel,
+      payment_model: ensurePaymentModel(project.payment_model),
       stipend_amount: project.stipend_amount ? String(project.stipend_amount) : null,
-      equity_percentage: project.equity_percentage ? String(project.equity_percentage) : null,
-      hourly_rate: project.hourly_rate ? String(project.hourly_rate) : null,
-      fixed_amount: project.fixed_amount ? String(project.fixed_amount) : null,
+      equity_percentage: null, // Default if not present in DB
+      hourly_rate: null, // Default if not present in DB
+      fixed_amount: null, // Default if not present in DB
       deliverables: project.deliverables || [],
       created_at: project.created_at,
       selected_team: project.selected_team || null,
-      status: (project.status || 'open') as ProjectStatus
+      status: ensureProjectStatus(project.status || 'open')
     }));
   } catch (error) {
     console.error('Error fetching projects:', error);
@@ -81,15 +99,15 @@ export const fetchProjectById = async (id: string): Promise<Project | null> => {
       start_date: data.start_date,
       end_date: data.end_date,
       team_size: data.team_size,
-      payment_model: data.payment_model as PaymentModel,
+      payment_model: ensurePaymentModel(data.payment_model),
       stipend_amount: data.stipend_amount ? String(data.stipend_amount) : null,
-      equity_percentage: data.equity_percentage ? String(data.equity_percentage) : null,
-      hourly_rate: data.hourly_rate ? String(data.hourly_rate) : null,
-      fixed_amount: data.fixed_amount ? String(data.fixed_amount) : null,
+      equity_percentage: null, // Default if not present in DB
+      hourly_rate: null, // Default if not present in DB
+      fixed_amount: null, // Default if not present in DB
       deliverables: data.deliverables || [],
       created_at: data.created_at,
       selected_team: data.selected_team || null,
-      status: (data.status || 'open') as ProjectStatus
+      status: ensureProjectStatus(data.status || 'open')
     };
   } catch (error) {
     console.error('Error fetching project:', error);
@@ -332,8 +350,7 @@ export const createUserProfileIfNotExists = async (userId: string, initialData: 
     
     // If no profile exists, create one
     if (error && error.code === 'PGRST116') {
-      // Convert founded from string to number if present
-      // And ensure project_needs is properly formatted for the database
+      // Process initialData to ensure compatibility with DB schema
       const dbData = {
         ...initialData,
         id: userId,
@@ -341,15 +358,17 @@ export const createUserProfileIfNotExists = async (userId: string, initialData: 
         project_needs: initialData.project_needs || []
       };
       
-      // Handle project_needs type conversion
-      if (Array.isArray(dbData.project_needs)) {
-        // If it's already an array, join it into a string
-        dbData.project_needs = dbData.project_needs.join(',');
-      }
+      // Ensure project_needs is properly formatted for the database
+      // Handle project_needs type conversion if needed
+      const formattedData = {
+        ...dbData,
+        // If project_needs is an array, handle appropriately for DB storage
+        project_needs: Array.isArray(dbData.project_needs) ? dbData.project_needs.join(',') : dbData.project_needs
+      };
       
       const { error: insertError } = await supabase
         .from('profiles')
-        .insert(dbData as any);
+        .insert(formattedData as any);
       
       if (insertError) throw insertError;
     } else if (error) {
