@@ -235,6 +235,7 @@ const ProjectPage = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Timeline Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -260,6 +261,7 @@ const ProjectPage = () => {
           </CardContent>
         </Card>
         
+        {/* Payment Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -285,7 +287,7 @@ const ProjectPage = () => {
                   <span className="text-sm">${project.fixed_amount}</span>
                 </div>
               )}
-              {project.payment_model === "equity" && project.equity_percentage && (
+              {project.equity_percentage && (
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">Equity:</span>
                   <span className="text-sm">{project.equity_percentage}%</span>
@@ -301,6 +303,7 @@ const ProjectPage = () => {
           </CardContent>
         </Card>
         
+        {/* Team Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">

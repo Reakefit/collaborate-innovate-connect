@@ -86,6 +86,7 @@ export interface TeamMember {
   role: TeamMemberRole;
   status: TeamMemberStatus;
   joined_at: string;
+  name?: string; // Add name property
 }
 
 export type TeamMemberRole = "lead" | "member";

@@ -108,8 +108,8 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
   // Load initial data
   useEffect(() => {
     if (user) {
-      fetchProjects();
-      fetchTeams();
+      fetchProjects(setProjects, setLoading, setError);
+      fetchTeams(setTeams, setLoading, setError);
     }
   }, [user]);
 
