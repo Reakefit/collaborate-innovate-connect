@@ -938,4 +938,4 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
           assigned_to: taskData.assigned_to || null
         })
         .eq('id', taskId)
-        .eq('team_id',
+        .eq('team_id', teamId);
