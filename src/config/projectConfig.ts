@@ -1,6 +1,7 @@
 
 import { ProjectCategory, PaymentModel } from '@/types/database';
 import { Code, Briefcase, BarChart3, PenTool } from 'lucide-react';
+import React from 'react';
 
 export interface CategoryOption {
   value: ProjectCategory;
