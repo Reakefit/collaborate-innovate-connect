@@ -1,4 +1,3 @@
-
 import { Json } from './supabase';
 
 export type { Json } from './supabase';
@@ -47,8 +46,7 @@ export type PaymentModel =
   | "unpaid"
   | "stipend"
   | "hourly"
-  | "fixed"
-  | "equity";
+  | "fixed";
 
 export interface Application {
   id: string;

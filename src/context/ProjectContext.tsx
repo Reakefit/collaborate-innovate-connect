@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
@@ -346,9 +345,9 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         throw new Error('You must be logged in to create a project');
       }
       
-      console.log("Creating project with data:", projectData);
+      debugLog('CreateProject', 'Creating project with data:', projectData);
       
-      // Ensure data types are correct
+      // Ensure data types are correct and only include fields that exist in the database
       const projectPayload = {
         title: projectData.title,
         description: projectData.description,
@@ -360,14 +359,15 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         team_size: Number(projectData.team_size),
         payment_model: projectData.payment_model,
         stipend_amount: projectData.stipend_amount ? Number(projectData.stipend_amount) : null,
-        equity_percentage: projectData.equity_percentage ? Number(projectData.equity_percentage) : null,
-        hourly_rate: projectData.hourly_rate ? Number(projectData.hourly_rate) : null,
-        fixed_amount: projectData.fixed_amount ? Number(projectData.fixed_amount) : null,
+        // Remove fields that don't exist in the database
+        // equity_percentage: projectData.equity_percentage ? Number(projectData.equity_percentage) : null,
+        // hourly_rate: projectData.hourly_rate ? Number(projectData.hourly_rate) : null,
+        // fixed_amount: projectData.fixed_amount ? Number(projectData.fixed_amount) : null,
         deliverables: Array.isArray(projectData.deliverables) ? projectData.deliverables : [],
         status: 'open'
       };
       
-      console.log("Sending payload to Supabase:", projectPayload);
+      debugLog('CreateProject', 'Sending payload to Supabase:', projectPayload);
       
       const { data, error } = await supabase
         .from('projects')
@@ -376,11 +376,11 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         .single();
       
       if (error) {
-        console.error("Supabase error:", error);
+        debugError('CreateProject', error, 'Failed to create project');
         throw error;
       }
       
-      console.log("Project created successfully:", data);
+      debugLog('CreateProject', 'Project created successfully:', data);
       
       // Cast for optional fields
       const newProjectData = data as any;
@@ -398,9 +398,9 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         team_size: newProjectData.team_size,
         payment_model: (newProjectData.payment_model || 'unpaid') as PaymentModel,
         stipend_amount: newProjectData.stipend_amount ? Number(newProjectData.stipend_amount) : null,
-        equity_percentage: newProjectData.equity_percentage !== undefined ? Number(newProjectData.equity_percentage) : null,
-        hourly_rate: newProjectData.hourly_rate !== undefined ? Number(newProjectData.hourly_rate) : null,
-        fixed_amount: newProjectData.fixed_amount !== undefined ? Number(newProjectData.fixed_amount) : null,
+        equity_percentage: null, // Set default value for required type
+        hourly_rate: null, // Set default value for required type
+        fixed_amount: null, // Set default value for required type
         deliverables: newProjectData.deliverables || [],
         created_at: newProjectData.created_at,
         selected_team: newProjectData.selected_team || null,
@@ -414,7 +414,7 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
       return newProject;
     } catch (error: any) {
       setError(error.message);
-      console.error('Error creating project:', error);
+      debugError('CreateProject', error, 'Error creating project');
       toast.error(`Failed to create project: ${error.message}`);
       return null;
     } finally {
@@ -940,134 +940,3 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         })
         .eq('id', taskId)
         .eq('team_id', teamId);
-      
-      if (error) throw error;
-      
-      toast.success('Team task updated successfully!');
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error updating team task:', error);
-      toast.error('Failed to update team task.');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const deleteTeamTask = useCallback(async (teamId: string, taskId: string): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { error } = await supabase
-        .from('team_tasks')
-        .delete()
-        .eq('id', taskId)
-        .eq('team_id', teamId);
-      
-      if (error) throw error;
-      
-      toast.success('Team task deleted successfully!');
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error deleting team task:', error);
-      toast.error('Failed to delete team task.');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchApplications = useCallback(async (projectId: string): Promise<Application[]> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const data = await fetchApplicationsWithTeams(projectId);
-      
-      if (!data) return [];
-      
-      return data;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error fetching applications:', error);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateApplicationStatus = useCallback(async (applicationId: string, status: string): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { error } = await supabase
-        .from('applications')
-        .update({ status })
-        .eq('id', applicationId);
-      
-      if (error) throw error;
-      
-      setApplications(prevApplications =>
-        prevApplications.map(app => (app.id === applicationId ? { ...app, status: status as ApplicationStatus } : app))
-      );
-      
-      toast.success('Application status updated successfully!');
-      return true;
-    } catch (error: any) {
-      setError(error.message);
-      console.error('Error updating application status:', error);
-      toast.error('Failed to update application status.');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Load initial projects on mount
-  useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
-
-  return (
-    <ProjectContext.Provider
-      value={{
-        projects,
-        applications,
-        teams,
-        loading,
-        error,
-        fetchProject,
-        fetchProjects,
-        createProject,
-        updateProject,
-        deleteProject,
-        getUserProjects,
-        updateProjectStatus,
-        applyToProject,
-        createTeam,
-        updateTeam,
-        deleteTeam,
-        joinTeam,
-        leaveTeam,
-        fetchTeam,
-        fetchTeams,
-        fetchUserTeams,
-        fetchTeamTasks,
-        createTeamTask,
-        updateTeamTask,
-        deleteTeamTask,
-        fetchApplications,
-        updateApplicationStatus,
-        addTask,
-        updateTaskStatus,
-        addMilestone
-      }}
-    >
-      {children}
-    </ProjectContext.Provider>
-  );
-};
