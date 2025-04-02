@@ -6,7 +6,7 @@ import React from 'react';
 export interface CategoryOption {
   value: ProjectCategory;
   label: string;
-  icon: JSX.Element;
+  icon: React.ReactNode;
 }
 
 export interface PaymentModelOption {
@@ -24,16 +24,16 @@ export interface ProjectTemplate {
 }
 
 export const CATEGORIES: CategoryOption[] = [
-  { value: 'web_development', label: 'Web Development', icon: <Code className="h-4 w-4" /> },
-  { value: 'mobile_development', label: 'Mobile Development', icon: <Code className="h-4 w-4" /> },
-  { value: 'data_science', label: 'Data Science', icon: <BarChart3 className="h-4 w-4" /> },
-  { value: 'machine_learning', label: 'Machine Learning', icon: <BarChart3 className="h-4 w-4" /> },
-  { value: 'ui_ux_design', label: 'UI/UX Design', icon: <PenTool className="h-4 w-4" /> },
-  { value: 'devops', label: 'DevOps', icon: <Code className="h-4 w-4" /> },
-  { value: 'cybersecurity', label: 'Cybersecurity', icon: <Code className="h-4 w-4" /> },
-  { value: 'blockchain', label: 'Blockchain', icon: <Code className="h-4 w-4" /> },
-  { value: 'market_research', label: 'Market Research', icon: <Briefcase className="h-4 w-4" /> },
-  { value: 'other', label: 'Other', icon: <Briefcase className="h-4 w-4" /> }
+  { value: 'web_development', label: 'Web Development', icon: React.createElement(Code, { className: "h-4 w-4" }) },
+  { value: 'mobile_development', label: 'Mobile Development', icon: React.createElement(Code, { className: "h-4 w-4" }) },
+  { value: 'data_science', label: 'Data Science', icon: React.createElement(BarChart3, { className: "h-4 w-4" }) },
+  { value: 'machine_learning', label: 'Machine Learning', icon: React.createElement(BarChart3, { className: "h-4 w-4" }) },
+  { value: 'ui_ux_design', label: 'UI/UX Design', icon: React.createElement(PenTool, { className: "h-4 w-4" }) },
+  { value: 'devops', label: 'DevOps', icon: React.createElement(Code, { className: "h-4 w-4" }) },
+  { value: 'cybersecurity', label: 'Cybersecurity', icon: React.createElement(Code, { className: "h-4 w-4" }) },
+  { value: 'blockchain', label: 'Blockchain', icon: React.createElement(Code, { className: "h-4 w-4" }) },
+  { value: 'market_research', label: 'Market Research', icon: React.createElement(Briefcase, { className: "h-4 w-4" }) },
+  { value: 'other', label: 'Other', icon: React.createElement(Briefcase, { className: "h-4 w-4" }) }
 ];
 
 export const PAYMENT_MODELS: PaymentModelOption[] = [
