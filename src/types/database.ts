@@ -1,3 +1,4 @@
+
 import { Json } from './supabase';
 
 export type { Json } from './supabase';
@@ -85,7 +86,6 @@ export interface TeamMember {
   role: TeamMemberRole;
   status: TeamMemberStatus;
   joined_at: string;
-  name?: string;
 }
 
 export type TeamMemberRole = "lead" | "member";

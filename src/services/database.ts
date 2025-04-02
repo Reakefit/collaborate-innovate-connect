@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import { 
   Application, ApplicationStatus, ProjectMessage, Team, 
@@ -120,7 +121,6 @@ export const fetchApplicationsWithTeams = async (projectId?: string): Promise<Ap
         role: (member.role === 'lead' || member.role === 'member') ? member.role as TeamMemberRole : 'member',
         status: (member.status === 'active' || member.status === 'inactive') ? member.status as TeamMemberStatus : 'active',
         joined_at: member.joined_at,
-        // Remove the name property since it doesn't exist in the TeamMember type
       })) : [];
       
       return {

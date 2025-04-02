@@ -12,9 +12,6 @@ export interface ProjectFormData {
   team_size: number;
   payment_model: PaymentModel;
   stipend_amount: number | null;
-  equity_percentage: number | null;
-  hourly_rate: number | null;
-  fixed_amount: number | null;
   deliverables: string[];
 }
 
@@ -69,18 +66,6 @@ export const useProjectValidation = () => {
     // Validate payment model specific fields
     if (data.payment_model === 'stipend' && (!data.stipend_amount || data.stipend_amount <= 0)) {
       newErrors.stipend_amount = 'Stipend amount must be a positive number';
-    }
-
-    if (data.payment_model === 'equity' && (!data.equity_percentage || data.equity_percentage <= 0)) {
-      newErrors.equity_percentage = 'Equity percentage must be a positive number';
-    }
-
-    if (data.payment_model === 'hourly' && (!data.hourly_rate || data.hourly_rate <= 0)) {
-      newErrors.hourly_rate = 'Hourly rate must be a positive number';
-    }
-
-    if (data.payment_model === 'fixed' && (!data.fixed_amount || data.fixed_amount <= 0)) {
-      newErrors.fixed_amount = 'Fixed amount must be a positive number';
     }
 
     // Validate deliverables

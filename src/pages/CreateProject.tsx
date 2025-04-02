@@ -14,71 +14,12 @@ import {
   ProjectCategory, 
   PaymentModel 
 } from '@/types/database';
-import { PlusCircle, Code, Briefcase, BarChart3, PenTool, ArrowRight } from 'lucide-react';
-
-const CATEGORIES = [
-  { value: 'web_development', label: 'Web Development', icon: <Code className="h-4 w-4" /> },
-  { value: 'mobile_development', label: 'Mobile Development', icon: <Code className="h-4 w-4" /> },
-  { value: 'data_science', label: 'Data Science', icon: <BarChart3 className="h-4 w-4" /> },
-  { value: 'machine_learning', label: 'Machine Learning', icon: <BarChart3 className="h-4 w-4" /> },
-  { value: 'ui_ux_design', label: 'UI/UX Design', icon: <PenTool className="h-4 w-4" /> },
-  { value: 'devops', label: 'DevOps', icon: <Code className="h-4 w-4" /> },
-  { value: 'cybersecurity', label: 'Cybersecurity', icon: <Code className="h-4 w-4" /> },
-  { value: 'blockchain', label: 'Blockchain', icon: <Code className="h-4 w-4" /> },
-  { value: 'market_research', label: 'Market Research', icon: <Briefcase className="h-4 w-4" /> },
-  { value: 'other', label: 'Other', icon: <Briefcase className="h-4 w-4" /> }
-];
-
-const PAYMENT_MODELS = [
-  { value: 'unpaid', label: 'Unpaid' },
-  { value: 'stipend', label: 'Stipend' },
-  { value: 'hourly', label: 'Hourly Rate' },
-  { value: 'fixed', label: 'Fixed Amount' }
-];
-
-interface ProjectTemplate {
-  title: string;
-  description: string;
-  category: ProjectCategory;
-  required_skills: string[];
-  payment_model: PaymentModel;
-  deliverables: string[];
-}
-
-const PROJECT_TEMPLATES: ProjectTemplate[] = [
-  {
-    title: 'Website Development',
-    description: 'Create a responsive website with modern UI/UX design, optimized for all devices.',
-    category: 'web_development',
-    required_skills: ['HTML', 'CSS', 'JavaScript', 'React'],
-    payment_model: 'fixed',
-    deliverables: ['Responsive website', 'Source code', 'Documentation']
-  },
-  {
-    title: 'Mobile App Development',
-    description: 'Build a cross-platform mobile application with a user-friendly interface.',
-    category: 'mobile_development',
-    required_skills: ['React Native', 'JavaScript', 'UI/UX Design'],
-    payment_model: 'hourly',
-    deliverables: ['iOS app', 'Android app', 'Source code', 'User documentation']
-  },
-  {
-    title: 'Data Analysis Project',
-    description: 'Analyze data sets to identify trends and provide actionable insights.',
-    category: 'data_science',
-    required_skills: ['Python', 'SQL', 'Data Visualization', 'Statistics'],
-    payment_model: 'stipend',
-    deliverables: ['Data analysis report', 'Visualizations', 'Presentation', 'Recommendations']
-  },
-  {
-    title: 'UI/UX Design Project',
-    description: 'Design a modern and user-friendly interface for a digital product.',
-    category: 'ui_ux_design',
-    required_skills: ['Figma', 'UI Design', 'UX Research', 'Prototyping'],
-    payment_model: 'fixed',
-    deliverables: ['Design mockups', 'Prototypes', 'Design system', 'User flow documentation']
-  }
-];
+import { ProjectTemplateCard } from '@/components/project/ProjectTemplateCard';
+import { ProjectBasicForm } from '@/components/project/ProjectBasicForm';
+import { ProjectRequirementsForm } from '@/components/project/ProjectRequirementsForm';
+import { ProjectPaymentForm } from '@/components/project/ProjectPaymentForm';
+import { ProjectDeliverablesForm } from '@/components/project/ProjectDeliverablesForm';
+import { PROJECT_TEMPLATES, CATEGORIES, PAYMENT_MODELS } from '@/config/projectConfig';
 
 const CreateProject = () => {
   const navigate = useNavigate();
@@ -100,10 +41,10 @@ const CreateProject = () => {
   const [deliverables, setDeliverables] = useState<string[]>([]);
   const [newDeliverable, setNewDeliverable] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("blank");
+  const [activeTab, setActiveTab] = useState<string>("templates");
 
   // Apply template to form
-  const applyTemplate = (template: ProjectTemplate) => {
+  const applyTemplate = (template: typeof PROJECT_TEMPLATES[0]) => {
     setTitle(template.title);
     setDescription(template.description);
     setCategory(template.category);
@@ -237,60 +178,42 @@ const CreateProject = () => {
         <h1 className="text-3xl font-bold mb-6">Create New Project</h1>
         <p className="text-muted-foreground mb-8">Create a project to find the perfect team of students for your startup's needs.</p>
         
-        <Tabs defaultValue="templates" className="mb-12">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-12">
           <TabsList className="mb-6">
             <TabsTrigger value="templates">Project Templates</TabsTrigger>
-            <TabsTrigger value="blank">Start from Scratch</TabsTrigger>
+            <TabsTrigger value="custom">Start from Scratch</TabsTrigger>
           </TabsList>
           
           <TabsContent value="templates">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {PROJECT_TEMPLATES.map((template, index) => (
-                <Card key={index} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle>{template.title}</CardTitle>
-                        <CardDescription className="mt-2">
-                          {CATEGORIES.find(c => c.value === template.category)?.icon}
-                          <span className="ml-2">{CATEGORIES.find(c => c.value === template.category)?.label}</span>
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">{template.description}</p>
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium mb-2">Required Skills:</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {template.required_skills.map((skill, i) => (
-                          <span key={i} className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button 
-                      variant="default" 
-                      className="w-full" 
-                      onClick={() => applyTemplate(template)}
-                    >
-                      Use Template <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </CardFooter>
-                </Card>
+                <ProjectTemplateCard 
+                  key={index} 
+                  template={template} 
+                  categories={CATEGORIES}
+                  onUseTemplate={() => applyTemplate(template)} 
+                />
               ))}
               
               <Card className="border-dashed hover:border-primary/50 transition-colors">
                 <CardContent className="flex flex-col items-center justify-center h-full py-12">
-                  <PlusCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-6 h-6"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                  </div>
                   <h3 className="text-lg font-medium mb-2">Custom Project</h3>
                   <p className="text-sm text-muted-foreground text-center mb-4">
                     Create a project from scratch with your own specifications
                   </p>
-                  <Button variant="outline" onClick={() => setActiveTab("blank")}>
+                  <Button variant="outline" onClick={() => setActiveTab("custom")}>
                     Start from Scratch
                   </Button>
                 </CardContent>
@@ -298,257 +221,51 @@ const CreateProject = () => {
             </div>
           </TabsContent>
           
-          <TabsContent value="blank" id="project-form">
+          <TabsContent value="custom" id="project-form">
             <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Project Basic Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Basic Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Title */}
-                  <div>
-                    <label htmlFor="title" className="block text-sm font-medium mb-1">
-                      Project Title <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="title"
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className={`w-full p-2 border rounded ${errors.title ? 'border-red-500' : 'border-gray-300'}`}
-                      placeholder="Enter project title"
-                    />
-                    {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
-                  </div>
-                  
-                  {/* Description */}
-                  <div>
-                    <label htmlFor="description" className="block text-sm font-medium mb-1">
-                      Project Description <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      id="description"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className={`w-full p-2 border rounded ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
-                      placeholder="Describe your project"
-                      rows={4}
-                    ></textarea>
-                    {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
-                  </div>
-                  
-                  {/* Category */}
-                  <div>
-                    <label htmlFor="category" className="block text-sm font-medium mb-1">
-                      Category <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="category"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value as ProjectCategory)}
-                      className={`w-full p-2 border rounded ${errors.category ? 'border-red-500' : 'border-gray-300'}`}
-                    >
-                      {CATEGORIES.map((categoryOption) => (
-                        <option key={categoryOption.value} value={categoryOption.value}>
-                          {categoryOption.label}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category}</p>}
-                  </div>
-                </CardContent>
-              </Card>
+              <ProjectBasicForm 
+                title={title}
+                setTitle={setTitle}
+                description={description}
+                setDescription={setDescription}
+                category={category}
+                setCategory={setCategory}
+                categories={CATEGORIES}
+                errors={errors}
+              />
               
-              {/* Project Requirements */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Project Requirements</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Required Skills */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Required Skills</label>
-                    <div className="flex">
-                      <input
-                        type="text"
-                        value={newSkill}
-                        onChange={(e) => setNewSkill(e.target.value)}
-                        className="flex-1 p-2 border border-gray-300 rounded-l"
-                        placeholder="Add a required skill"
-                      />
-                      <button
-                        type="button"
-                        onClick={addSkill}
-                        className="bg-primary text-primary-foreground px-4 py-2 rounded-r"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {requiredSkills.map((skill) => (
-                        <div key={skill} className="bg-primary/10 text-primary px-3 py-1 rounded-full flex items-center">
-                          <span>{skill}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeSkill(skill)}
-                            className="ml-2 text-red-500"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Timeline */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Start Date */}
-                    <div>
-                      <label htmlFor="startDate" className="block text-sm font-medium mb-1">
-                        Start Date <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="startDate"
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className={`w-full p-2 border rounded ${errors.start_date ? 'border-red-500' : 'border-gray-300'}`}
-                      />
-                      {errors.start_date && <p className="text-red-500 text-sm mt-1">{errors.start_date}</p>}
-                    </div>
-                    
-                    {/* End Date */}
-                    <div>
-                      <label htmlFor="endDate" className="block text-sm font-medium mb-1">
-                        End Date <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="endDate"
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className={`w-full p-2 border rounded ${errors.end_date ? 'border-red-500' : 'border-gray-300'}`}
-                      />
-                      {errors.end_date && <p className="text-red-500 text-sm mt-1">{errors.end_date}</p>}
-                    </div>
-                  </div>
-                  
-                  {/* Team Size */}
-                  <div>
-                    <label htmlFor="teamSize" className="block text-sm font-medium mb-1">
-                      Team Size <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="teamSize"
-                      type="number"
-                      min="1"
-                      value={teamSize}
-                      onChange={(e) => setTeamSize(parseInt(e.target.value) || 1)}
-                      className={`w-full p-2 border rounded ${errors.team_size ? 'border-red-500' : 'border-gray-300'}`}
-                    />
-                    {errors.team_size && <p className="text-red-500 text-sm mt-1">{errors.team_size}</p>}
-                  </div>
-                </CardContent>
-              </Card>
+              <ProjectRequirementsForm
+                requiredSkills={requiredSkills}
+                newSkill={newSkill}
+                setNewSkill={setNewSkill}
+                addSkill={addSkill}
+                removeSkill={removeSkill}
+                startDate={startDate}
+                setStartDate={setStartDate}
+                endDate={endDate}
+                setEndDate={setEndDate}
+                teamSize={teamSize}
+                setTeamSize={setTeamSize}
+                errors={errors}
+              />
               
-              {/* Payment Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Payment Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Payment Model */}
-                  <div>
-                    <label htmlFor="paymentModel" className="block text-sm font-medium mb-1">
-                      Payment Model <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="paymentModel"
-                      value={paymentModel}
-                      onChange={(e) => setPaymentModel(e.target.value as PaymentModel)}
-                      className={`w-full p-2 border rounded ${errors.payment_model ? 'border-red-500' : 'border-gray-300'}`}
-                    >
-                      {PAYMENT_MODELS.map((model) => (
-                        <option key={model.value} value={model.value}>
-                          {model.label}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.payment_model && <p className="text-red-500 text-sm mt-1">{errors.payment_model}</p>}
-                  </div>
-                  
-                  {/* Payment Details based on selected model */}
-                  {paymentModel === 'stipend' && (
-                    <div>
-                      <label htmlFor="stipendAmount" className="block text-sm font-medium mb-1">
-                        Stipend Amount <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="stipendAmount"
-                        type="number"
-                        min="0"
-                        value={stipendAmount || ''}
-                        onChange={(e) => setStipendAmount(parseFloat(e.target.value) || null)}
-                        className={`w-full p-2 border rounded ${errors.stipend_amount ? 'border-red-500' : 'border-gray-300'}`}
-                        placeholder="Enter amount"
-                      />
-                      {errors.stipend_amount && <p className="text-red-500 text-sm mt-1">{errors.stipend_amount}</p>}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <ProjectPaymentForm
+                paymentModel={paymentModel}
+                setPaymentModel={setPaymentModel}
+                stipendAmount={stipendAmount}
+                setStipendAmount={setStipendAmount}
+                paymentModels={PAYMENT_MODELS}
+                errors={errors}
+              />
               
-              {/* Deliverables */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Deliverables</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Deliverables <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex">
-                      <input
-                        type="text"
-                        value={newDeliverable}
-                        onChange={(e) => setNewDeliverable(e.target.value)}
-                        className="flex-1 p-2 border border-gray-300 rounded-l"
-                        placeholder="Add a deliverable"
-                      />
-                      <button
-                        type="button"
-                        onClick={addDeliverable}
-                        className="bg-primary text-primary-foreground px-4 py-2 rounded-r"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    {errors.deliverables && <p className="text-red-500 text-sm mt-1">{errors.deliverables}</p>}
-                    <div className="mt-2">
-                      {deliverables.length === 0 ? (
-                        <p className="text-gray-500 italic">No deliverables added yet</p>
-                      ) : (
-                        <ul className="list-disc pl-5 space-y-1">
-                          {deliverables.map((deliverable, index) => (
-                            <li key={index} className="flex items-start">
-                              <span className="flex-1">{deliverable}</span>
-                              <button
-                                type="button"
-                                onClick={() => removeDeliverable(deliverable)}
-                                className="text-red-500 ml-2"
-                              >
-                                Remove
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <ProjectDeliverablesForm
+                deliverables={deliverables}
+                newDeliverable={newDeliverable}
+                setNewDeliverable={setNewDeliverable}
+                addDeliverable={addDeliverable}
+                removeDeliverable={removeDeliverable}
+                errors={errors}
+              />
               
               {/* Submit Button */}
               <div className="flex justify-end gap-4">
