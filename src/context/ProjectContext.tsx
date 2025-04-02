@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
@@ -939,3 +940,134 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
         })
         .eq('id', taskId)
         .eq('team_id', teamId);
+      
+      if (error) throw error;
+      
+      toast.success('Team task updated successfully!');
+      return true;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error updating team task:', error);
+      toast.error('Failed to update team task.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const deleteTeamTask = useCallback(async (teamId: string, taskId: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { error } = await supabase
+        .from('team_tasks')
+        .delete()
+        .eq('id', taskId)
+        .eq('team_id', teamId);
+      
+      if (error) throw error;
+      
+      toast.success('Team task deleted successfully!');
+      return true;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error deleting team task:', error);
+      toast.error('Failed to delete team task.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchApplications = useCallback(async (projectId: string): Promise<Application[]> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const data = await fetchApplicationsWithTeams(projectId);
+      
+      if (!data) return [];
+      
+      return data;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error fetching applications:', error);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const updateApplicationStatus = useCallback(async (applicationId: string, status: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { error } = await supabase
+        .from('applications')
+        .update({ status })
+        .eq('id', applicationId);
+      
+      if (error) throw error;
+      
+      setApplications(prevApplications =>
+        prevApplications.map(app => (app.id === applicationId ? { ...app, status: status as ApplicationStatus } : app))
+      );
+      
+      toast.success('Application status updated successfully!');
+      return true;
+    } catch (error: any) {
+      setError(error.message);
+      console.error('Error updating application status:', error);
+      toast.error('Failed to update application status.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load initial projects on mount
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  return (
+    <ProjectContext.Provider
+      value={{
+        projects,
+        applications,
+        teams,
+        loading,
+        error,
+        fetchProject,
+        fetchProjects,
+        createProject,
+        updateProject,
+        deleteProject,
+        getUserProjects,
+        updateProjectStatus,
+        applyToProject,
+        createTeam,
+        updateTeam,
+        deleteTeam,
+        joinTeam,
+        leaveTeam,
+        fetchTeam,
+        fetchTeams,
+        fetchUserTeams,
+        fetchTeamTasks,
+        createTeamTask,
+        updateTeamTask,
+        deleteTeamTask,
+        fetchApplications,
+        updateApplicationStatus,
+        addTask,
+        updateTaskStatus,
+        addMilestone
+      }}
+    >
+      {children}
+    </ProjectContext.Provider>
+  );
+};
