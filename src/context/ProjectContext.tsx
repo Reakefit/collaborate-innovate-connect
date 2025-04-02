@@ -8,6 +8,7 @@ import {
 } from '@/types/database';
 import { toast } from 'sonner';
 import { fetchApplicationsWithTeams } from '@/services/database';
+import { debugLog, debugError, logSupabaseOperation } from '@/utils/debug';
 
 interface ProjectContextType {
   projects: Project[];
@@ -937,8 +938,4 @@ export const ProjectProvider: React.FC<{children: React.ReactNode}> = ({ childre
           assigned_to: taskData.assigned_to || null
         })
         .eq('id', taskId)
-        .eq('team_id', teamId);
-      
-      if (error) throw error;
-      
-      return true;
+        .eq('team_id',
